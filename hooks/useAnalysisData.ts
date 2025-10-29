@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnalysisData, AnalysisInputData, ZoneCalculations } from '../types';
 import { 
     calculateEvents, 
@@ -14,10 +14,10 @@ const STORAGE_KEY = 'spda-analysis-data';
 const initialInputData: AnalysisInputData = {
     projectName: 'Edifício Residencial Multifamiliar, 8 andares, 4 apartamentos por andar, totalizando 32 Apartamentos. Altura do piso ocupado á descarga 24 m, Área aproximada de 2400 m2',
     clientName: 'Conjunto Residencial Multifamiliar',
-    clientAddress: 'Centro - Joinville/SC',
+    clientAddress: 'Centro Joinville/SC',
     projectDate: new Date().toISOString().split('T')[0],
-    technicalManagerName: 'Eng. Júlio César Certo',
-    licenseNumber: 'Eng. Eletricista / CREA-SP: 506291022/D',
+    technicalManagerName: 'Eng. Júlio Certo',
+    licenseNumber: 'Eng. Eletricista / CREA-SP: 12345678910/D',
     zones: [{ 
         id: 'default-zone-1', 
         name: 'Zona 1',
@@ -38,7 +38,7 @@ const initialInputData: AnalysisInputData = {
     l: 23,
     w: 22.5,
     hp: 29.5,
-    ng: 18,
+    // ng: (sem preset; usuário irá digitar manualmente na Etapa Ng)
     location: '',
     mapRegion: 'sudeste',
     cd: 0.5,
@@ -113,13 +113,60 @@ export function useAnalysisData() {
             return initialInputData;
         }
     });
+    const saveTimeoutRef = useRef<number | null>(null);
+
+    // One-time migration: update old default texts to the new requested values
+    useEffect(() => {
+        const OLD_NAME = 'Eng. Júlio César Certo';
+        const NEW_NAME = 'Eng. Júlio Certo';
+        const OLD_LICENSE = 'Eng. Eletricista / CREA-SP: 506291022/D';
+        const NEW_LICENSE = 'Eng. Eletricista / CREA-SP: 12345678910/D';
+        const ADDRESS_HYPHEN_REGEX = /\s-\s(?=[^,]*\/[A-Z]{2}\b)/; // hífen antes de Cidade/UF no final
+
+        let needsUpdate = false;
+        const nextData: Partial<AnalysisInputData> = {};
+
+        if (data.technicalManagerName && data.technicalManagerName.trim() === OLD_NAME) {
+            nextData.technicalManagerName = NEW_NAME;
+            needsUpdate = true;
+        }
+        if (data.licenseNumber && data.licenseNumber.trim() === OLD_LICENSE) {
+            nextData.licenseNumber = NEW_LICENSE;
+            needsUpdate = true;
+        }
+
+        // Remover hífen em endereços no formato "Bairro - Cidade/UF"
+        if (typeof data.clientAddress === 'string' && ADDRESS_HYPHEN_REGEX.test(data.clientAddress)) {
+            nextData.clientAddress = data.clientAddress.replace(ADDRESS_HYPHEN_REGEX, ' ');
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            setData(prev => ({ ...prev, ...nextData }));
+        }
+        // Run only once after initial load
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch (error) {
-            console.error("Failed to save data to localStorage", error);
+        // Debounce gravar em localStorage para reduzir escrita e evitar travamentos
+        if (saveTimeoutRef.current) {
+            window.clearTimeout(saveTimeoutRef.current);
         }
+        saveTimeoutRef.current = window.setTimeout(() => {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (error) {
+                console.error("Failed to save data to localStorage", error);
+            }
+        }, 400);
+
+        return () => {
+            if (saveTimeoutRef.current) {
+                window.clearTimeout(saveTimeoutRef.current);
+                saveTimeoutRef.current = null;
+            }
+        };
     }, [data]);
 
     // Memoized calculation for events (N)

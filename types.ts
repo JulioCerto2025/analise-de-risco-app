@@ -146,7 +146,7 @@ export interface AnalysisInputData {
   l: number;
   w: number;
   hp: number;
-  ng: number;
+  ng?: number;
   location: string;
   mapRegion: string;
   cd: number;

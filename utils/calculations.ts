@@ -6,22 +6,32 @@ export function calculateEvents(data: Pick<AnalysisData,
     'has_data_line' | 'line_sections_2' | 'use_adj_structure_2' | 'l_adj_2' | 'w_adj_2' | 'h_adj_2' | 'hp_adj_2' | 'cd_adj_2' 
 >): CalculationResults {
     const { 
-        h, l, w, hp, ng, cd, 
-        has_electric_line, line_sections_1, use_adj_structure_1, l_adj_1, w_adj_1, h_adj_1, hp_adj_1, cd_adj_1,
-        has_data_line, line_sections_2, use_adj_structure_2, l_adj_2, w_adj_2, h_adj_2, hp_adj_2, cd_adj_2 
+        h = 0, l = 0, w = 0, hp = 0, ng = 0, cd = 0, 
+        has_electric_line = false, line_sections_1 = [], use_adj_structure_1 = false, 
+        l_adj_1 = 0, w_adj_1 = 0, h_adj_1 = 0, hp_adj_1 = 0, cd_adj_1 = 0,
+        has_data_line = false, line_sections_2 = [], use_adj_structure_2 = false, 
+        l_adj_2 = 0, w_adj_2 = 0, h_adj_2 = 0, hp_adj_2 = 0, cd_adj_2 = 0 
     } = data;
     
+    // Validação para evitar NaN
+    const safeH = Number(h) || 0;
+    const safeL = Number(l) || 0;
+    const safeW = Number(w) || 0;
+    const safeHp = Number(hp) || 0;
+    const safeNg = Number(ng) || 0;
+    const safeCd = Number(cd) || 0;
+    
     // Main structure calculations
-    const h3 = 3 * h;
-    const ad = (l * w) + (2 * h3 * (l + w)) + (Math.PI * h3 * h3);
-    const hp3 = 3 * hp;
+    const h3 = 3 * safeH;
+    const ad = (safeL * safeW) + (2 * h3 * (safeL + safeW)) + (Math.PI * h3 * h3);
+    const hp3 = 3 * safeHp;
     const adp = Math.PI * hp3 * hp3;
     const adf = Math.max(ad, adp);
-    const am = (2 * 500 * (l + w)) + (Math.PI * 500 * 500);
+    const am = (2 * 500 * (safeL + safeW)) + (Math.PI * 500 * 500);
         
     // Main events
-    const nd = ng > 0 ? ng * adf * cd * 1e-6 : 0;
-    const nm = ng > 0 ? ng * am * 1e-6 : 0;
+    const nd = safeNg > 0 ? safeNg * adf * safeCd * 1e-6 : 0;
+    const nm = safeNg > 0 ? safeNg * am * 1e-6 : 0;
 
     // Line 1 (Electric) Calculations from sections
     let al1_total = 0;
@@ -29,15 +39,20 @@ export function calculateEvents(data: Pick<AnalysisData,
     let nl1_base = 0;
     let ni1_base = 0;
 
-    if (has_electric_line) {
+    if (has_electric_line && Array.isArray(line_sections_1)) {
         line_sections_1.forEach(section => {
-            const { ll, ci, ce, ct } = section;
+            if (!section) return;
+            const ll = Number(section.ll) || 0;
+            const ci = Number(section.ci) || 0;
+            const ce = Number(section.ce) || 0;
+            const ct = Number(section.ct) || 0;
+            
             const al_section = 40 * ll;
             const ai_section = 4000 * ll;
             al1_total += al_section;
             ai1_total += ai_section;
-            nl1_base += ng > 0 ? ng * al_section * ci * ce * ct * 1e-6 : 0;
-            ni1_base += ng > 0 ? ng * ai_section * ci * ce * ct * 1e-6 : 0;
+            nl1_base += safeNg > 0 ? safeNg * al_section * ci * ce * ct * 1e-6 : 0;
+            ni1_base += safeNg > 0 ? safeNg * ai_section * ci * ce * ct * 1e-6 : 0;
         });
     }
 
@@ -47,57 +62,85 @@ export function calculateEvents(data: Pick<AnalysisData,
     let nl2_base = 0;
     let ni2_base = 0;
 
-    if (has_data_line) {
+    if (has_data_line && Array.isArray(line_sections_2)) {
         line_sections_2.forEach(section => {
-            const { ll, ci, ce, ct } = section;
+            if (!section) return;
+            const ll = Number(section.ll) || 0;
+            const ci = Number(section.ci) || 0;
+            const ce = Number(section.ce) || 0;
+            const ct = Number(section.ct) || 0;
+            
             const al_section = 40 * ll;
             const ai_section = 4000 * ll;
             al2_total += al_section;
             ai2_total += ai_section;
-            nl2_base += ng > 0 ? ng * al_section * ci * ce * ct * 1e-6 : 0;
-            ni2_base += ng > 0 ? ng * ai_section * ci * ce * ct * 1e-6 : 0;
+            nl2_base += safeNg > 0 ? safeNg * al_section * ci * ce * ct * 1e-6 : 0;
+            ni2_base += safeNg > 0 ? safeNg * ai_section * ci * ce * ct * 1e-6 : 0;
         });
     }
 
     // Adjacent structure calculations
     let nadj_electric = 0;
     let ad_adj_1 = 0;
-    if (use_adj_structure_1 && ng > 0 && has_electric_line) {
-        const h3_adj = 3 * h_adj_1;
-        const ad_adj = (l_adj_1 * w_adj_1) + (2 * h3_adj * (l_adj_1 + w_adj_1)) + (Math.PI * h3_adj * h3_adj);
-        const hp3_adj = 3 * hp_adj_1;
+    if (use_adj_structure_1 && safeNg > 0 && has_electric_line) {
+        const safeL_adj_1 = Number(l_adj_1) || 0;
+        const safeW_adj_1 = Number(w_adj_1) || 0;
+        const safeH_adj_1 = Number(h_adj_1) || 0;
+        const safeHp_adj_1 = Number(hp_adj_1) || 0;
+        const safeCd_adj_1 = Number(cd_adj_1) || 0;
+        
+        const h3_adj = 3 * safeH_adj_1;
+        const ad_adj = (safeL_adj_1 * safeW_adj_1) + (2 * h3_adj * (safeL_adj_1 + safeW_adj_1)) + (Math.PI * h3_adj * h3_adj);
+        const hp3_adj = 3 * safeHp_adj_1;
         const adp_adj = Math.PI * hp3_adj * hp3_adj;
         ad_adj_1 = Math.max(ad_adj, adp_adj);
         
         // Direct flash contribution to Nl (S3)
-        nadj_electric = ng * ad_adj_1 * cd_adj_1 * 1e-6;
+        nadj_electric = safeNg * ad_adj_1 * safeCd_adj_1 * 1e-6;
     }
 
     let nadj_data = 0;
     let ad_adj_2 = 0;
-    if (use_adj_structure_2 && ng > 0 && has_data_line) {
-        const h3_adj = 3 * h_adj_2;
-        const ad_adj = (l_adj_2 * w_adj_2) + (2 * h3_adj * (l_adj_2 + w_adj_2)) + (Math.PI * h3_adj * h3_adj);
-        const hp3_adj = 3 * hp_adj_2;
+    if (use_adj_structure_2 && safeNg > 0 && has_data_line) {
+        const safeL_adj_2 = Number(l_adj_2) || 0;
+        const safeW_adj_2 = Number(w_adj_2) || 0;
+        const safeH_adj_2 = Number(h_adj_2) || 0;
+        const safeHp_adj_2 = Number(hp_adj_2) || 0;
+        const safeCd_adj_2 = Number(cd_adj_2) || 0;
+        
+        const h3_adj = 3 * safeH_adj_2;
+        const ad_adj = (safeL_adj_2 * safeW_adj_2) + (2 * h3_adj * (safeL_adj_2 + safeW_adj_2)) + (Math.PI * h3_adj * h3_adj);
+        const hp3_adj = 3 * safeHp_adj_2;
         const adp_adj = Math.PI * hp3_adj * hp3_adj;
         ad_adj_2 = Math.max(ad_adj, adp_adj);
 
         // Direct flash contribution to Nl (S3)
-        nadj_data = ng * ad_adj_2 * cd_adj_2 * 1e-6;
+        nadj_data = safeNg * ad_adj_2 * safeCd_adj_2 * 1e-6;
     }
     
-    return {
-        ad, adp, adf, am,
-        al1: al1_total, al2: al2_total, 
-        ai1: ai1_total, ai2: ai2_total,
-        nd, nm,
-        nl_electric: nl1_base + nadj_electric,
-        nl_data: nl2_base + nadj_data,
-        ni_electric: ni1_base, // Per correction, nim_adj is removed
-        ni_data: ni2_base,   // Per correction, nim_adj is removed
-        nadj_electric, nadj_data,
-        ad_adj_1, ad_adj_2
+    // Ensure all values are numbers and not NaN
+    const safeReturn = {
+        ad: Number(ad) || 0, 
+        adp: Number(adp) || 0, 
+        adf: Number(adf) || 0, 
+        am: Number(am) || 0,
+        al1: Number(al1_total) || 0, 
+        al2: Number(al2_total) || 0, 
+        ai1: Number(ai1_total) || 0, 
+        ai2: Number(ai2_total) || 0,
+        nd: Number(nd) || 0, 
+        nm: Number(nm) || 0,
+        nl_electric: Number(nl1_base + nadj_electric) || 0,
+        nl_data: Number(nl2_base + nadj_data) || 0,
+        ni_electric: Number(ni1_base) || 0, // Per correction, nim_adj is removed
+        ni_data: Number(ni2_base) || 0,   // Per correction, nim_adj is removed
+        nadj_electric: Number(nadj_electric) || 0, 
+        nadj_data: Number(nadj_data) || 0,
+        ad_adj_1: Number(ad_adj_1) || 0, 
+        ad_adj_2: Number(ad_adj_2) || 0
     };
+    
+    return safeReturn;
 }
 
 /**
@@ -133,66 +176,129 @@ function calculatePli(lineType: 'electric' | 'data', uw: number): number {
 
 
 export function calculateProbabilities(probData: ProbabilityData, analyzeDataLineProbs: boolean, has_data_line: boolean): { [key: string]: number } {
-    const p = probData;
+    const p = probData || {};
+
+    // Garantir que todos os valores sejam números válidos
+    const safeValues = {
+        wm1: Number(p.wm1) || 0,
+        wm2: Number(p.wm2) || 0,
+        Uw_electric: Number(p.Uw_electric) || 1,
+        PTA: Number(p.PTA) || 0,
+        PB: Number(p.PB) || 0,
+        PSPD_electric: Number(p.PSPD_electric) || 0,
+        CLD_electric: Number(p.CLD_electric) || 0,
+        Ks3_electric: Number(p.Ks3_electric) || 0,
+        PTU_electric: Number(p.PTU_electric) || 0,
+        PEB_electric: Number(p.PEB_electric) || 0,
+        PLD_electric: Number(p.PLD_electric) || 0,
+        CLI_electric: Number(p.CLI_electric) || 0,
+        Uw_data: Number(p.Uw_data) || 1,
+        PTU_data: Number(p.PTU_data) || 0,
+        PEB_data: Number(p.PEB_data) || 0,
+        PLD_data: Number(p.PLD_data) || 0,
+        CLD_data: Number(p.CLD_data) || 0,
+        PSPD_data: Number(p.PSPD_data) || 0,
+        CLI_data: Number(p.CLI_data) || 0,
+        Ks3_data: Number(p.Ks3_data) || 0
+    };
 
     // Fatores derivados
-    const Ks1 = Math.min(1, (p.wm1 || 0) * 0.12);
-    const Ks2 = Math.min(1, (p.wm2 || 0) * 0.12);
-    const Ks4_electric = p.Uw_electric > 0 ? 1 / p.Uw_electric : 1;
+    const Ks1 = Math.min(1, safeValues.wm1 * 0.12);
+    const Ks2 = Math.min(1, safeValues.wm2 * 0.12);
+    const Ks4_electric = safeValues.Uw_electric > 0 ? 1 / safeValues.Uw_electric : 1;
     
     // Probabilidades - Estrutura e Linha Elétrica
-    const PA = p.PTA * p.PB;
-    const PC = p.PSPD_electric * p.CLD_electric;
-    const Pms = Math.pow(Ks1 * Ks2 * p.Ks3_electric * Ks4_electric, 2);
-    const PM = p.PSPD_electric * Pms;
-    const PU = p.PTU_electric * p.PEB_electric * p.PLD_electric * p.CLD_electric;
-    const PV = p.PEB_electric * p.PLD_electric * p.CLD_electric;
-    const PW = p.PSPD_electric * p.PLD_electric * p.CLD_electric;
-    const Pli_electric = calculatePli('electric', p.Uw_electric);
-    const PZ = p.PSPD_electric * p.CLI_electric * Pli_electric; 
+    const PA = safeValues.PTA * safeValues.PB;
+    const PC = safeValues.PSPD_electric * safeValues.CLD_electric;
+    const Pms = Math.pow(Ks1 * Ks2 * safeValues.Ks3_electric * Ks4_electric, 2);
+    const PM = safeValues.PSPD_electric * Pms;
+    const PU = safeValues.PTU_electric * safeValues.PEB_electric * safeValues.PLD_electric * safeValues.CLD_electric;
+    const PV = safeValues.PEB_electric * safeValues.PLD_electric * safeValues.CLD_electric;
+    const PW = safeValues.PSPD_electric * safeValues.PLD_electric * safeValues.CLD_electric;
+    const Pli_electric = calculatePli('electric', safeValues.Uw_electric);
+    const PZ = safeValues.PSPD_electric * safeValues.CLI_electric * Pli_electric; 
 
     // Probabilidades - Linha de Dados
-    const Ks4_data = p.Uw_data > 0 ? 1 / p.Uw_data : 1;
-    const Pli_data = calculatePli('data', p.Uw_data);
+    const Ks4_data = safeValues.Uw_data > 0 ? 1 / safeValues.Uw_data : 1;
+    const Pli_data = calculatePli('data', safeValues.Uw_data);
     
     let PUT = 0, PVT = 0, PWT = 0, PZT = 0;
     let PCT = 0, Pmst = 0, PMT = 0;
 
     if (has_data_line) {
-        PUT = p.PTU_data * p.PEB_data * p.PLD_data * p.CLD_data;
-        PVT = p.PEB_data * p.PLD_data * p.CLD_data;
-        PWT = p.PSPD_data * p.PLD_data * p.CLD_data;
-        PZT = p.PSPD_data * p.CLI_data * Pli_data;
+        PUT = safeValues.PTU_data * safeValues.PEB_data * safeValues.PLD_data * safeValues.CLD_data;
+        PVT = safeValues.PEB_data * safeValues.PLD_data * safeValues.CLD_data;
+        PWT = safeValues.PSPD_data * safeValues.PLD_data * safeValues.CLD_data;
+        PZT = safeValues.PSPD_data * safeValues.CLI_data * Pli_data;
 
         // These probabilities relate to the failure of INTERNAL systems.
         // They are only calculated if the user wants to analyze the internal data line.
         if (analyzeDataLineProbs) {
-            PCT = p.PSPD_data * p.CLD_data;
-            Pmst = Math.pow(Ks1 * Ks2 * p.Ks3_data * Ks4_data, 2);
-            PMT = p.PSPD_data * Pmst;
+            PCT = safeValues.PSPD_data * safeValues.CLD_data;
+            Pmst = Math.pow(Ks1 * Ks2 * safeValues.Ks3_data * Ks4_data, 2);
+            PMT = safeValues.PSPD_data * Pmst;
         }
     }
     
-    return { 
-        PA, PB: p.PB, PC, PCT, Pms, Pmst, PM, PMT, PU, PUT, PV, PVT, PW, PWT, PZ, PZT, 
-        Ks1, Ks2, Ks4_electric, Ks4_data, Pli_electric, Pli_data,
-        PEB_electric: p.PEB_electric, PEB_data: p.PEB_data // Pass through for Frequency calculation
+    // Garantir que todos os valores retornados sejam números válidos
+    const result = {
+        PA: Number(PA) || 0,
+        PB: Number(safeValues.PB) || 0,
+        PC: Number(PC) || 0,
+        PCT: Number(PCT) || 0,
+        Pms: Number(Pms) || 0,
+        Pmst: Number(Pmst) || 0,
+        PM: Number(PM) || 0,
+        PMT: Number(PMT) || 0,
+        PU: Number(PU) || 0,
+        PUT: Number(PUT) || 0,
+        PV: Number(PV) || 0,
+        PVT: Number(PVT) || 0,
+        PW: Number(PW) || 0,
+        PWT: Number(PWT) || 0,
+        PZ: Number(PZ) || 0,
+        PZT: Number(PZT) || 0,
+        Ks1: Number(Ks1) || 0,
+        Ks2: Number(Ks2) || 0,
+        Ks4_electric: Number(Ks4_electric) || 0,
+        Ks4_data: Number(Ks4_data) || 0,
+        Pli_electric: Number(Pli_electric) || 0,
+        Pli_data: Number(Pli_data) || 0,
+        PEB_electric: Number(safeValues.PEB_electric) || 0,
+        PEB_data: Number(safeValues.PEB_data) || 0
     };
+    
+    return result;
 }
 
 export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const losses: { [key: string]: any } = {};
-    const ld = zone.loss_data;
+    const ld = zone?.loss_data;
     const LT_CONSTANT = 0.01; // LT is a constant for injuries
 
     if (!ld) return {};
     
+    // Garantir que todos os valores sejam números válidos
+    const safeValues = {
+        nt: Number(ld.nt) || 1,
+        nz: Number(ld.nz) || 0,
+        tz: Number(ld.tz) || 0,
+        rt: Number(ld.rt) || 0,
+        rs: Number(ld.rs) || 1,
+        rp: Number(ld.rp) || 0,
+        rf: Number(ld.rf) || 0,
+        hz: Number(ld.hz) || 0,
+        LF: Number(ld.LF) || 0,
+        LO: Number(ld.LO) || 0
+    };
+    
     // R1 Losses
-    const nt_r1 = Number(ld.nt) || 1;
-    const factor_r1 = (Number(ld.nz) / nt_r1) * (Number(ld.tz) / 8760);
-    losses.LA = (ld.rt ?? 0) * LT_CONSTANT * factor_r1 * (ld.rs ?? 1); // Corrected: rs added
-    losses.LB = (ld.rs ?? 1) * (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.hz ?? 0) * (ld.LF ?? 0) * factor_r1;
-    losses.LC = (ld.LO ?? 0) * factor_r1 * (ld.rs ?? 1); // Corrected: rs added
+    const nt_r1 = safeValues.nt;
+    const factor_r1 = nt_r1 > 0 ? (safeValues.nz / nt_r1) * (safeValues.tz / 8760) : 0;
+    
+    losses.LA = safeValues.rt * LT_CONSTANT * factor_r1 * safeValues.rs;
+    losses.LB = safeValues.rs * safeValues.rp * safeValues.rf * safeValues.hz * safeValues.LF * factor_r1;
+    losses.LC = safeValues.LO * factor_r1 * safeValues.rs;
     losses.LU = losses.LA;
     losses.LV = losses.LB;
     losses.LM = losses.LC;
@@ -201,7 +307,11 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
 
     // R3 Losses
     const ct_cultural = Number(ld.ct_cultural) || 1;
-    losses.LB3 = (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.lf3 ?? 0) * ((ld.cz ?? 0) / ct_cultural); // Corrected: rs removed
+    const safeRp = Number(ld.rp) || 0;
+    const safeRf = Number(ld.rf) || 0;
+    const safeLf3 = Number(ld.lf3) || 0;
+    const safeCz = Number(ld.cz) || 0;
+    losses.LB3 = safeRp * safeRf * safeLf3 * (safeCz / ct_cultural); // Corrected: rs removed
     losses.LV3 = losses.LB3;
 
     // R4 Losses

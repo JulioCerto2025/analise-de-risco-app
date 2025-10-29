@@ -195,31 +195,31 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 <Card className="h-full">
-                    <CardHeader><CardTitle>Configuração de Frequência (F)</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Configuração de Freq.  (F)</CardTitle></CardHeader>
                     <CardContent className="space-y-6">
                         <div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                 <button
                                     type="button"
                                     onClick={() => handleConfigChange('is_critical_system', true)}
-                                    className={`p-3 rounded-lg border text-center transition-colors text-sm ${
+                                    className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
                                         config.is_critical_system 
                                         ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
                                         : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
                                     }`}
                                 >
-                                    Sistema Crítico ≤ 0,1
+                                    <span className="truncate whitespace-nowrap leading-tight">Sist. Crít. ≤ 0,1</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => handleConfigChange('is_critical_system', false)}
-                                    className={`p-3 rounded-lg border text-center transition-colors text-sm ${
+                                    className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
                                         !config.is_critical_system 
                                         ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
                                         : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
                                     }`}
                                 >
-                                    Sistema Não Crítico ≤ 1
+                                    <span className="truncate whitespace-nowrap leading-tight">Sist. N Crít. ≤ 1</span>
                                 </button>
                             </div>
                         </div>

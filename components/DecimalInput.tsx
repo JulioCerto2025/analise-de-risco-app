@@ -4,7 +4,7 @@ import { Input, Label } from './ui';
 interface DecimalInputProps {
     id?: string;
     label?: string;
-    value: number;
+    value?: number;
     onUpdate: (value: number) => void;
     placeholder?: string;
     className?: string;

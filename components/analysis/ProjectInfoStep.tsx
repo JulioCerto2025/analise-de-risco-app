@@ -124,8 +124,8 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
 
 
     return (
-        <div className="space-y-6">
-            <Card>
+        <div className="space-y-6 h-full">
+            <Card className="h-full">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Briefcase className="w-5 h-5 text-white" />
@@ -133,7 +133,7 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-x-8">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-x-8 items-stretch">
                         <div className="flex flex-col md:col-span-2 gap-4">
                             <AutoCorrectingInput
                                 id="clientName"
@@ -211,8 +211,10 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
                                 </AnimatePresence>
                             </div>
                         </div>
-                        <div className="hidden md:col-span-3 md:flex items-center justify-center p-4">
-                        <img src="https://i.imgur.com/siWXsaB.png" alt="Ilustração de um sistema de proteção contra descargas atmosféricas" className="w-full h-full object-cover rounded-lg shadow-md" />
+                        <div className="hidden md:flex md:col-span-3 items-stretch p-2">
+                            <div className="w-full h-full overflow-hidden rounded-lg shadow-md">
+                                <img src="https://i.imgur.com/siWXsaB.png" alt="Ilustração de um sistema de proteção contra descargas atmosféricas" className="w-full h-full object-cover" />
+                            </div>
                         </div>
                     </div>
                 </CardContent>

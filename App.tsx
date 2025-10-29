@@ -91,31 +91,55 @@ export default function App() {
     const [errors, setErrors] = useState<string[]>([]);
 
     const handleNext = useCallback(() => {
-        const validationErrors = validateStep(currentStep, data);
-        if (validationErrors.length > 0) {
-            setErrors(validationErrors);
-            return;
-        }
-
-        if (currentStep === 1) {
-            const address = data.clientAddress;
-            // This regex looks for ", City - UF" or " City/UF" at the end of the address string.
-            const cityStateMatch = address.match(/(?:,\s*|\s)([^,]+?)\s*[-\/]\s*([A-Z]{2})$/i);
-
-            if (cityStateMatch && cityStateMatch[1] && cityStateMatch[2]) {
-                const city = cityStateMatch[1].trim();
-                const uf = cityStateMatch[2].toUpperCase();
-                const region = getRegionFromState(uf);
-                
-                updateData({
-                    mapRegion: region,
-                    location: `${city} - ${uf}`
-                });
+        try {
+            const validationErrors = validateStep(currentStep, data);
+            if (validationErrors.length > 0) {
+                setErrors(validationErrors);
+                return;
             }
-        }
 
-        setErrors([]);
-        if (currentStep < STEPS.length) setCurrentStep(prev => prev + 1);
+            if (currentStep === 1) {
+                const address = data.clientAddress || '';
+                // Aceita formatos no final do endereço como:
+                // "Bairro - Cidade/UF", "Cidade/UF" ou "Cidade - UF".
+                const matchWithSlash = address.match(/([^,]+?)\s*\/\s*([A-Z]{2})$/i);
+                const matchWithHyphen = address.match(/([^,]+?)\s*-\s*([A-Z]{2})$/i);
+
+                if ((matchWithSlash && matchWithSlash[1] && matchWithSlash[2]) || (matchWithHyphen && matchWithHyphen[1] && matchWithHyphen[2])) {
+                    const rawCityPart = (matchWithSlash ? matchWithSlash[1] : matchWithHyphen![1]).trim();
+                    const uf = (matchWithSlash ? matchWithSlash[2] : matchWithHyphen![2]).toUpperCase();
+
+                    // Se houver "Bairro - Cidade", pegue somente a última parte como cidade.
+                    const city = (rawCityPart.split(/\s-\s/).pop() || rawCityPart).trim();
+                    const region = getRegionFromState(uf);
+
+                    // Remover o hífen imediatamente antes de "Cidade/UF" no final
+                    const sanitizedAddress = address.replace(/\s-\s(?=[^,]*\/[A-Z]{2}$)/, '  ');
+
+                    updateData({
+                        mapRegion: region,
+                        location: `${city} - ${uf}`,
+                        clientAddress: sanitizedAddress
+                    });
+                }
+            }
+
+            // Garantir que dados necessários estejam inicializados para a etapa 3 (NgInputStep)
+            if (currentStep === 2) {
+                if (!data.mapRegion) {
+                    updateData({ mapRegion: 'sul' }); // Valor padrão
+                }
+                if (!data.ngValue) {
+                    updateData({ ngValue: 5 }); // Valor padrão
+                }
+            }
+
+            setErrors([]);
+            if (currentStep < STEPS.length) setCurrentStep(prev => prev + 1);
+        } catch (error) {
+            console.error("Erro ao avançar para próxima etapa:", error);
+            setErrors(["Ocorreu um erro ao avançar. Por favor, tente novamente."]);
+        }
     }, [currentStep, data, updateData]);
 
     const handlePrev = useCallback(() => {
@@ -131,27 +155,38 @@ export default function App() {
     }, []);
 
     const renderStep = useMemo(() => {
-        switch (currentStep) {
-            case 1: return <ProjectInfoStep data={data} onUpdate={updateData} />;
-            case 2: return <RiskComponentsSelection data={data} onChange={updateData} />;
-            case 3: return <NgInputStep data={data} onUpdate={updateData} />;
-            case 4: return <Step1Input data={data} onUpdate={updateData} />;
-            case 5: return <ConnectedLinesStep data={data} onUpdate={updateData} />;
-            case 6: return <Step3Events data={data} />;
-            case 7: return <ProbabilityStep data={data} onChange={updateData} />;
-            case 8: return <LossStep data={data} onChange={updateData} />;
-            case 9: return <RiskResultsStep data={data} onUpdate={updateData} />;
-            case 10: return <FrequencyConfigStep data={data} onUpdate={updateData} />;
-            case 11: return <ReportStep data={data} onUpdate={updateData} />;
-            default: return null;
+        try {
+            switch (currentStep) {
+                case 1: return <ProjectInfoStep data={data} onUpdate={updateData} />;
+                case 2: return <RiskComponentsSelection data={data} onChange={updateData} />;
+                case 3: return <NgInputStep data={data} onUpdate={updateData} />;
+                case 4: return <Step1Input data={data} onUpdate={updateData} />;
+                case 5: return <ConnectedLinesStep data={data} onUpdate={updateData} />;
+                case 6: return <Step3Events data={data} />;
+                case 7: return <ProbabilityStep data={data} onChange={updateData} />;
+                case 8: return <LossStep data={data} onChange={updateData} />;
+                case 9: return <RiskResultsStep data={data} onUpdate={updateData} />;
+                case 10: return <FrequencyConfigStep data={data} onUpdate={updateData} />;
+                case 11: return <ReportStep data={data} onUpdate={updateData} />;
+                default: return <div className="p-6 bg-slate-800 rounded-lg">
+                    <h2 className="text-xl font-bold text-slate-100 mb-4">Etapa não encontrada</h2>
+                    <p className="text-slate-300">Por favor, retorne à etapa anterior e tente novamente.</p>
+                </div>;
+            }
+        } catch (error) {
+            console.error("Erro ao renderizar etapa:", error);
+            return <div className="p-6 bg-slate-800 rounded-lg">
+                <h2 className="text-xl font-bold text-red-400 mb-4">Erro ao carregar esta etapa</h2>
+                <p className="text-slate-300">Ocorreu um erro ao carregar esta etapa. Por favor, tente retornar à etapa anterior.</p>
+            </div>;
         }
     }, [currentStep, data, updateData]);
 
     return (
-        <div className="min-h-screen p-4 sm:p-6 md:p-8">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
-                <aside className="w-full md:w-64 lg:w-72 flex-shrink-0">
-                    <div className="sticky top-8 flex flex-col gap-4">
+        <div className="min-h-screen p-3 sm:p-4 md:p-6">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-stretch">
+                <aside className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
+                    <div className="sticky top-4 flex flex-col gap-4">
                         <SidebarNav currentStep={currentStep} setStep={setStep}/>
                         <div className="grid grid-cols-2 gap-2">
                             <Button
@@ -177,7 +212,29 @@ export default function App() {
                 </aside>
 
                 <main className="flex-1">
-                    <AnimatePresence>
+                    {/* Cabeçalho móvel: visível apenas no celular */}
+                    <div className="md:hidden mb-4 bg-slate-950/70 backdrop-blur-lg border border-slate-500/50 p-4 rounded-lg shadow-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                                <Calculator className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-base font-bold text-slate-100">Análise de Risco</h1>
+                                <p className="text-xs text-slate-400">NBR 5419-2</p>
+                                <div className="mt-2 flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/30 text-blue-300 text-xs font-semibold">
+                                        Etapa {currentStep} de {STEPS.length}
+                                    </span>
+                                    <span className="text-xs text-slate-300">
+                                        {STEPS[currentStep - 1]}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Alertas: ocultos no mobile para mostrar apenas cabeçalho + etapa */}
+                    <div className="hidden md:block">
+                        <AnimatePresence>
                         {errors.length > 0 && (
                             <motion.div
                                 initial={{ opacity: 0, y: -20 }}
@@ -196,8 +253,9 @@ export default function App() {
                                 </Alert>
                             </motion.div>
                         )}
-                    </AnimatePresence>
-                    <div className="min-h-full">
+                        </AnimatePresence>
+                    </div>
+                    <div className="min-h-full pb-20 md:pb-0">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentStep}
@@ -209,6 +267,30 @@ export default function App() {
                                 {renderStep}
                             </motion.div>
                         </AnimatePresence>
+                    </div>
+                    {/* Barra de navegação móvel fixa: somente botões, sem fundo */}
+                    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+                        <div className="mx-auto max-w-7xl px-3 pb-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={handlePrev}
+                                    disabled={currentStep === 1}
+                                    className="flex items-center gap-2 w-full"
+                                >
+                                    <ArrowLeft className="w-4 h-4" />
+                                    Anterior
+                                </Button>
+                                <Button
+                                    onClick={handleNext}
+                                    disabled={currentStep === STEPS.length}
+                                    className="flex items-center gap-2 w-full"
+                                >
+                                    {currentStep === STEPS.length ? "Finalizar" : "Próximo"}
+                                    <ArrowRight className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </main>
             </div>

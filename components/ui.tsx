@@ -382,6 +382,104 @@ export const AutoCorrectingInput = ({ id, label, value, onUpdate, placeholder, c
     );
 };
 
+// Autocomplete Input (typeahead)
+export const AutocompleteInput = ({ id, label, value, onUpdate, suggestions, placeholder, className, maxSuggestions = 8, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void, suggestions: string[], maxSuggestions?: number }) => {
+    const [open, setOpen] = useState(false);
+    const [filtered, setFiltered] = useState<string[]>([]);
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const normalizedSuggestions = React.useMemo(() => {
+        return suggestions.map(s => ({ norm: normalize(String(s)), value: String(s) }));
+    }, [suggestions]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        onUpdate(newValue);
+        const q = normalize(newValue);
+        if (!q) {
+            setFiltered([]);
+            setOpen(false);
+            setActiveIndex(-1);
+            return;
+        }
+        const next = normalizedSuggestions
+            .filter(s => s.norm.includes(q))
+            .slice(0, maxSuggestions)
+            .map(s => s.value);
+        setFiltered(next);
+        setOpen(next.length > 0);
+        setActiveIndex(next.length ? 0 : -1);
+    };
+
+    const handleSelect = (item: string) => {
+        onUpdate(item);
+        setOpen(false);
+        setActiveIndex(-1);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!open) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const choice = filtered[activeIndex >= 0 ? activeIndex : 0];
+            if (choice) handleSelect(String(choice));
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setOpen(false);
+            setActiveIndex(-1);
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveIndex(prev => Math.min((prev < 0 ? 0 : prev) + 1, filtered.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveIndex(prev => Math.max((prev < 0 ? filtered.length - 1 : prev) - 1, 0));
+        }
+    };
+
+    return (
+        <div className="space-y-2" ref={containerRef}>
+            <Label htmlFor={id}>{label}</Label>
+            <div className="relative w-full">
+                <Input
+                    id={id}
+                    value={value}
+                    onChange={handleChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    className={`${className}`}
+                    {...props}
+                />
+                {open && (
+                    <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-600 bg-slate-900/95 shadow-xl max-h-48 overflow-auto">
+                        {filtered.map((item, idx) => (
+                            <div
+                                key={`${id}-${item}`}
+                                onMouseDown={(e) => { e.preventDefault(); }}
+                                onClick={() => handleSelect(String(item))}
+                                className={`px-3 py-2 text-sm text-slate-100 cursor-pointer ${idx === activeIndex ? 'bg-slate-700/70' : 'hover:bg-slate-700/70'}`}
+                            >
+                                {String(item)}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 // Tab Button
 interface TabButtonProps {
     isActive: boolean;

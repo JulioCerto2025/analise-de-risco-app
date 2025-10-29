@@ -1,0 +1,17 @@
+{
+  "AC": {
+    "Rio Branco": 8,
+    "Cruzeiro do Sul": 6
+  },
+  "PR": {
+    "Curitiba": 10,
+    "Londrina": 12
+  },
+  "SP": {
+    "São Paulo": 16,
+    "Campinas": 18
+  },
+  "RS": {
+    "Porto Alegre": 12
+  }
+}

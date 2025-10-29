@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectContent, SelectItem, Label, Button, Input } from '../ui';
-import { ZoomIn, ZoomOut, RefreshCw, X, Loader2, MapPin } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectContent, SelectItem, Label, Button, AutocompleteInput } from '../ui';
+import { ZoomIn, ZoomOut, RefreshCw, X, Loader2 } from "lucide-react";
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData } from '../../types';
 import { MapViewer, MapViewerHandles } from './MapViewer';
-import { getNgFromAddress } from '../../lib/geminiService';
+import { getUfs, getCitiesByUf, getNgByCity, toUfCode, getUfSuggestions } from '../../data/ngByCity';
 
 interface NgInputStepProps {
     data: AnalysisData;
@@ -50,17 +50,24 @@ const convertGeoToPixel = (
         return null;
     }
 
+    // Ensure coordinates are within bounds
     const clampedLon = Math.max(geoBounds.lonMin, Math.min(geoBounds.lonMax, lon));
     const clampedLat = Math.max(geoBounds.latMin, Math.min(geoBounds.latMax, lat));
     
+    // Calculate the ratio of the coordinates within the geographic bounds
+    // Note: For latitude, we invert the ratio because map coordinates have origin at top-left
     const lonRatio = (clampedLon - geoBounds.lonMin) / (geoBounds.lonMax - geoBounds.lonMin);
-    const latRatio = (geoBounds.latMax - clampedLat) / (geoBounds.latMax - geoBounds.latMin); // Inverted for Y-axis
-
+    const latRatio = (clampedLat - geoBounds.latMin) / (geoBounds.latMax - geoBounds.latMin);
+    
+    // Calculate pixel dimensions
     const pixelWidth = pixelBounds.x2 - pixelBounds.x1;
     const pixelHeight = pixelBounds.y2 - pixelBounds.y1;
 
+    // Convert to pixel coordinates
+    // For y-coordinate, we invert the ratio (1-latRatio) because geographic coordinates 
+    // increase from bottom to top, but pixel coordinates increase from top to bottom
     const x = pixelBounds.x1 + (lonRatio * pixelWidth);
-    const y = pixelBounds.y1 + (latRatio * pixelHeight);
+    const y = pixelBounds.y1 + ((1 - latRatio) * pixelHeight);
 
     return { x: Math.round(x), y: Math.round(y) };
 };
@@ -127,99 +134,107 @@ const getRegionFromState = (stateUF: string = ''): string => {
 };
 
 export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
-    const { mapRegion, clientAddress, location } = data;
-    const [isLoading, setIsLoading] = useState(false);
+    const { mapRegion = 'sul', clientAddress = {}, location = {} } = data || {};
     const [markerPoint, setMarkerPoint] = useState<{ x: number; y: number } | null>(null);
-    const [selectedMapColor, setSelectedMapColor] = useState<string | null>(null);
-    const [coordinates, setCoordinates] = useState<string>('');
     const mapViewerRef = useRef<MapViewerHandles>(null);
+    const [coordinates, setCoordinates] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(false);
+    // Removido: suporte a mapa melhorado via upload/URL e opções de detecção/cor.
+    const [availableUfs, setAvailableUfs] = useState<string[]>([]);
+    const [availableCities, setAvailableCities] = useState<string[]>([]);
+    const [selectedUf, setSelectedUf] = useState<string>('');
+    const [selectedCity, setSelectedCity] = useState<string>('');
+    const [ufInput, setUfInput] = useState<string>('');
+    const [cityInput, setCityInput] = useState<string>('');
+    
+    // Inicializar valores padrão se necessário
+    useEffect(() => {
+        if (!data.mapRegion) {
+            onUpdate({ ...data, mapRegion: 'sul' });
+        }
+        (async () => {
+            const ufs = await getUfs();
+            setAvailableUfs(ufs);
+            const match = (data.location || '').match(/^(.*)\s-\s([A-Z]{2})$/i);
+            if (match) {
+                const city = match[1].trim();
+                const uf = match[2].toUpperCase();
+                setSelectedUf(uf);
+                setUfInput(uf);
+                const cities = await getCitiesByUf(uf);
+                setAvailableCities(cities);
+                setSelectedCity(city);
+                setCityInput(city);
+                const ngPreset = await getNgByCity(uf, city);
+                if (ngPreset !== undefined) {
+                    onUpdate({ ng: ngPreset });
+                }
+            }
+        })();
+    }, []);
     
     useEffect(() => {
-        // This effect triggers whenever the marker is set, either manually or automatically.
-        if (!markerPoint || !mapViewerRef.current) return;
-        
-        // Use a small timeout to let the DOM update with the marker before reading the canvas
-        const timer = setTimeout(() => {
-            try {
-                const avgColorHex = mapViewerRef.current?.getAverageColorAtPoint(markerPoint);
-                if (avgColorHex) {
-                    setSelectedMapColor(avgColorHex);
-                    const closestIndex = findClosestColorIndex(avgColorHex);
-                    if (closestIndex !== -1) {
-                        const ngValue = (closestIndex * 2) + 2;
-                        onUpdate({ ng: ngValue });
-                    }
-                }
-            } catch (error) {
-                console.error("Error processing map color:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        }, 150);
-    
-        return () => clearTimeout(timer);
-    
-    }, [markerPoint, onUpdate]);
+        // Removido: não associar ponto do cursor à legenda ou valor Ng.
+        // Cliques no mapa agora só posicionam o marcador visual.
+    }, [markerPoint]);
+
+    // Removido: configuração de detecção no MapViewer.
 
     const handleMapClick = useCallback((clickData: { clickPoint: { x: number, y: number } }) => {
         setCoordinates(''); // Clear geo-coordinates if clicking manually
         setMarkerPoint(clickData.clickPoint);
     }, []);
 
-    const searchAndSetNg = useCallback(async (address: string) => {
-        if (!address) return;
-        setIsLoading(true);
-        setMarkerPoint(null);
-        setSelectedMapColor(null);
-        setCoordinates('');
-        try {
-            const result = await getNgFromAddress(address);
-            if (result) {
-                const uf = result.location.split(' - ')[1];
-                const newRegion = getRegionFromState(uf);
-                
-                const coordsDisplay = `Lat: ${result.latitude.toFixed(1).replace('.', ',')}, Lon: ${result.longitude.toFixed(1).replace('.', ',')}`;
-                setCoordinates(coordsDisplay);
-                
-                onUpdate({
-                    location: result.location,
-                    ng: result.ng,
-                    mapRegion: newRegion,
-                });
-
-                // Wait for map region to update and component to re-render
-                setTimeout(() => {
-                    const geoBounds = mapBounds[newRegion];
-                    const pixelBounds = mapPixelBounds[newRegion];
-                    
-                    if (geoBounds && pixelBounds) {
-                        const pixelCoords = convertGeoToPixel(result.latitude, result.longitude, geoBounds, pixelBounds);
-                        if (pixelCoords) {
-                            setMarkerPoint(pixelCoords);
-                        } else {
-                            setIsLoading(false); 
-                        }
-                    } else {
-                         setIsLoading(false);
-                    }
-                }, 200); // Delay to allow MapViewer to load the new image
-            } else {
-                setIsLoading(false);
-            }
-        } catch (e) {
-            console.error(e);
-            setIsLoading(false);
-        }
-    }, [onUpdate]);
+    // Função removida - agora usamos apenas seleção manual no mapa
 
     const handleRegionChange = (value: string) => {
         onUpdate({ mapRegion: value });
         setMarkerPoint(null);
-        setSelectedMapColor(null);
         setCoordinates('');
+        // opcional: manter ou limpar o mapa customizado ao trocar de região
+        // manter por padrão
     };
     
-    const closestLegendIndex = findClosestColorIndex(selectedMapColor);
+    const commitUf = async (input: string) => {
+        const code = toUfCode(input) || input.toUpperCase();
+        if (!code) return;
+        setSelectedUf(code);
+        setUfInput(code);
+        const cities = await getCitiesByUf(code);
+        setAvailableCities(cities);
+        setSelectedCity('');
+        setCityInput('');
+        const region = getRegionFromState(code);
+        onUpdate({ mapRegion: region });
+    };
+
+    const handleUfInputUpdate = async (val: string) => {
+        setUfInput(val);
+        const maybeCode = toUfCode(val);
+        // Se digitou nome completo ou já é sigla, comite automaticamente
+        if (maybeCode && (val.length >= 3 || maybeCode === val.toUpperCase() || val.length === 2)) {
+            await commitUf(maybeCode);
+        }
+    };
+
+    const commitCity = async (input: string) => {
+        const text = (input || '').trim();
+        if (!text) return;
+        // pick best match from availableCities
+        const normalized = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const exact = availableCities.find(c => normalized(c) === normalized(text));
+        const starts = availableCities.find(c => normalized(c).startsWith(normalized(text)));
+        const city = exact || starts || text;
+        setSelectedCity(city);
+        setCityInput(city);
+        if (selectedUf) {
+            const ngPreset = await getNgByCity(selectedUf, city);
+            const loc = `${city} - ${selectedUf}`;
+            onUpdate({ location: loc, ng: ngPreset });
+        }
+    };
+    
+    // Removido: não destacar por cor do ponto clicado.
 
     return (
         <div className="flex flex-col lg:flex-row gap-6 items-stretch">
@@ -230,28 +245,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                         <CardTitle>Descargas Atmosféricas (Ng)</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="space-y-3">
-                            <div className="space-y-2">
-                                <Label htmlFor="locationDisplay">Localização da Estrutura</Label>
-                                <div id="locationDisplay" className="flex h-10 w-full items-center rounded-xl border border-slate-700 bg-slate-800/60 px-3 text-sm text-slate-100">
-                                    <span className="truncate">{clientAddress || 'Endereço completo (da Etapa 1)'}</span>
-                                </div>
-                            </div>
-                             <Button onClick={() => searchAndSetNg(clientAddress)} disabled={isLoading || !clientAddress} className="w-full">
-                                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}
-                                Obter Coordenadas Geográficas
-                            </Button>
-                             <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <Input
-                                    readOnly
-                                    value={coordinates}
-                                    placeholder="Coordenadas Geográficas"
-                                    className="pl-9 bg-slate-800/60 border-slate-700"
-                                />
-                            </div>
-                        </div>
-                        
                         <div>
                            <Label>Região para Visualização no Mapa</Label>
                             <Select value={mapRegion} onValueChange={handleRegionChange} placeholder="Selecione uma região..." options={regionOptions}>
@@ -266,11 +259,41 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                             </Select>
                         </div>
 
+                        {/* Removido bloco de exibição de "Localização da Estrutura" conforme solicitação */}
+
+                        <div className="grid grid-cols-[4.5rem,1fr] gap-3 items-end">
+                           <div className="w-[4.5rem] justify-self-start">
+                               <AutocompleteInput
+                                    id="ufInput"
+                                    label="Estado (UF)"
+                                    value={ufInput}
+                                    onUpdate={handleUfInputUpdate}
+                                    suggestions={getUfSuggestions()}
+                                    placeholder="AM"
+                                    className="uppercase text-left w-16"
+                                    maxLength={2}
+                                    onBlur={() => commitUf(ufInput)}
+                                />
+                           </div>
+                           <div className="min-w-0">
+                               <AutocompleteInput
+                                   id="cityInput"
+                                   label="Cidade"
+                                   value={cityInput}
+                                   onUpdate={(val) => setCityInput(val)}
+                                   suggestions={availableCities}
+                                   placeholder="Digite a cidade"
+                                   onBlur={() => commitCity(cityInput)}
+                               />
+                           </div>
+                        </div>
+
                         <DecimalInput
                             id="ng"
                             label="(Ng) Densidade de descargas (raios/km²/ano)"
                             value={data.ng}
                             onUpdate={val => onUpdate({ ng: val })}
+                            placeholder="Digite o valor Ng identificado no mapa"
                         />
                     </CardContent>
                 </Card>
@@ -283,9 +306,14 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                         <div className="grid grid-cols-8 gap-x-1 gap-y-3">
                             {NG_COLOR_BLOCKS.map((color, index) => {
                                 const ngValue = (index * 2) + 2;
-                                const isHighlighted = index === closestLegendIndex;
+                                const isHighlighted = false;
                                 return (
-                                    <div key={index} className="text-center relative">
+                                    <button
+                                        key={index}
+                                        type="button"
+                                        className={`text-center relative cursor-default`}
+                                        onClick={() => { /* legenda informativa, sem ação de clique */ }}
+                                    >
                                         <div
                                             className={`h-5 w-full rounded transition-all duration-200 ${isHighlighted ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900' : 'border border-slate-600/50'}`}
                                             style={{ backgroundColor: color }}
@@ -296,7 +324,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                                 <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-yellow-400 animate-pulse"></div>
                                             </div>
                                         )}
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -308,9 +336,11 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             <div className="w-full lg:flex-1">
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                         <div></div>
-                        <div className="flex gap-2">
-                             <Button variant="outline" className="p-2 h-auto" onClick={() => { setMarkerPoint(null); setSelectedMapColor(null); }} aria-label="Limpar Ponto">
+                         <div className="flex items-center gap-4">
+                            {/* Controles removidos para simplificar a UI */}
+                         </div>
+                         <div className="flex gap-2">
+                             <Button variant="outline" className="p-2 h-auto" onClick={() => { setMarkerPoint(null); }} aria-label="Limpar Ponto">
                                 <X className="h-4 w-4" />
                             </Button>
                             <Button variant="outline" className="p-2 h-auto" onClick={() => mapViewerRef.current?.zoomIn()} aria-label="Aproximar">
@@ -322,7 +352,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                             <Button variant="outline" className="p-2 h-auto" onClick={() => mapViewerRef.current?.reset()} aria-label="Centralizar">
                                 <RefreshCw className="h-4 w-4" />
                             </Button>
-                        </div>
+                         </div>
                     </CardHeader>
                     <CardContent className="relative">
                         {isLoading && (
