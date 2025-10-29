@@ -1,0 +1,5 @@
+{
+  "name": "Backup Análise de Risco SPDA NBR5419 - Segurança",
+  "description": "Uma aplicação web para realizar a análise de risco de Sistemas de Proteção contra Descargas Atmosféricas (SPDA) de acordo com a norma NBR 5419. A ferramenta guia o usuário através de um processo passo a passo para inserir dados da estrutura, calcular eventos danosos, probabilidades, perdas e riscos, culminando em um relatório técnico.",
+  "requestFramePermissions": []
+}
