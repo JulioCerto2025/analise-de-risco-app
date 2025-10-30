@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnalysisData, AnalysisInputData, ZoneCalculations } from '../types';
+import { getNgByCity } from '../data/ngByCity';
 import { 
     calculateEvents, 
     calculateProbabilities, 
@@ -168,6 +169,68 @@ export function useAnalysisData() {
             }
         };
     }, [data]);
+
+    // Inicialização automática de Ng a partir de "Informações do Projeto" ou valor padrão
+    useEffect(() => {
+        const setDefaultsFromProjectInfo = async () => {
+            try {
+                // Se Ng já está definido (>0), não sobrescreve
+                if (typeof data.ng === 'number' && data.ng > 0) return;
+
+                const address = (data.clientAddress || '').toString();
+                // Capturar o último padrão Cidade/UF presente no endereço
+                // Exemplos aceitos: "Centro Joinville/SC", "Bairro - São Paulo/SP", "Rua X, Curitiba/PR"
+                const pattern = /([A-Za-zÀ-ÖØ-öø-ÿ'\-.\s]+)\s*\/\s*([A-Za-z]{2})/g;
+                let match: RegExpExecArray | null;
+                let lastCity: string | null = null;
+                let lastUf: string | null = null;
+                while ((match = pattern.exec(address)) !== null) {
+                    lastCity = (match[1] || '').trim();
+                    lastUf = (match[2] || '').trim().toUpperCase();
+                }
+
+                // Função simples para mapear UF -> região
+                const getRegionFromState = (uf: string = ''): string => {
+                    const U = uf.toUpperCase();
+                    if (['GO','MT','MS','DF'].includes(U)) return 'centro-oeste';
+                    if (['AL','BA','CE','MA','PB','PE','PI','RN','SE'].includes(U)) return 'nordeste';
+                    if (['AC','AP','AM','PA','RO','RR','TO'].includes(U)) return 'norte';
+                    if (['ES','MG','RJ','SP'].includes(U)) return 'sudeste';
+                    if (['PR','RS','SC'].includes(U)) return 'sul';
+                    return 'sudeste';
+                };
+
+                let nextNg: number = 18; // valor padrão solicitado
+                let nextLocation: string | undefined;
+                let nextRegion: string | undefined;
+
+                if (lastCity && lastUf) {
+                    const preset = await getNgByCity(lastUf, lastCity);
+                    if (typeof preset === 'number' && preset > 0) {
+                        nextNg = preset;
+                    }
+                    nextLocation = `${lastCity} - ${lastUf}`;
+                    nextRegion = getRegionFromState(lastUf);
+                }
+
+                const patch: Partial<AnalysisInputData> = { ng: nextNg };
+                if (nextLocation) patch.location = nextLocation;
+                if (nextRegion) patch.mapRegion = nextRegion as any;
+
+                setData(prev => ({ ...prev, ...patch }));
+            } catch (err) {
+                // Se algo falhar, pelo menos define o padrão Ng=18
+                setData(prev => ({ ...prev, ng: (typeof prev.ng === 'number' && prev.ng > 0) ? prev.ng : 18 }));
+            }
+        };
+
+        // Executa apenas uma vez após carregar dados
+        // Evita loop ajustando somente quando ng não está definido
+        if (!(typeof data.ng === 'number' && data.ng > 0)) {
+            setDefaultsFromProjectInfo();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Memoized calculation for events (N)
     const eventCalculations = useMemo(() => calculateEvents(data), [

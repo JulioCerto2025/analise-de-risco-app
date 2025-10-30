@@ -31,7 +31,12 @@ export async function correctText(text: string): Promise<string> {
         return text;
     }
 
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
+    const apiKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+        // Sem API key: não bloquear UI, retornar o próprio texto
+        return text;
+    }
+    const ai = new GoogleGenAI({ apiKey });
     
     const prompt = `
         Corrija o seguinte texto em português do Brasil, ajustando a ortografia, acentuação e capitalização de forma sutil e natural. Mantenha a intenção original.
@@ -77,7 +82,11 @@ export async function getNgFromAddress(address: string): Promise<LocationResult 
     if (!address || address.trim().length < 5) {
         return null;
     }
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
+    const apiKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+        return null;
+    }
+    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `
         Você é um especialista em geolocalização e na norma NBR 5419-2.
@@ -161,8 +170,14 @@ export async function getFireRiskFactor(projectName: string, address: string): P
     }
     `;
 
+    // Guardar contra falta de API key
+    const apiKey2 = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    if (!apiKey2) {
+        return null;
+    }
+    const ai2 = new GoogleGenAI({ apiKey: apiKey2 });
     try {
-        const response = await ai.models.generateContent({
+        const response = await ai2.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
@@ -220,8 +235,13 @@ export async function getPreliminaryAnalysis(projectName: string, address: strin
         }
     `;
 
+    const apiKey3 = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    if (!apiKey3) {
+        return null;
+    }
+    const ai3 = new GoogleGenAI({ apiKey: apiKey3 });
     try {
-        const response = await ai.models.generateContent({
+        const response = await ai3.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
@@ -415,8 +435,13 @@ ${Object.entries(data.risks_to_analyze).filter(([,v])=>v).map(([riskKey], index)
 ---
 `;
 
+    const apiKey4 = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    if (!apiKey4) {
+        return "Relatório Técnico gerado localmente. Configure a variável VITE_GEMINI_API_KEY para habilitar análise AI.";
+    }
+    const ai4 = new GoogleGenAI({ apiKey: apiKey4 });
     try {
-        const response = await ai.models.generateContent({
+        const response = await ai4.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
@@ -430,7 +455,29 @@ ${Object.entries(data.risks_to_analyze).filter(([,v])=>v).map(([riskKey], index)
         if (text.startsWith('```')) text = text.substring(3).trim();
         if (text.endsWith('```')) text = text.slice(0, -3).trim();
         
-        return text;
+        // Append mandatory Responsibility and Support information to the report
+        const rtFooter = `
+---
+
+## Responsabilidade Técnica (RT)
+
+*A Responsabilidade Técnica (RT) por todas as escolhas, definições e parametrizações de projeto inseridas neste aplicativo é integralmente do profissional usuário.*
+
+Este aplicativo atua **apenas como uma ferramenta de apoio** para cálculos e emissão de relatórios, **não isentando o projetista de sua responsabilidade legal e técnica**.
+
+### ✅ Conferência Final do Relatório
+É **imprescindível** que o profissional realize a **conferência e validação detalhada** de todo o relatório técnico emitido pela ferramenta.
+Qualquer **inconsistência ou erro** identificado deve ser **corrigido antes da utilização final do projeto**.
+
+### 🤝 Informações de Contato para Negócios com Eng° Júlio Certo
+* **Autor do Aplicativo:** Engº Júlio César Certo
+* **Contato (WhatsApp):** (35) 9 8811-3746
+* **E-mail:** julio.certo@hotmail.com
+
+> Ao utilizar este aplicativo em estudos ou projetos, cite a fonte: **Engº Júlio César Certo — Ferramenta de Análise de Risco SPDA NBR 5419**.
+`;
+
+        return `${text}\n\n${rtFooter}`;
     } catch (error) {
         console.error("Error generating full report with Gemini API:", error);
         return "Ocorreu um erro ao gerar o relatório. Por favor, tente novamente.";

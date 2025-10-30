@@ -183,7 +183,8 @@ export default function App() {
     }, [currentStep, data, updateData]);
 
     return (
-        <div className="min-h-screen p-3 sm:p-4 md:p-6">
+        <>
+            <div className="min-h-screen p-3 sm:p-4 md:p-6">
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-stretch">
                 <aside className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
                     <div className="sticky top-4 flex flex-col gap-4">
@@ -231,6 +232,7 @@ export default function App() {
                                 </div>
                             </div>
                         </div>
+                        {/* Texto do desenvolvedor removido conforme solicitado */}
                     </div>
                     {/* Alertas: ocultos no mobile para mostrar apenas cabeçalho + etapa */}
                     <div className="hidden md:block">
@@ -294,6 +296,7 @@ export default function App() {
                     </div>
                 </main>
             </div>
-        </div>
+            </div>
+        </>
     );
 }

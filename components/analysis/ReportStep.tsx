@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../ui';
-import { FileText, Copy, Loader2, Sparkles, X } from "lucide-react";
+import { FileText, Copy, Loader2, Sparkles, X, AlertTriangle } from "lucide-react";
 import { AnalysisData } from '../../types';
 import { generateFullReportText } from '../../lib/geminiService';
 import { motion, AnimatePresence } from "framer-motion";
@@ -161,6 +161,58 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                             </motion.div>
                         )}
                     </AnimatePresence>
+                </CardContent>
+            </Card>
+            {/* Responsabilidade Técnica e Suporte */}
+            <Card className="mt-4 bg-slate-900/80 border-slate-600/60">
+                <CardHeader className="p-3">
+                    <CardTitle className="flex items-center gap-2">
+                        <span className="text-slate-100">🧾 Responsabilidade Técnica (RT)</span>
+                        <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4 text-sm text-slate-200">
+                    <div className="space-y-2">
+                        <p>
+                            A <strong>Responsabilidade Técnica (RT)</strong> por todas as escolhas, definições e
+                            parametrizações de projeto inseridas neste aplicativo é integralmente do
+                            <strong> profissional usuário</strong>.
+                        </p>
+                        <p>
+                            Este aplicativo atua <strong>apenas como ferramenta de apoio</strong> para cálculos e emissão
+                            de relatórios, <strong>não isentando</strong> o projetista de sua responsabilidade legal e técnica.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <h3 className="font-semibold text-slate-100">✅ Conferência Final do Relatório</h3>
+                        <p>
+                            É <strong>imprescindível</strong> que o profissional realize a <strong>conferência e validação detalhada</strong>
+                            de todo o relatório técnico emitido pela ferramenta. Qualquer <strong>inconsistência ou erro</strong>
+                            identificado deve ser <strong>corrigido</strong> antes da utilização final do projeto.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="font-semibold text-slate-100">🤝 Informações de Contato para Negócios com Eng° Júlio Certo</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="rounded-md border border-slate-700 p-3 bg-slate-800/60">
+                                <div className="text-xs text-slate-400">Autor do Aplicativo</div>
+                                <div className="font-medium">Engº Júlio César Certo</div>
+                            </div>
+                            <div className="rounded-md border border-slate-700 p-3 bg-slate-800/60">
+                                <div className="text-xs text-slate-400">Contato (WhatsApp)</div>
+                                <div className="font-medium">(35) 9 8811-3746</div>
+                            </div>
+                            <div className="rounded-md border border-slate-700 p-3 bg-slate-800/60">
+                                <div className="text-xs text-slate-400">E-mail</div>
+                                <div className="font-medium">julio.certo@hotmail.com</div>
+                            </div>
+                        </div>
+                        <p className="text-sm text-slate-300">
+                            Ao utilizar este aplicativo em estudos ou projetos, cite a fonte: Engº Júlio César Certo — Ferramenta de Análise de Risco SPDA NBR 5419.
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
         </div>

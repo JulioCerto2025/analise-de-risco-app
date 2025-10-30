@@ -1,5 +1,5 @@
 import React, { useState, FC } from "react";
-import { Card, CardContent, CardHeader, CardTitle, FormulaTooltip } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, FormulaTooltip, Alert, AlertTitle, AlertDescription } from '../ui';
 import { AnalysisData } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Home, Zap } from 'lucide-react';
@@ -156,6 +156,9 @@ export function Step3Events({ data }: { data: AnalysisData }) {
     const { nd = 0, nm = 0, nl_electric = 0, nl_data = 0, ni_electric = 0, ni_data = 0 } = data.calculations;
     const nl = nl_electric + nl_data;
     const ni = ni_electric + ni_data;
+    const isNgMissing = !data.ng || data.ng <= 0;
+    const allZero = [nd, nm, nl, ni].every(v => v === 0);
+    const yMax = Math.max(nd, nm, nl, ni) > 0 ? Math.max(nd, nm, nl, ni) : 1;
 
     // Update event values
     events[0].value = nd;
@@ -174,6 +177,24 @@ export function Step3Events({ data }: { data: AnalysisData }) {
             <Card>
                 <CardHeader><CardTitle>Frequência Média Anual de Eventos Danosos</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
+                    {isNgMissing && (
+                        <Alert variant="destructive" className="border-2">
+                            <AlertTitle>Dados insuficientes para cálculo</AlertTitle>
+                            <AlertDescription>
+                                Defina o valor de <span className="font-semibold">Ng</span> e os parâmetros iniciais para exibir os valores e o gráfico. 
+                                Você pode selecionar o município ou inserir Ng manualmente na etapa de entrada.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    {!isNgMissing && allZero && (
+                        <Alert>
+                            <AlertTitle>Nenhum evento calculado</AlertTitle>
+                            <AlertDescription>
+                                Todos os valores (ND, NM, NL, NI) resultaram em 0. Verifique <span className="font-semibold">Cd</span>, 
+                                <span className="font-semibold">Adf</span>, <span className="font-semibold">Am</span> e os dados das linhas (comprimentos/quantidades) para garantir que não estejam zerados.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                      <div
                         className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5"
                         style={{ padding: '0 12px 0 0' }}
@@ -202,7 +223,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                         })}
                     </div>
 
-                    <div className="h-[25rem]">
+                    <div className="h-[25rem] relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={chartData} 
@@ -216,7 +237,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                                 <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
                                 <YAxis 
-                                    domain={[0, 'auto']}
+                                    domain={[0, yMax]}
                                     tick={{ fill: '#94a3b8' }}
                                 />
                                 <Tooltip 
@@ -238,6 +259,13 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
+                        {allZero && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="px-4 py-2 rounded-xl bg-slate-800/70 border border-slate-600 text-slate-200 text-sm">
+                                    Sem barras no gráfico: todos os valores são 0.
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
