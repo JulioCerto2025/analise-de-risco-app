@@ -459,15 +459,11 @@ ${Object.entries(data.risks_to_analyze).filter(([,v])=>v).map(([riskKey], index)
         const rtFooter = `
 ---
 
-## Responsabilidade Técnica (RT)
+## ✅ Responsabilidade Técnica e Conferência Final do Relatório
 
-*A Responsabilidade Técnica (RT) por todas as escolhas, definições e parametrizações de projeto inseridas neste aplicativo é integralmente do profissional usuário.*
+A **NBR 5419:2025** deve ser utilizada como **fonte principal** para validação dos dados e referência normativa do relatório.
 
-Este aplicativo atua **apenas como uma ferramenta de apoio** para cálculos e emissão de relatórios, **não isentando o projetista de sua responsabilidade legal e técnica**.
-
-### ✅ Conferência Final do Relatório
-É **imprescindível** que o profissional realize a **conferência e validação detalhada** de todo o relatório técnico emitido pela ferramenta.
-Qualquer **inconsistência ou erro** identificado deve ser **corrigido antes da utilização final do projeto**.
+Este aplicativo atua **exclusivamente como uma ferramenta de apoio** para cálculos e emissão de relatórios, **não isentando o usuário** de sua responsabilidade legal e técnica quanto à **veracidade**, **precisão** e **adequação** das informações fornecidas.
 
 ### 🤝 Informações de Contato para Negócios com Eng° Júlio Certo
 * **Autor do Aplicativo:** Engº Júlio César Certo

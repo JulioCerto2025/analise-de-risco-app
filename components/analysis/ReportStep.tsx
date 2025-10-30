@@ -167,31 +167,21 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
             <Card className="mt-4 bg-slate-900/80 border-slate-600/60">
                 <CardHeader className="p-3">
                     <CardTitle className="flex items-center gap-2">
-                        <span className="text-slate-100">🧾 Responsabilidade Técnica (RT)</span>
+                        <span className="text-slate-100">✅ Responsabilidade Técnica e Conferência Final do Relatório</span>
                         <AlertTriangle className="w-5 h-5 text-yellow-400" />
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-4 text-sm text-slate-200">
                     <div className="space-y-2">
                         <p>
-                            A <strong>Responsabilidade Técnica (RT)</strong> por todas as escolhas, definições e
-                            parametrizações de projeto inseridas neste aplicativo é integralmente do
-                            <strong> profissional usuário</strong>.
+                            A <strong>NBR 5419:2025</strong> deve ser utilizada como <strong>fonte principal</strong> para validação dos dados e referência normativa do relatório.
                         </p>
                         <p>
-                            Este aplicativo atua <strong>apenas como ferramenta de apoio</strong> para cálculos e emissão
-                            de relatórios, <strong>não isentando</strong> o projetista de sua responsabilidade legal e técnica.
+                            Este aplicativo atua <strong>exclusivamente como uma ferramenta de apoio</strong> para cálculos e emissão de relatórios, <strong>não isentando o usuário</strong> de sua responsabilidade legal e técnica quanto à <strong>veracidade</strong>, <strong>precisão</strong> e <strong>adequação</strong> das informações fornecidas.
                         </p>
                     </div>
 
-                    <div className="space-y-2">
-                        <h3 className="font-semibold text-slate-100">✅ Conferência Final do Relatório</h3>
-                        <p>
-                            É <strong>imprescindível</strong> que o profissional realize a <strong>conferência e validação detalhada</strong>
-                            de todo o relatório técnico emitido pela ferramenta. Qualquer <strong>inconsistência ou erro</strong>
-                            identificado deve ser <strong>corrigido</strong> antes da utilização final do projeto.
-                        </p>
-                    </div>
+                    
 
                     <div className="space-y-3">
                         <h3 className="font-semibold text-slate-100">🤝 Informações de Contato para Negócios com Eng° Júlio Certo</h3>
