@@ -1,6 +1,6 @@
 import React from 'react';
-import { Label, Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip } from '../ui';
-import { Building } from "lucide-react";
+import { Label, Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, Input, Button } from '../ui';
+import { Building, PlusCircle, XCircle } from "lucide-react";
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData } from '../../types';
 import { CD_OPTIONS } from '../../constants';
@@ -59,6 +59,21 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
     };
 
     const { ad = 0, adp = 0, adf = 0, am = 0 } = data.calculations;
+    const { zones = [] } = data;
+
+    const handleAddZone = () => {
+        const newZone = { id: `zone_${Date.now()}`, name: `Zona ${zones.length + 1}`, loss_data: {} };
+        onUpdate({ zones: [...zones, newZone] });
+    };
+
+    const handleRemoveZone = (zoneId: string) => {
+        if (zones.length <= 1) return;
+        onUpdate({ zones: zones.filter(z => z.id !== zoneId) });
+    };
+
+    const handleZoneNameChange = (zoneId: string, newName: string) => {
+        onUpdate({ zones: zones.map(z => z.id === zoneId ? { ...z, name: newName } : z) });
+    };
 
     return (
         <div className="space-y-6">
@@ -90,19 +105,60 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>CD - Fator de Localização (Tabela A.1)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Select value={String(data.cd)} onValueChange={(val) => handleSelectChange('cd', val)} placeholder="Selecione o fator de localização..." options={CD_OPTIONS}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {CD_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
-                        </SelectContent>
-                    </Select>
-                </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <Card className="h-fit">
+                    <CardHeader>
+                        <CardTitle>CD - Fator de Localização (Tabela A.1)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Select value={String(data.cd)} onValueChange={(val) => handleSelectChange('cd', val)} placeholder="Selecione o fator de localização..." options={CD_OPTIONS}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {CD_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
+                            </SelectContent>
+                        </Select>
+                    </CardContent>
+                </Card>
+
+                {/* Zonas de Estudo de Proteção (Etapa 4) */}
+                <Card className="h-fit">
+                    <CardHeader>
+                        <CardTitle>Zonas de Estudo de Proteção</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-slate-200">Quantidade de Zonas: {zones.length}</Label>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={handleAddZone} className="flex items-center gap-2">
+                                    <PlusCircle className="w-4 h-4" /> Adicionar Zona
+                                </Button>
+                                <Button variant="outline" onClick={() => handleRemoveZone(zones[zones.length-1]?.id)} className="flex items-center gap-2" disabled={zones.length <= 1}>
+                                    <XCircle className="w-4 h-4" /> Remover Última
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {zones.map((zone, idx) => (
+                                <div key={zone.id} className="flex items-center gap-3 p-3 rounded-lg border bg-slate-800/50 border-slate-600">
+                                    <Label className="text-slate-200 w-28">Zona {idx + 1}</Label>
+                                    <Input
+                                        value={zone.name}
+                                        onChange={(e) => handleZoneNameChange(zone.id, e.target.value)}
+                                        placeholder={`Nome da zona ${idx + 1}`}
+                                    />
+                                    {zones.length > 1 && (
+                                        <Button variant="outline" size="sm" onClick={() => handleRemoveZone(zone.id)} className="flex items-center gap-1 text-red-400 hover:bg-red-500/20">
+                                            <XCircle className="w-4 h-4" /> Remover
+                                        </Button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-xs text-slate-400">Defina a quantidade e os nomes das zonas de análise. Mínimo: 1 zona.</p>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

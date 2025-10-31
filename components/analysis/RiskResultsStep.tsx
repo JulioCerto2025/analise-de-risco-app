@@ -26,10 +26,11 @@ const RISK_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
     RB: { formula: "Nd × PB × LB", vars: ["nd", "PB", "LB"] },
     RC: { formula: "Nd × PC × LC", vars: ["nd", "PC", "LC"] },
     RM: { formula: "Nm × PM × LM", vars: ["nm", "PM", "LM"] },
-    RU: { formula: "Nl × PU × LU", vars: ["nl_total", "PU_total", "LU"] },
-    RV: { formula: "Nl × PV × LV", vars: ["nl_total", "PV_total", "LV"] },
-    RW: { formula: "Nl × PW × LW", vars: ["nl_total", "PW_total", "LW"] },
-    RZ: { formula: "Ni × PZ × LZ", vars: ["ni_total", "PZ_total", "LZ"] },
+    // Componentes de linha: fórmula como soma de energia + telecom
+    RU: { formula: "Nl_e × PU × LU + Nl_t × PUT × LU", vars: ["nl_electric", "PU", "LU", "nl_data", "PUT", "LU"] },
+    RV: { formula: "Nl_e × PV × LV + Nl_t × PVT × LV", vars: ["nl_electric", "PV", "LV", "nl_data", "PVT", "LV"] },
+    RW: { formula: "Nl_e × PW × LW + Nl_t × PWT × LW", vars: ["nl_electric", "PW", "LW", "nl_data", "PWT", "LW"] },
+    RZ: { formula: "Ni_e × PZ × LZ + Ni_t × PZT × LZ", vars: ["ni_electric", "PZ", "LZ", "ni_data", "PZT", "LZ"] },
 };
 
 const CustomTooltip = ({ active, payload, label, data }: any) => {
@@ -39,7 +40,7 @@ const CustomTooltip = ({ active, payload, label, data }: any) => {
         const isTotalRisk = ['R1', 'R3', 'R4'].includes(label);
 
         let formulaString = "N/A";
-        let valuesString = "N/A";
+        let valuesNodes: React.ReactNode = null;
         
         if (isTotalRisk) {
             const components = ALL_RISK_COMPONENTS.filter(key => selected[key]);
@@ -49,15 +50,47 @@ const CustomTooltip = ({ active, payload, label, data }: any) => {
             const formulaInfo = RISK_FORMULAS[label];
             if (formulaInfo) {
                 formulaString = formulaInfo.formula;
-                const nl_total = (c.nl_electric || 0) + (c.nl_data || 0);
-                const ni_total = (c.ni_electric || 0) + (c.ni_data || 0);
-                const PU_total = (p.PU || 0) + (p.PUT || 0);
-                const PV_total = (p.PV || 0) + (p.PVT || 0);
-                const PW_total = (p.PW || 0) + (p.PWT || 0);
-                const PZ_total = (p.PZ || 0) + (p.PZT || 0);
+                const valueMap: { [key: string]: number } = { ...c, ...p, ...l };
 
-                const valueMap: { [key: string]: number } = { ...c, ...p, ...l, nl_total, ni_total, PU_total, PV_total, PW_total, PZ_total };
-                valuesString = formulaInfo.vars.map(v => formatValue(valueMap[v] || 0)).join(' × ');
+                if (["RU","RV","RW","RZ"].includes(label)) {
+                    // Render como soma de dois termos: energia + telecom
+                    const term1 = [valueMap[formulaInfo.vars[0]] || 0, valueMap[formulaInfo.vars[1]] || 0, valueMap[formulaInfo.vars[2]] || 0];
+                    const term2 = [valueMap[formulaInfo.vars[3]] || 0, valueMap[formulaInfo.vars[4]] || 0, valueMap[formulaInfo.vars[5]] || 0];
+                    valuesNodes = (
+                        <span className="font-mono">
+                            {/* Termo energia */}
+                            <span className="inline-flex items-baseline">
+                                <ScientificNotation value={term1[0]} precision={1} />
+                                <span className="mx-1">×</span>
+                                <ScientificNotation value={term1[1]} precision={1} />
+                                <span className="mx-1">×</span>
+                                <ScientificNotation value={term1[2]} precision={1} />
+                            </span>
+                            <span className="mx-1">+</span>
+                            {/* Termo telecom */}
+                            <span className="inline-flex items-baseline">
+                                <ScientificNotation value={term2[0]} precision={1} />
+                                <span className="mx-1">×</span>
+                                <ScientificNotation value={term2[1]} precision={1} />
+                                <span className="mx-1">×</span>
+                                <ScientificNotation value={term2[2]} precision={1} />
+                            </span>
+                        </span>
+                    );
+                } else {
+                    // Demais componentes: produto simples
+                    const parts = formulaInfo.vars.map(v => valueMap[v] || 0);
+                    valuesNodes = (
+                        <span className="font-mono">
+                            {parts.map((val, idx) => (
+                                <span key={idx} className="inline-flex items-baseline">
+                                    <ScientificNotation value={val} precision={1} />
+                                    {idx < parts.length - 1 ? <span className="mx-1">×</span> : null}
+                                </span>
+                            ))}
+                        </span>
+                    );
+                }
             }
         }
         
@@ -73,12 +106,12 @@ const CustomTooltip = ({ active, payload, label, data }: any) => {
             >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
                 {componentDef && <p className="text-slate-400 text-xs">{componentDef.description}</p>}
-                <p className="text-blue-400 font-mono">Valor: {formatValue(Number(payload[0].value))}</p>
+                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(payload[0].value)} /></p>
                  <>
                     <p className="text-slate-300 mt-2 font-semibold">Fórmula:</p>
                     <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">{formulaString}</p>
                     <p className="text-slate-300 mt-2 font-semibold">Valores:</p>
-                    <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{valuesString}</p>
+                    <div className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{valuesNodes}</div>
                 </>
             </div>
         );
@@ -123,7 +156,12 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
 
     let chartData: { name: string; value: number }[] = ALL_RISK_COMPONENTS.map(key => ({
         name: key,
-        value: risk_results[key] || 1e-12,
+        value:
+            key === 'RU' ? ((risk_results.RU || 0) + (risk_results.RUT || 0)) :
+            key === 'RV' ? ((risk_results.RV || 0) + (risk_results.RVT || 0)) :
+            key === 'RW' ? ((risk_results.RW || 0) + (risk_results.RWT || 0)) :
+            key === 'RZ' ? ((risk_results.RZ || 0) + (risk_results.RZT || 0)) :
+            (risk_results[key] || 1e-12),
     }));
     selectedRisks.forEach(riskKey => {
          chartData.push({ name: riskKey, value: risk_results[riskKey] || 1e-12 });
@@ -177,7 +215,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card className="h-full">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
@@ -219,6 +257,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Card de Zonas removido desta etapa para ficar na Etapa 4 */}
                 
                 <div className="space-y-6">
                     {selectedRisks.length > 0 ? (

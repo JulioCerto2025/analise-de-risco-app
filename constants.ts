@@ -1,6 +1,6 @@
 export const CD_OPTIONS = [
-    { value: 0.25, label: 'Estrutura rodeada por estruturas mais altas' },
-    { value: 0.5, label: 'Estrutura rodeada por objetos da mesma altura ou menores' },
+    { value: 0.25, label: 'Estrut. cercada p/ estrut. maiores' },
+    { value: 0.5, label: 'Estrut. cercada p obj  alt igual ou menores' },
     { value: 1, label: 'Estrutura isolada em terreno plano' },
     { value: 2, label: 'Estrutura isolada no topo de um morro ou colina' }
 ];

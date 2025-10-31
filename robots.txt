@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://analise-de-risco-app.vercel.app/sitemap.xml
