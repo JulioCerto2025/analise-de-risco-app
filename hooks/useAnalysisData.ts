@@ -105,10 +105,73 @@ const initialInputData: AnalysisInputData = {
 
 
 export function useAnalysisData() {
+    // Sanitizador para garantir forma esperada e preencher faltas
+    const sanitizeZones = (zs: any): Zone[] => {
+        const defaultZoneTemplate: Zone = {
+            id: 'default-zone-1',
+            name: 'Zona 1',
+            loss_data: { ...initialInputData.zones[0].loss_data }
+        };
+        if (!Array.isArray(zs) || zs.length === 0) {
+            return [defaultZoneTemplate];
+        }
+        return zs.map((z: any, idx: number) => {
+            const id = (z && typeof z.id === 'string') ? z.id : `zone_${idx+1}`;
+            const name = (z && typeof z.name === 'string' && z.name.trim().length) ? z.name : `Zona ${idx+1}`;
+            const loss = { ...defaultZoneTemplate.loss_data, ...(z && z.loss_data ? z.loss_data : {}) };
+            return { id, name, loss_data: loss } as Zone;
+        });
+    };
+
+    const sanitizeData = (raw: any): AnalysisInputData => {
+        try {
+            const base = { ...initialInputData } as AnalysisInputData;
+            const safe: AnalysisInputData = {
+                ...base,
+                ...(raw || {}),
+                zones: sanitizeZones(raw?.zones ?? base.zones),
+                selected_risk_components: {
+                    ...base.selected_risk_components,
+                    ...(raw?.selected_risk_components || {})
+                },
+                risks_to_analyze: {
+                    ...base.risks_to_analyze,
+                    ...(raw?.risks_to_analyze || {})
+                },
+                frequency_config: {
+                    ...base.frequency_config,
+                    ...(raw?.frequency_config || {})
+                },
+                probability_data: {
+                    ...base.probability_data,
+                    ...(raw?.probability_data || {})
+                },
+                line_sections_1: Array.isArray(raw?.line_sections_1) ? raw.line_sections_1 : base.line_sections_1,
+                line_sections_2: Array.isArray(raw?.line_sections_2) ? raw.line_sections_2 : base.line_sections_2,
+            };
+            // Normalizar numéricos essenciais que podem ter vindo como string
+            const numericKeys: (keyof AnalysisInputData)[] = ['h','l','w','hp','cd','l_adj_1','w_adj_1','h_adj_1','hp_adj_1','cd_adj_1','l_adj_2','w_adj_2','h_adj_2','hp_adj_2','cd_adj_2'];
+            numericKeys.forEach((k) => {
+                const v = (safe as any)[k];
+                if (typeof v === 'string') {
+                    const n = parseFloat(v);
+                    (safe as any)[k] = isNaN(n) ? (base as any)[k] : n;
+                }
+            });
+            if (typeof safe.ng === 'string') {
+                const n = parseFloat(safe.ng as any);
+                safe.ng = isNaN(n) ? undefined : n;
+            }
+            return safe;
+        } catch {
+            return initialInputData;
+        }
+    };
+
     const [data, setData] = useState<AnalysisInputData>(() => {
         try {
             const storedData = localStorage.getItem(STORAGE_KEY);
-            return storedData ? JSON.parse(storedData) : initialInputData;
+            return storedData ? sanitizeData(JSON.parse(storedData)) : initialInputData;
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
             return initialInputData;
