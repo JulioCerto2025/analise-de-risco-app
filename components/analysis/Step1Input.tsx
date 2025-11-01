@@ -91,7 +91,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                             <DimensionInput icon="Hp" label="Altura de Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" />
                         </div>
                     </div>
-                    <div>
+                    <div className="hidden sm:block">
                         <Label className="font-semibold text-slate-200">
                             Resultados da Área de Exposição
                         </Label>

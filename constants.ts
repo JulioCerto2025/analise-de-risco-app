@@ -138,10 +138,21 @@ export const UW_OPTIONS = [
 ];
 
 // From LossStep
-export const RT_OPTIONS = [{ value: 0.01, label: "Terra" }, { value: 0.001, label: "Mármore/Cerâmica" }, { value: 0.0001, label: "Brita" }, { value: 0.00001, label: "Asfalto" }];
+export const RT_OPTIONS = [
+    { value: 0.01, label: "Terra, concreto" }, 
+    { value: 0.001, label: "Mármore, cerâmica" }, 
+    { value: 0.0001, label: "Brita, tapete, carpete" }, 
+    { value: 0.00001, label: "Asfalto, linóleo, madeira" }
+];
 export const RF_OPTIONS = [{ value: 0.001, label: "Baixo" }, { value: 0.01, label: "Médio" }, { value: 0.1, label: "Alto" }, { value: 1, label: "Explosivo" }];
 export const HZ_OPTIONS = [{ value: 1, label: "Nenhum" }, { value: 2, label: "Baixo" }, { value: 5, label: "Médio" }, { value: 10, label: "Alto" }];
-export const LF_OPTIONS = [{ value: 0.1, label: 'Hospital/Hotel/Escola D2' }, { value: 0.02, label: 'Industrial/Comercial D2' }, { value: 0.01, label: 'Outros D2' }];
+export const LF_OPTIONS = [
+    { value: 0.1, label: 'Risco de explosão' },
+    { value: 0.1, label: 'Hospital, hotel, escola, edifício cívico' },
+    { value: 0.05, label: 'Entretenimento público, igreja, museu' },
+    { value: 0.02, label: 'Industrial, comercial' },
+    { value: 0.01, label: 'Outros' }
+];
 export const LO_OPTIONS = [{ value: 0.01, label: 'UTI/Centro Cirúrgico D3' }, { value: 0.001, label: 'Outras partes de hospital D3' }, { value: 0, label: 'Não é um hospital' }];
 export const LF3_OPTIONS = [{ value: 0.1, label: 'Museus, galerias' }];
 export const LF4_OPTIONS = [{ value: 0.5, label: 'Hospital, industrial, museu' }, { value: 0.2, label: 'Hotel, escola, escritório' }];

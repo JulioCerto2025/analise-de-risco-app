@@ -1,5 +1,5 @@
 import React, { useCallback, memo, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Alert, AlertDescription, Checkbox } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Alert, AlertDescription, Checkbox, useIsMobile } from '../ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { AnalysisData, ProbabilityData } from '../../types';
 import { PB_OPTIONS, PSPD_OPTIONS, PTA_OPTIONS, COMBINED_CLD_CLI_OPTIONS, PTU_OPTIONS, KS3_OPTIONS, UW_OPTIONS } from '../../constants';
@@ -129,6 +129,7 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
 
 export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const [activeTab, setActiveTab] = useState('structure');
+    const isMobile = useIsMobile();
     const prob = data.probability_data;
 
     useEffect(() => {
@@ -233,10 +234,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <SelectInput label="PTU - Medida de proteção" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PTU_electric: v })} />
                             </div>
                             <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="PEB - Prot. Surto Cond. D1/D2 - PU/PV" value={prob.PEB_electric} options={pebOptions} onUpdate={(v) => handleProbabilityChange({ PEB_electric: v })} />
+                                <SelectInput label="PEB - Prot. Surto Cond. D1/D2" value={prob.PEB_electric} options={pebOptions} onUpdate={(v) => handleProbabilityChange({ PEB_electric: v })} />
                             </div>
                             <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="PSPD - Surto Ind. - D3 - PC/PM/PW/PZ" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_electric: v })} />
+                                <SelectInput label="PSPD - Surto Ind. - D3" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_electric: v })} />
                             </div>
                             <div className="md:col-span-3 lg:col-span-3">
                                 <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_electric} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChange({ Ks3_electric: v })} />
@@ -309,10 +310,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                 <SelectInput label="PTU - Medida de proteção" value={prob.PTU_data} options={PTU_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PTU_data: v })} />
                                             </div>
                                             <div className="md:col-span-3 lg:col-span-3">
-                                                <SelectInput label="PEB - Prot. Surto Cond. D1/D2 - PU/PV" value={prob.PEB_data} options={pebOptions} onUpdate={(v) => handleProbabilityChange({ PEB_data: v })} />
+                                                <SelectInput label="PEB - Prot. Surto Cond. D1/D2" value={prob.PEB_data} options={pebOptions} onUpdate={(v) => handleProbabilityChange({ PEB_data: v })} />
                                             </div>
                                             <div className="md:col-span-3 lg:col-span-3">
-                                                <SelectInput label="PSPD - Surto Ind. - D3 - PC/PM/PW/PZ" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_data: v })} />
+                                                <SelectInput label="PSPD - Surto Ind. - D3" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_data: v })} />
                                             </div>
                                             <div className="md:col-span-3 lg:col-span-3">
                                                 <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_data} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChange({ Ks3_data: v })} />
@@ -373,10 +374,12 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
                             <YAxis tick={{ fill: '#94a3b8' }} />
-                            <Tooltip 
-                                content={<CustomTooltip probData={data.probability_data} probCalcs={data.probability_calculations} />} 
-                                cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                            />
+                            {!isMobile && (
+                                <Tooltip 
+                                    content={<CustomTooltip probData={data.probability_data} probCalcs={data.probability_calculations} />} 
+                                    cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                                />
+                            )}
                             <Bar dataKey="value" />
                         </BarChart>
                     </ResponsiveContainer>

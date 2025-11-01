@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, useIsMobile } from '../ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, SlidersHorizontal } from 'lucide-react';
 import { AnalysisData, ProbabilityData, LossData } from '../../types';
@@ -101,6 +101,7 @@ const SimulatorSelect = ({ label, value, options, onUpdate, isOpen, onOpenChange
 
 
 export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps) {
+    const isMobile = useIsMobile();
     const [openSelect, setOpenSelect] = React.useState<string | null>(null);
     const config = data.frequency_config;
     const calculations = data.frequency_results;
@@ -243,7 +244,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                     </CardHeader>
                     <CardContent className="space-y-4 pt-4">
                         <SimulatorSelect
-                            label="PEB - Prot. Surto Cond. D1/D2 - PU/PV"
+                            label="PEB - Prot. Surto Cond. D1/D2"
                             value={data.probability_data.PEB_electric}
                             options={PSPD_OPTIONS} // PEB and PSPD share the same options
                             onUpdate={(val) => handleSimulatorUpdate('PEB_electric', val)}
@@ -251,7 +252,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             onOpenChange={(open) => setOpenSelect(open ? 'peb' : null)}
                         />
                         <SimulatorSelect
-                            label="PSPD - Surto Ind. - D3 - PC/PM/PW/PZ"
+                            label="PSPD - Surto Ind. - D3"
                             value={data.probability_data.PSPD_electric}
                             options={PSPD_OPTIONS}
                             onUpdate={(val) => handleSimulatorUpdate('PSPD_electric', val)}
@@ -289,7 +290,9 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
                             <YAxis tick={{ fill: '#94a3b8' }} domain={[0, yMaxDomain]} />
-                            <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
+                            {!isMobile && (
+                                <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
+                            )}
                             <ReferenceLine y={toleranceLimit} stroke="red" strokeDasharray="3 3" />
                             <Bar dataKey="value">
                                 {chartData.map((entry) => {

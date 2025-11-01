@@ -129,7 +129,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/** Card combinado: S1 + S2 (Estrutura) */}
-                <Card className="h-fit w-full lg:order-1">
+                <Card className="h-fit w-full lg:order-1 hidden sm:block">
                     <CardHeader>
                         <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-200">S1/S2 - Estrutura</CardTitle>
                     </CardHeader>
@@ -137,12 +137,12 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                         {/* Wrapper com barra contínua */}
                         <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-0 items-start">
                             {/* Cabeçalho esquerdo (S1) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 flex items-center gap-2 sm:pr-4">
+                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pr-4">
                                 <span className="px-2 py-0.5 rounded bg-slate-700/60">S1</span>
                                 <span>Descarga Atm. Direta</span>
                             </div>
                             {/* Cabeçalho direito (S2) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 flex items-center gap-2 sm:pl-4">
+                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pl-4">
                                 <span className="px-2 py-0.5 rounded bg-slate-700/60">S2</span>
                                 <span>Desc. Atm. Próxima</span>
                             </div>
@@ -197,7 +197,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                 </Card>
 
                 {/** Card combinado: S3 + S4 (Linha) */}
-                <Card className="h-fit w-full lg:order-2">
+                <Card className="h-fit w-full lg:order-2 hidden sm:block">
                     <CardHeader>
                         <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-200">S3/S4 - Linha</CardTitle>
                     </CardHeader>
@@ -205,12 +205,12 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                         {/* Wrapper com barra contínua */}
                         <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-0 items-start">
                             {/* Cabeçalho esquerdo (S3) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 flex items-center gap-2 sm:pr-4">
+                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pr-4">
                                 <span className="px-2 py-0.5 rounded bg-slate-700/60">S3</span>
                                 <span>Descarga Atm. Direta</span>
                             </div>
                             {/* Cabeçalho direito (S4) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 flex items-center gap-2 sm:pl-4">
+                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pl-4">
                                 <span className="px-2 py-0.5 rounded bg-slate-700/60">S4</span>
                                 <span>Desc. Atm. Próxima</span>
                             </div>

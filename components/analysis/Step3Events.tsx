@@ -1,5 +1,5 @@
 import React, { useState, FC } from "react";
-import { Card, CardContent, CardHeader, CardTitle, FormulaTooltip, Alert, AlertTitle, AlertDescription } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, FormulaTooltip, Alert, AlertTitle, AlertDescription, useIsMobile } from '../ui';
 import { AnalysisData } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Home, Zap } from 'lucide-react';
@@ -63,16 +63,16 @@ const EventPeriodCard: FC<EventPeriodCardProps> = ({
                 isSelected ? 'transform scale-105 shadow-xl border-2 border-blue-400' : ''
             }`}
         >
-            <CardContent className="p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3">
+            <CardContent className="p-4 sm:p-3 flex items-center justify-between gap-3">
                 <div className="flex-1">
                     <p className="text-[11px] sm:text-sm font-semibold text-slate-300 leading-tight flex items-center">
                         {description}
                         {formula && <FormulaTooltip formulas={{[badge]: formula}} values={formulaValues} />}
                     </p>
-                    <p className="text-xl sm:text-3xl font-extrabold text-white mt-1">{period}</p>
+                    <p className="text-2xl sm:text-3xl font-extrabold text-white mt-1">{period}</p>
                     <p className="text-[10px] sm:text-xs text-slate-400 -mt-1">{unit}</p>
                 </div>
-                <div className="relative flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
+                <div className="relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center">
                     <Home className="w-full h-full text-slate-300" strokeWidth={1.5}/>
                     <Zap className="w-5 h-5 sm:w-7 sm:h-7 text-yellow-500 fill-yellow-400 absolute" />
                     <div className={`absolute -top-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold border-2 border-slate-800 ${color}`}>
@@ -144,6 +144,7 @@ const events = [
 
 export function Step3Events({ data }: { data: AnalysisData }) {
     const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+    const isMobile = useIsMobile();
 
     const handleSelectEvent = (eventKey: string | null) => {
         if (eventKey === null) {
@@ -196,7 +197,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                         </Alert>
                     )}
                      <div
-                        className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5"
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
                         style={{ padding: '0 12px 0 0' }}
                     >
                         {events.map(event => {
@@ -223,7 +224,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                         })}
                     </div>
 
-                    <div className="h-[25rem] relative">
+                    <div className="h-[25rem] relative hidden sm:block">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={chartData} 
@@ -240,10 +241,12 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                     domain={[0, yMax]}
                                     tick={{ fill: '#94a3b8' }}
                                 />
-                                <Tooltip 
-                                    content={<CustomTooltip calculations={{...data.calculations, ng: data.ng, cd: data.cd}} />} 
-                                    cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                                />
+                                {!isMobile && (
+                                    <Tooltip 
+                                        content={<CustomTooltip calculations={{...data.calculations, ng: data.ng, cd: data.cd}} />} 
+                                        cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                                    />
+                                )}
                                 <Bar 
                                     dataKey="value"
                                     onClick={(data) => handleSelectEvent(data.name)}

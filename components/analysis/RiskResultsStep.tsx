@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Alert, AlertDescription, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, FormulaTooltip, Checkbox } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Alert, AlertDescription, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, FormulaTooltip, Checkbox, useIsMobile } from '../ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, SlidersHorizontal } from "lucide-react";
 import { AnalysisData, ProbabilityData, LossData } from '../../types';
@@ -129,6 +129,7 @@ interface RiskResultsStepProps {
 export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     const [openSelect, setOpenSelect] = React.useState<string | null>(null);
     const { risk_results, risks_to_analyze, selected_risk_components } = data;
+    const isMobile = useIsMobile();
 
     const handleSimulatorUpdate = (
         field: keyof ProbabilityData | keyof LossData,
@@ -310,7 +311,9 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis type="category" dataKey="name" tick={{ fill: '#94a3b8' }} />
                             <YAxis type="number" scale="log" domain={[1e-9, 'auto']} allowDataOverflow tickFormatter={(tick) => tick.toExponential(0)} tick={{ fill: '#94a3b8' }} />
-                            <Tooltip content={<CustomTooltip data={data} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
+                            {!isMobile && (
+                                <Tooltip content={<CustomTooltip data={data} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
+                            )}
                             <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#F59E0B" strokeDasharray="4 4" />
                             <Bar dataKey="value">
                                 {chartData.map((entry, index) => {

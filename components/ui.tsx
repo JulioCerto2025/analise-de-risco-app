@@ -82,6 +82,7 @@ export const Checkbox = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { checked: boolean; onCheckedChange: (checked: boolean) => void }
 >(({ checked, onCheckedChange, className, ...props }, ref) => {
+  const isMobile = useIsMobile();
   return (
     <button
       ref={ref}
@@ -133,6 +134,8 @@ interface SelectContextType {
   placeholder?: string;
   options: { value: any, label: string }[];
   handleKeyDown: (e: React.KeyboardEvent) => void;
+  selectedLabel?: string;
+  setSelectedLabel?: (label: string | undefined) => void;
 }
 
 const SelectContext = createContext<SelectContextType | null>(null);
@@ -140,6 +143,7 @@ const SelectContext = createContext<SelectContextType | null>(null);
 export const Select = ({ children, value, onValueChange, placeholder, options: optionsProp, onOpenChange, wrapperClassName }: React.PropsWithChildren<{ value?: string | number; onValueChange?: (value: string) => void; placeholder?: string; options?: { value: any, label: string }[], onOpenChange?: (open: boolean) => void, wrapperClassName?: string }>) => {
   const [open, setOpen] = useState(false);
   const [internalValue, setInternalValue] = useState(value || '');
+  const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined);
   const ref = useRef<HTMLDivElement>(null);
   const options = optionsProp || [];
 
@@ -166,6 +170,8 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   useEffect(() => {
     if (value !== undefined) {
       setInternalValue(value);
+      // Reset selected label when value is externally controlled
+      setSelectedLabel(undefined);
     }
   }, [value]);
   
@@ -228,7 +234,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   };
 
   return (
-    <SelectContext.Provider value={{ open, setOpen: handleSetOpen, value: internalValue, setValue: handleValueChange, onValueChange, placeholder, options: options || [], handleKeyDown }}>
+    <SelectContext.Provider value={{ open, setOpen: handleSetOpen, value: internalValue, setValue: handleValueChange, onValueChange, placeholder, options: options || [], handleKeyDown, selectedLabel, setSelectedLabel }}>
       <div className={wrapperClassName || "relative"} ref={ref}>{children}</div>
     </SelectContext.Provider>
   );
@@ -262,9 +268,10 @@ export const SelectValue = () => {
     if (!context) throw new Error("SelectValue must be used within a Select");
     
     const selectedOption = context.options.find(opt => String(opt.value) === String(context.value));
-    
-    const displayContent = selectedOption ? (
-        <span className="truncate text-left flex-1">{selectedOption.label}</span>
+    const labelToShow = context.selectedLabel ?? selectedOption?.label;
+
+    const displayContent = labelToShow ? (
+        <span className="truncate text-left flex-1">{labelToShow}</span>
     ) : (
         <span className="text-slate-400 text-left flex-1">{context.placeholder}</span>
     );
@@ -295,9 +302,13 @@ export const SelectItem = React.forwardRef<
   
   const handleClick = () => {
     context.setValue(value);
+    if (context.setSelectedLabel) {
+      context.setSelectedLabel(label);
+    }
   };
 
-  const isSelected = String(context.value) === String(value);
+  const selectedOption = context.options.find(opt => String(opt.value) === String(context.value));
+  const isSelected = (context.selectedLabel ? context.selectedLabel === label : (selectedOption ? selectedOption.label === label : false));
   const isValueRedundant = String(value) === String(label);
 
   return (
@@ -576,7 +587,7 @@ export const FormulaTooltip = ({ formulas, values }: { formulas: { [key: string]
     };
     
     return (
-        <div className="inline-block ml-2 align-middle" ref={containerRef}>
+        <div className="hidden sm:inline-block ml-2 align-middle" ref={containerRef}>
             <button type="button" ref={triggerRef} onClick={handleToggle}>
                  <Info className="w-4 h-4 text-slate-400 cursor-pointer hover:text-blue-500 transition-colors" />
             </button>
@@ -603,4 +614,16 @@ export const FormulaTooltip = ({ formulas, values }: { formulas: { [key: string]
             )}
         </div>
     );
+};
+
+// Detecta se a viewport é mobile (<640px)
+export const useIsMobile = (): boolean => {
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 640);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+    return isMobile;
 };

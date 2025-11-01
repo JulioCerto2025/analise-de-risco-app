@@ -298,7 +298,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="hidden sm:block">
                     <CardHeader>
                         <CardTitle>Legenda do Mapa (Ng)</CardTitle>
                     </CardHeader>
@@ -332,8 +332,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 </Card>
             </div>
 
-            {/* Right Panel: Map */}
-            <div className="w-full lg:flex-1">
+            {/* Right Panel: Map (oculto em mobile) */}
+            <div className="w-full lg:flex-1 hidden sm:block">
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                          <div className="flex items-center gap-4">

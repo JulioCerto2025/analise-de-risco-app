@@ -157,7 +157,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
+                                    <div className="hidden sm:grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
                                         <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
                                         <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
                                         <ResultBox label={<>N<sub>l</sub> (Elétrico)</>} value={nl_electric} unit="eventos/ano" color="blue" formula="Nl_linha + Nl_adj" formulaKey="Nl" formulaValues={{ Nl_linha: nl_electric_base, Nl_adj: nadj_electric }} />
@@ -233,7 +233,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
                                     
-                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
+                                    <div className="hidden sm:grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
                                         <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
                                         <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
                                         <ResultBox label={<>N<sub>l</sub> (Dados)</>} value={nl_data} unit="eventos/ano" color="blue" formula="Nl_linha + Nl_adj" formulaKey="Nl" formulaValues={{ Nl_linha: nl_data_base, Nl_adj: nadj_data }} />

@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Button, Alert, AlertDescription, FormulaTooltip, AlertTitle } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Button, Alert, AlertDescription, FormulaTooltip, AlertTitle, useIsMobile } from '../ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Sparkles, Loader2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -241,6 +241,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
 export function LossStep({ data, onChange }: LossStepProps) {
     const { zones, risks_to_analyze } = data;
     const [activeZoneId, setActiveZoneId] = useState(zones[0]?.id || '');
+    const isMobile = useIsMobile();
 
     const [isFireRiskPanelOpen, setIsFireRiskPanelOpen] = useState(false);
     
@@ -426,14 +427,7 @@ export function LossStep({ data, onChange }: LossStepProps) {
                                 <SelectInput label="rf - Risco de Incêndio" value={lossData.rf ?? 0.001} options={RF_OPTIONS} onUpdate={val => handleUpdate('rf', val)} />
                                 <SelectInput label="hz - Risco de Pânico" value={lossData.hz ?? 1} options={HZ_OPTIONS} onUpdate={val => handleUpdate('hz', val)} />
                             </div>
-                             <FireRiskAnalysisPanel
-                                isPanelOpen={isFireRiskPanelOpen}
-                                setIsPanelOpen={setIsFireRiskPanelOpen}
-                                status={data.fireRiskAiStatus}
-                                result={data.fireRiskAiResult}
-                                error={data.fireRiskAiError}
-                                onAnalyze={handleAnalyzeFireRisk}
-                             />
+                            
                         </>
                     )}
 
@@ -489,10 +483,12 @@ export function LossStep({ data, onChange }: LossStepProps) {
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
                             <YAxis tick={{ fill: '#94a3b8' }} />
-                            <Tooltip 
-                                content={<CustomTooltip lossData={lossData} />}
-                                cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                            />
+                            {!isMobile && (
+                                <Tooltip 
+                                    content={<CustomTooltip lossData={lossData} />}
+                                    cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                                />
+                            )}
                             <Bar dataKey="value">
                                  {chartData.map((entry) => (
                                     <Cell key={`cell-${entry.name}`} fill={entry.fill} />

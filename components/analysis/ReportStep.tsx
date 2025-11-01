@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../ui';
-import { FileText, Copy, Loader2, Sparkles, X, AlertTriangle } from "lucide-react";
+import { FileText, Copy, Loader2, Sparkles, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { AnalysisData } from '../../types';
 import { generateFullReportText } from '../../lib/geminiService';
 import { motion, AnimatePresence } from "framer-motion";
@@ -166,9 +166,15 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
             {/* Responsabilidade Técnica e Suporte */}
             <Card className="mt-4 bg-slate-900/80 border-slate-600/60">
                 <CardHeader className="p-3">
-                    <CardTitle className="flex items-center gap-2">
-                        <span className="text-slate-100">✅ Responsabilidade Técnica e Conferência Final do Relatório</span>
-                        <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                    <CardTitle className="flex items-start gap-2">
+                        <span className="flex items-start gap-2">
+                            {/* Ícone verde garantido no mobile */}
+                            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                            <span className="text-slate-100 text-sm sm:text-base leading-relaxed text-justify">
+                                Responsabilidade Técnica e Conferência Final do Relatório
+                            </span>
+                        </span>
+                        <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-4 text-sm text-slate-200">
