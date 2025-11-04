@@ -267,7 +267,7 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
                                     dangerouslySetInnerHTML={{ __html: markdownToHtml(data.preliminaryAiResult.explanation) }} 
                                 />
                                 <p className="text-xs text-slate-500 mt-4 pt-4 border-t border-slate-700/50 italic">
-                                    Valores de risco (rf), pânico (hz), proteção (rp) e população (nz/nt) foram aplicados. Revise-os na Etapa 8 (Perda Consequente).
+                                    Valores de risco (rf), pânico (hz), proteção (rp), população (nz/nt) e tempo de permanência (tz) foram aplicados. Revise-os na Etapa 8 (Perda Consequente). Ao avançar, a cidade e o estado declarados serão usados para preencher a Etapa 3 (Densidade de Descargas), atualizando automaticamente o valor de Ng.
                                 </p>
                             </CardContent>
                         </Card>

@@ -10,7 +10,11 @@ export interface MapViewerHandles {
     getAverageColorAtPoint: (point: { x: number; y: number }) => string | null;
     getDominantPaletteIndexAtPoint: (point: { x: number; y: number }, paletteHexColors: string[]) => number | null;
     getPaletteIndexAtPoint: (point: { x: number; y: number }, paletteHexColors: string[]) => number | null;
+    getImageDataRect: (rect: { x1: number; y1: number; x2: number; y2: number }) => { width: number; height: number; data: Uint8ClampedArray } | null;
     setDetectionConfig: (cfg: Partial<DetectionConfig>) => void;
+    getContentBounds: () => { x1: number; y1: number; x2: number; y2: number } | null;
+    isContentPixel: (point: { x: number; y: number }) => boolean;
+    findNearestContentPoint: (point: { x: number; y: number }, maxRadius?: number) => { x: number; y: number } | null;
 }
 
 interface MapClickData {
@@ -28,6 +32,7 @@ type DetectionConfig = {
     blackMaxRgb: number; // threshold for max(R,G,B) to consider black
     blackVThreshold: number; // HSV v threshold to consider black
     exactPixelMode: boolean; // if true, never ignore central pixel (no grid filter)
+    centerWeightExp: number; // exponent to strengthen center weighting in radial sampling
 };
 
 export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUrl, onMapClick, markerPoint }, ref) => {
@@ -86,7 +91,80 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         setTransform({ scale: 1, x: 0, y: 0 });
     };
 
-    const detectionCfgRef = useRef<DetectionConfig>({ blackMaxRgb: 65, blackVThreshold: 0.28, exactPixelMode: false });
+    const detectionCfgRef = useRef<DetectionConfig>({ blackMaxRgb: 50, blackVThreshold: 0.22, exactPixelMode: false, centerWeightExp: 2.5 });
+
+    // Precise color matching utilities (sRGB → Lab → CIEDE2000)
+    const srgbToLinear = (c: number) => {
+        const cs = c / 255;
+        return cs <= 0.04045 ? cs / 12.92 : Math.pow((cs + 0.055) / 1.055, 2.4);
+    };
+    const rgbToXyz = (r: number, g: number, b: number) => {
+        const R = srgbToLinear(r), G = srgbToLinear(g), B = srgbToLinear(b);
+        const X = (R * 0.4124 + G * 0.3576 + B * 0.1805) * 100;
+        const Y = (R * 0.2126 + G * 0.7152 + B * 0.0722) * 100;
+        const Z = (R * 0.0193 + G * 0.1192 + B * 0.9505) * 100;
+        return { X, Y, Z };
+    };
+    const xyzToLab = (X: number, Y: number, Z: number) => {
+        const Xn = 95.047, Yn = 100.0, Zn = 108.883; // D65
+        const f = (t: number) => (t > 0.008856 ? Math.pow(t, 1/3) : (7.787 * t) + (16/116));
+        const fx = f(X / Xn), fy = f(Y / Yn), fz = f(Z / Zn);
+        const L = (Y / Yn) > 0.008856 ? (116 * fy - 16) : (903.3 * (Y / Yn));
+        const a = 500 * (fx - fy);
+        const b = 200 * (fy - fz);
+        return { L, a, b };
+    };
+    const rgbToLab = (r: number, g: number, b: number) => {
+        const { X, Y, Z } = rgbToXyz(r, g, b);
+        return xyzToLab(X, Y, Z);
+    };
+    const deltaE2000 = (lab1: {L:number,a:number,b:number}, lab2: {L:number,a:number,b:number}) => {
+        const deg2rad = (d: number) => (Math.PI * d) / 180;
+        const rad2deg = (r: number) => (180 * r) / Math.PI;
+        const L1 = lab1.L, a1 = lab1.a, b1 = lab1.b;
+        const L2 = lab2.L, a2 = lab2.a, b2 = lab2.b;
+        const C1 = Math.sqrt(a1*a1 + b1*b1);
+        const C2 = Math.sqrt(a2*a2 + b2*b2);
+        const Cbar = (C1 + C2) / 2;
+        const G = 0.5 * (1 - Math.sqrt(Math.pow(Cbar,7) / (Math.pow(Cbar,7) + Math.pow(25,7))));
+        const a1p = (1 + G) * a1;
+        const a2p = (1 + G) * a2;
+        const C1p = Math.sqrt(a1p*a1p + b1*b1);
+        const C2p = Math.sqrt(a2p*a2p + b2*b2);
+        const h1p = Math.atan2(b1, a1p);
+        const h2p = Math.atan2(b2, a2p);
+        const h1pDeg = (h1p >= 0 ? rad2deg(h1p) : rad2deg(h1p) + 360);
+        const h2pDeg = (h2p >= 0 ? rad2deg(h2p) : rad2deg(h2p) + 360);
+        const dLp = L2 - L1;
+        const dCp = C2p - C1p;
+        let dhp = 0;
+        if (C1p * C2p === 0) dhp = 0;
+        else if (Math.abs(h2pDeg - h1pDeg) <= 180) dhp = h2pDeg - h1pDeg;
+        else if (h2pDeg - h1pDeg > 180) dhp = h2pDeg - h1pDeg - 360;
+        else dhp = h2pDeg - h1pDeg + 360;
+        const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(deg2rad(dhp) / 2);
+        const LpBar = (L1 + L2) / 2;
+        const CpBar = (C1p + C2p) / 2;
+        let hpBar = 0;
+        if (C1p * C2p === 0) hpBar = h1pDeg + h2pDeg;
+        else if (Math.abs(h1pDeg - h2pDeg) <= 180) hpBar = (h1pDeg + h2pDeg) / 2;
+        else if (h1pDeg + h2pDeg < 360) hpBar = (h1pDeg + h2pDeg + 360) / 2;
+        else hpBar = (h1pDeg + h2pDeg - 360) / 2;
+        const T = 1 - 0.17 * Math.cos(deg2rad(hpBar - 30)) + 0.24 * Math.cos(deg2rad(2 * hpBar)) + 0.32 * Math.cos(deg2rad(3 * hpBar + 6)) - 0.20 * Math.cos(deg2rad(4 * hpBar - 63));
+        const dTheta = 30 * Math.exp(-((hpBar - 275) / 25) * ((hpBar - 275) / 25));
+        const Rc = 2 * Math.sqrt(Math.pow(CpBar,7) / (Math.pow(CpBar,7) + Math.pow(25,7)));
+        const Sl = 1 + (0.015 * ((LpBar - 50) * (LpBar - 50))) / Math.sqrt(20 + ((LpBar - 50) * (LpBar - 50)));
+        const Sc = 1 + 0.045 * CpBar;
+        const Sh = 1 + 0.015 * CpBar * T;
+        const Rt = -Math.sin(deg2rad(2 * dTheta)) * Rc;
+        const dE = Math.sqrt(
+            (dLp / Sl) * (dLp / Sl) +
+            (dCp / Sc) * (dCp / Sc) +
+            (dHp / Sh) * (dHp / Sh) +
+            Rt * (dCp / Sc) * (dHp / Sh)
+        );
+        return dE;
+    };
 
     useImperativeHandle(ref, () => ({
         zoomIn: () => handleZoom(1.25),
@@ -114,6 +192,117 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         getImageDimensions: () => {
             const canvas = canvasRef.current;
             return canvas ? { width: canvas.width, height: canvas.height } : null;
+        },
+        getImageDataRect: (rect) => {
+            const canvas = canvasRef.current;
+            const context = canvas?.getContext('2d', { willReadFrequently: true });
+            if (!context || !canvas) return null;
+            const x1 = Math.max(0, Math.min(rect.x1, canvas.width - 1));
+            const y1 = Math.max(0, Math.min(rect.y1, canvas.height - 1));
+            const x2 = Math.max(0, Math.min(rect.x2, canvas.width - 1));
+            const y2 = Math.max(0, Math.min(rect.y2, canvas.height - 1));
+            const w = Math.max(1, x2 - x1 + 1);
+            const h = Math.max(1, y2 - y1 + 1);
+            const img = context.getImageData(x1, y1, w, h);
+            return { width: w, height: h, data: img.data };
+        },
+        // Detecta retângulo da área útil do mapa (exclui margens/legenda) de forma heurística
+        getContentBounds: () => {
+            const canvas = canvasRef.current;
+            const context = canvas?.getContext('2d', { willReadFrequently: true });
+            if (!context || !canvas) return null;
+            const { width, height } = canvas;
+            const imageData = context.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            let minX = width, minY = height, maxX = 0, maxY = 0;
+            const step = 3; // amostragem para performance
+
+            const rgbToHsv = (r: number, g: number, b: number) => {
+                r /= 255; g /= 255; b /= 255;
+                const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                const v = max;
+                const d = max - min;
+                const s = max === 0 ? 0 : d / max;
+                let h = 0;
+                if (d !== 0) {
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                return { h, s, v };
+            };
+
+            // Ignora base inferior (~15%) onde normalmente fica a legenda
+            const ignoreBottom = Math.floor(height * 0.15);
+            const yMaxScan = height - ignoreBottom;
+
+            for (let y = 0; y < yMaxScan; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    const i = (y * width + x) * 4;
+                    const r = data[i], g = data[i + 1], b = data[i + 2];
+                    const { s, v } = rgbToHsv(r, g, b);
+                    // Considera conteúdo quando há saturação/valor suficientes (não branco/cinza leve)
+                    if (v > 0.25 && s > 0.25) {
+                        if (x < minX) minX = x;
+                        if (y < minY) minY = y;
+                        if (x > maxX) maxX = x;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+
+            if (maxX <= minX || maxY <= minY) {
+                // Fallback: se não conseguir detectar, retorna área inteira
+                return { x1: 0, y1: 0, x2: width, y2: height };
+            }
+
+            // Pequena margem interna para evitar capturar pixels de grade
+            const pad = 4;
+            return { x1: Math.max(0, minX + pad), y1: Math.max(0, minY + pad), x2: Math.min(width, maxX - pad), y2: Math.min(height, maxY - pad) };
+        },
+        isContentPixel: (point: { x: number; y: number }) => {
+            const canvas = canvasRef.current;
+            const context = canvas?.getContext('2d', { willReadFrequently: true });
+            if (!context || !canvas) return false;
+            const { width, height } = canvas;
+            const ignoreBottom = Math.floor(height * 0.15);
+            if (point.x < 0 || point.y < 0 || point.x >= width || point.y >= height - ignoreBottom) return false;
+            const p = context.getImageData(point.x, point.y, 1, 1).data;
+            const r = p[0], g = p[1], b = p[2];
+            // rápido teste de conteúdo colorido
+            const maxRGB = Math.max(r, g, b), minRGB = Math.min(r, g, b);
+            const saturationApprox = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
+            const valueApprox = maxRGB / 255;
+            return valueApprox > 0.25 && saturationApprox > 0.25;
+        },
+        findNearestContentPoint: (point: { x: number; y: number }, maxRadius: number = 25) => {
+            const canvas = canvasRef.current;
+            const context = canvas?.getContext('2d', { willReadFrequently: true });
+            if (!context || !canvas) return null;
+            if ((ref as any).isContentPixel(point)) return { x: Math.round(point.x), y: Math.round(point.y) };
+            const { width, height } = canvas;
+            const ignoreBottom = Math.floor(height * 0.15);
+            const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+            for (let r = 1; r <= maxRadius; r++) {
+                for (let a = 0; a < 360; a += 6) {
+                    const rad = (a * Math.PI) / 180;
+                    const x = clamp(Math.round(point.x + Math.cos(rad) * r), 0, width - 1);
+                    const y = clamp(Math.round(point.y + Math.sin(rad) * r), 0, height - ignoreBottom - 1);
+                    const p = context.getImageData(x, y, 1, 1).data;
+                    const r1 = p[0], g1 = p[1], b1 = p[2];
+                    const maxRGB = Math.max(r1, g1, b1), minRGB = Math.min(r1, g1, b1);
+                    const saturationApprox = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
+                    const valueApprox = maxRGB / 255;
+                    if (valueApprox > 0.25 && saturationApprox > 0.25) {
+                        return { x, y };
+                    }
+                }
+            }
+            return null;
         },
         getAverageColorAtPoint: (point) => {
             const canvas = canvasRef.current;
@@ -163,42 +352,27 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             const imageData = context.getImageData(startX, startY, width, height);
             const data = imageData.data;
 
-            // Precompute palette RGB
+            // Precompute palette LAB for precise color distance
             const hexToRgb = (hex: string) => {
                 const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
                 return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
             };
-            const palette = paletteHexColors
-                .map(hexToRgb)
-                .filter(Boolean) as { r: number; g: number; b: number }[];
+            const palette = paletteHexColors.map(hexToRgb).filter(Boolean) as { r: number; g: number; b: number }[];
             if (palette.length === 0) return null;
+            const paletteLab = palette.map(p => rgbToLab(p.r, p.g, p.b));
 
-            // Use weighted counts giving more importance to the center
-            const counts = new Array(palette.length).fill(0);
-            // Identify black in palette (Ng 32)
+            // Accumulate weighted DeltaE (lower is better)
+            const scoreSum = new Array(palette.length).fill(0);
+            // Identify black in palette (Ng 32). If not present, keep -1 and never force-map to another color.
             const blackIdx = palette.findIndex(p => p.r === 0 && p.g === 0 && p.b === 0);
-            const BLACK_INDEX = blackIdx === -1 ? palette.length - 1 : blackIdx;
+            const BLACK_INDEX = blackIdx; // -1 if palette doesn't have pure black
             const { blackMaxRgb, blackVThreshold, exactPixelMode } = detectionCfgRef.current;
-            const hsvDist = (p: { r: number; g: number; b: number }, q: { r: number; g: number; b: number }) => {
-                const ph = rgbToHsv(p.r, p.g, p.b);
-                const qh = rgbToHsv(q.r, q.g, q.b);
-                const dv = Math.abs(ph.v - qh.v);
-                // If palette candidate is pure black, ignore hue/sat — use brightness only.
-                if (q.r === 0 && q.g === 0 && q.b === 0) {
-                    return (dv * dv); // prefer black for low v
-                }
-                const dh = Math.min(Math.abs(ph.h - qh.h), 1 - Math.abs(ph.h - qh.h));
-                const ds = Math.abs(ph.s - qh.s);
-                // Reduce hue influence for very dark or low-saturation tones
-                const hueW = (ph.v < 0.25 || ph.s < 0.2) ? 0.5 : 16;
-                return (dh * dh) * hueW + (ds * ds) * 2 + (dv * dv) * 0.25;
-            };
 
             // Center of the sampled window
             const centerX = point.x;
             const centerY = point.y;
 
-            // Helper to compute HSV saturation and value
+            // Helper to compute HSV saturation and value (for filters only)
             const rgbToHsv = (r: number, g: number, b: number) => {
                 r /= 255; g /= 255; b /= 255;
                 const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -217,6 +391,8 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                 return { h, s, v };
             };
 
+            let blackCount = 0;
+            let totalCount = 0;
             for (let py = 0; py < height; py++) {
                 for (let px = 0; px < width; px++) {
                     const i = (py * width + px) * 4;
@@ -227,32 +403,69 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                     const dx = (startX + px) - centerX;
                     const dy = (startY + py) - centerY;
                     const d2 = dx * dx + dy * dy;
-                    const weight = 1 / (1 + d2); // higher weight for center pixels
+                    const { centerWeightExp } = detectionCfgRef.current;
+                    const weight = 1 / Math.pow(1 + d2, Math.max(1, centerWeightExp)); // heavier center weighting
 
                     // Ignore near-grayscale or gridline pixels (low saturation or extreme brightness)
                 const { s, v } = rgbToHsv(pr, pg, pb);
-                // Explicit black detection: very dark (HSV) or low RGB => count as Ng 32
+                // Explicit black detection
                 const maxRgbSample = Math.max(pr, pg, pb);
-                if (maxRgbSample < blackMaxRgb || v < blackVThreshold) { counts[BLACK_INDEX] += weight; continue; }
+                if (maxRgbSample < blackMaxRgb || v < blackVThreshold) { blackCount++; totalCount++; continue; }
                 // Ignore gridlines unless exactPixelMode
-                if (!exactPixelMode && s < 0.2 && v > 0.2) continue;
+                if (!exactPixelMode && s < 0.2 && v > 0.2) { totalCount++; continue; }
 
-                    let bestIndex = 0;
-                    let bestScore = Infinity;
-                    for (let k = 0; k < palette.length; k++) {
-                        const score = hsvDist(pixel, palette[k]);
-                        if (score < bestScore) { bestScore = score; bestIndex = k; }
+                    const labPix = rgbToLab(pr, pg, pb);
+                    for (let k = 0; k < paletteLab.length; k++) {
+                        const dE = deltaE2000(labPix, paletteLab[k]);
+                        scoreSum[k] += weight * dE;
                     }
-                    counts[bestIndex] += weight;
+                    totalCount++;
                 }
             }
 
-            // Choose the palette index with highest count
-            let maxIdx = 0;
-            for (let k = 1; k < counts.length; k++) {
-                if (counts[k] > counts[maxIdx]) maxIdx = k;
+            // Radial ring sampling at 2px distance to avoid grid/border bias
+            // We sample 8 directions (N, NE, E, SE, S, SW, W, NW) with a stronger weight
+            const ringR = 2;
+            const ringWeight = 2.0; // emphasize ring samples
+            const angles = [0, 45, 90, 135, 180, 225, 270, 315];
+            for (const a of angles) {
+                const rad = (Math.PI * a) / 180;
+                const rx = Math.round((centerX - startX) + Math.cos(rad) * ringR);
+                const ry = Math.round((centerY - startY) + Math.sin(rad) * ringR);
+                if (rx < 0 || ry < 0 || rx >= width || ry >= height) continue;
+                const ii = (ry * width + rx) * 4;
+                const rr = data[ii], rg = data[ii + 1], rb = data[ii + 2];
+                const { s, v } = rgbToHsv(rr, rg, rb);
+                const maxRgbSample = Math.max(rr, rg, rb);
+                if (maxRgbSample < blackMaxRgb || v < blackVThreshold) { blackCount++; totalCount++; continue; }
+                if (!exactPixelMode && s < 0.2 && v > 0.2) { totalCount++; continue; }
+                const labPix = rgbToLab(rr, rg, rb);
+                for (let k = 0; k < paletteLab.length; k++) {
+                    const dE = deltaE2000(labPix, paletteLab[k]);
+                    scoreSum[k] += ringWeight * dE;
+                }
+                totalCount++;
             }
-            return maxIdx;
+
+            // If center pixel is black or black dominates samples, return palette black when available
+            let centerIsBlack = false;
+            try {
+                const centerData = context.getImageData(centerX, centerY, 1, 1).data;
+                const cmax = Math.max(centerData[0], centerData[1], centerData[2]);
+                const { v: cv } = rgbToHsv(centerData[0], centerData[1], centerData[2]);
+                centerIsBlack = (cmax < blackMaxRgb || cv < blackVThreshold);
+            } catch {}
+
+            if ((centerIsBlack || (blackCount > 0 && blackCount / Math.max(1, totalCount) >= 0.4)) && BLACK_INDEX !== -1) {
+                return BLACK_INDEX;
+            }
+
+            // Choose palette with minimal accumulated DeltaE
+            let bestIdx = 0;
+            for (let k = 1; k < scoreSum.length; k++) {
+                if (scoreSum[k] < scoreSum[bestIdx]) bestIdx = k;
+            }
+            return bestIdx;
         },
         getPaletteIndexAtPoint: (point, paletteHexColors) => {
             const canvas = canvasRef.current;
@@ -294,37 +507,22 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                 .filter(Boolean) as { r: number; g: number; b: number }[];
             if (palette.length === 0) return null;
             const blackIdx = palette.findIndex(p => p.r === 0 && p.g === 0 && p.b === 0);
-            const BLACK_INDEX = blackIdx === -1 ? palette.length - 1 : blackIdx;
 
             const { blackMaxRgb, blackVThreshold, exactPixelMode } = detectionCfgRef.current;
             const { s, v } = rgbToHsv(pr, pg, pb);
             // Explicit black detection: treat very dark (HSV) or low RGB tones as Ng 32
             const maxRgbCenter = Math.max(pr, pg, pb);
-            if (maxRgbCenter < blackMaxRgb || v < blackVThreshold) return BLACK_INDEX;
+            if (maxRgbCenter < blackMaxRgb || v < blackVThreshold) return (blackIdx !== -1 ? blackIdx : null);
             // Ignore gridlines (low saturation AND not dark), but keep black; unless exactPixelMode
             if (!exactPixelMode && s < 0.2 && v > 0.2) return null;
 
-            const hsvDist = (p: { r: number; g: number; b: number }, q: { r: number; g: number; b: number }) => {
-                const ph = rgbToHsv(p.r, p.g, p.b);
-                const qh = rgbToHsv(q.r, q.g, q.b);
-                const dv = Math.abs(ph.v - qh.v);
-                // If palette candidate is pure black, ignore hue/sat — use brightness only.
-                if (q.r === 0 && q.g === 0 && q.b === 0) {
-                    return (dv * dv);
-                }
-                const dh = Math.min(Math.abs(ph.h - qh.h), 1 - Math.abs(ph.h - qh.h));
-                const ds = Math.abs(ph.s - qh.s);
-                // Reduce hue influence for very dark or low-saturation tones
-                const hueW = (ph.v < 0.25 || ph.s < 0.2) ? 0.5 : 16;
-                return (dh * dh) * hueW + (ds * ds) * 2 + (dv * dv) * 0.25;
-            };
-
-            const pixel = { r: pr, g: pg, b: pb };
+            const paletteLab = palette.map(p => rgbToLab(p.r, p.g, p.b));
+            const labPix = rgbToLab(pr, pg, pb);
             let bestIndex = 0;
             let bestScore = Infinity;
-            for (let k = 0; k < palette.length; k++) {
-                const score = hsvDist(pixel, palette[k]);
-                if (score < bestScore) { bestScore = score; bestIndex = k; }
+            for (let k = 0; k < paletteLab.length; k++) {
+                const dE = deltaE2000(labPix, paletteLab[k]);
+                if (dE < bestScore) { bestScore = dE; bestIndex = k; }
             }
 
             // Adjacent pair disambiguation using pure hue:
@@ -360,20 +558,28 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         const canvas = canvasRef.current;
         if (!image || !canvas) return;
 
+        // Map screen click to canvas pixel accounting for object-fit: contain letterboxing
         const imageRect = image.getBoundingClientRect();
         const xOnImage = e.clientX - imageRect.left;
         const yOnImage = e.clientY - imageRect.top;
 
-        const canvasX = Math.round(xOnImage * (canvas.width / imageRect.width));
-        const canvasY = Math.round(yOnImage * (canvas.height / imageRect.height));
-        
-        if (canvasX < 0 || canvasX >= canvas.width || canvasY < 0 || canvasY >= canvas.height) {
-            return;
-        }
+        const naturalW = image.naturalWidth || canvas.width;
+        const naturalH = image.naturalHeight || canvas.height;
+        const scale = Math.min(imageRect.width / naturalW, imageRect.height / naturalH);
+        const displayedW = naturalW * scale;
+        const displayedH = naturalH * scale;
+        const offsetX = (imageRect.width - displayedW) / 2;
+        const offsetY = (imageRect.height - displayedH) / 2;
 
-        onMapClick({
-            clickPoint: { x: canvasX, y: canvasY },
-        });
+        const xInContent = xOnImage - offsetX;
+        const yInContent = yOnImage - offsetY;
+        if (xInContent < 0 || xInContent > displayedW || yInContent < 0 || yInContent > displayedH) return;
+
+        const canvasX = Math.round((xInContent / displayedW) * canvas.width);
+        const canvasY = Math.round((yInContent / displayedH) * canvas.height);
+        if (canvasX < 0 || canvasX >= canvas.width || canvasY < 0 || canvasY >= canvas.height) return;
+
+        onMapClick({ clickPoint: { x: canvasX, y: canvasY } });
     };
     
     const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -444,7 +650,7 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                     <svg
                         className="absolute top-0 left-0 w-full h-full pointer-events-none"
                         viewBox={`0 0 ${canvasRef.current.width} ${canvasRef.current.height}`}
-                        preserveAspectRatio="none"
+                        preserveAspectRatio="xMidYMid meet"
                     >
                         <line
                             x1={markerPoint.x} y1={0}
@@ -460,31 +666,33 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                             strokeWidth={2 / transform.scale}
                             strokeDasharray="4"
                         />
+                        <g>
+                            {/* Ponto estático maior para melhor visibilidade */}
+                            <circle
+                                cx={markerPoint.x}
+                                cy={markerPoint.y}
+                                r={6 / transform.scale}
+                                fill="rgb(239,68,68)"
+                                stroke="white"
+                                strokeWidth={2 / transform.scale}
+                            />
+                            {/* Pulso animado via framer-motion (mais compatível) */}
+                            <motion.circle
+                                cx={markerPoint.x}
+                                cy={markerPoint.y}
+                                r={8 / transform.scale}
+                                fill="rgba(239,68,68,0.35)"
+                                stroke="none"
+                                animate={{
+                                    r: [8 / transform.scale, 14 / transform.scale, 8 / transform.scale],
+                                    opacity: [0.6, 0, 0.6]
+                                }}
+                                transition={{ duration: 1.2, repeat: Infinity }}
+                            />
+                        </g>
                     </svg>
                 )}
 
-                {markerPoint && canvasRef.current && (
-                    <div
-                        className="absolute pointer-events-none"
-                        style={{
-                            top: `${(markerPoint.y / canvasRef.current.height) * 100}%`,
-                            left: `${(markerPoint.x / canvasRef.current.width) * 100}%`,
-                        }}
-                    >
-                        <div
-                            className="absolute flex items-center justify-center"
-                            style={{
-                                transform: `translate(-50%, -50%) scale(${1 / transform.scale})`,
-                            }}
-                        >
-                            <motion.div
-                                className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-xl"
-                                animate={{ scale: [1, 1.5, 1], opacity: [1, 0.7, 1] }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                            />
-                        </div>
-                    </div>
-                )}
             </motion.div>
             <canvas ref={canvasRef} style={{ display: 'none' }} />
         </div>

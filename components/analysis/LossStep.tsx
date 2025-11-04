@@ -7,6 +7,7 @@ import { DecimalInput } from "../DecimalInput";
 import { AnalysisData, LossData, FireRiskInfo } from '../../types';
 import { RP_OPTIONS, RT_OPTIONS, RF_OPTIONS, HZ_OPTIONS, LF_OPTIONS, LO_OPTIONS, LF3_OPTIONS, LF4_OPTIONS, LO4_OPTIONS } from '../../constants';
 import { getFireRiskFactor } from '../../lib/geminiService';
+import { formatSmartNumber } from '../../lib/format';
 
 const markdownToHtml = (markdown: string): string => {
     if (!markdown) return '';
@@ -103,7 +104,7 @@ const FireRiskAnalysisPanel: React.FC<FireRiskAnalysisPanelProps> = ({ isPanelOp
                         collapsed: { opacity: 0, height: 0, marginTop: '0px' },
                     }}
                     transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
-                    className="overflow-hidden"
+                    className="overflow-visible"
                 >
                     <div className="space-y-4 px-2">
                         {status === 'loading' && (
@@ -149,6 +150,8 @@ const FireRiskAnalysisPanel: React.FC<FireRiskAnalysisPanelProps> = ({ isPanelOp
 interface LossStepProps {
     data: AnalysisData;
     onChange: (newData: Partial<AnalysisData>) => void;
+    forceActiveZoneId?: string;
+    hideProbabilityEditor?: boolean;
 }
 
 const SelectInput = ({ label, value, options, onUpdate }: { label: string, value: number, options: {value: number, label: string}[], onUpdate: (val: number) => void }) => {
@@ -169,15 +172,29 @@ const SelectInput = ({ label, value, options, onUpdate }: { label: string, value
     );
 };
 
-const formatValue = (value: number) => {
-    if (value === 0) return '0';
-    return value.toExponential(2).replace('.', ',');
+const formatValue = (value: number) => formatSmartNumber(value, { useScientificBelow: 0.001, scientificPrecision: 2, maxDecimals: 3 });
+
+// Formata números como "9,98 × 10⁻⁷" para melhor leitura em Detalhe
+const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
+    if (value === 0 || !isFinite(value)) {
+        return <span>0</span>;
+    }
+    const [mantissa, exponent] = value.toExponential(precision).split('e');
+    return (
+        <span className="font-mono tracking-tight" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+    );
 };
 
+// Opções para Robustez da Estrutura (rs) — rótulos resumidos para evitar truncamento
+const RS_OPTIONS = [
+    { value: 1, label: 'Robusta (1)' },
+    { value: 2, label: 'Vulnerável (2)' },
+];
+
 const LOSS_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
-    LA: { formula: "rt * 0.01 * (nz / nt) * (tz / 8760)", vars: ["rt", "nz", "nt", "tz"] },
+    LA: { formula: "rt * 0.01 * rs * (nz / nt) * (tz / 8760)", vars: ["rt", "rs", "nz", "nt", "tz"] },
     LB: { formula: "rs * rp * rf * hz * LF * (nz / nt) * (tz / 8760)", vars: ["rs", "rp", "rf", "hz", "LF", "nz", "nt", "tz"] },
-    LC: { formula: "LO * (nz / nt) * (tz / 8760)", vars: ["LO", "nz", "nt", "tz"] },
+    LC: { formula: "LO * rs * (nz / nt) * (tz / 8760)", vars: ["LO", "rs", "nz", "nt", "tz"] },
 };
 
 
@@ -191,6 +208,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
         
         let formulaString = "N/A";
         let valuesString = "N/A";
+        let detailNodes: React.ReactNode | null = null;
 
         if (formulaInfo && lossData) {
             formulaString = formulaInfo.formula;
@@ -207,7 +225,85 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
                 (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((lossData as any)[v] ?? 0)),
                 formulaInfo.formula
             );
-            valuesString = valuesString.replace(/\//g, '÷').replace(/\*/g, '×');
+    valuesString = valuesString.replace(/\*/g, '×');
+
+            // Construir "Detalhe" com notação científica e estrutura de multiplicação/divisão
+            const vm: Record<string, number> = { ...(lossData || {}) };
+            if (lossKey === 'LA') {
+                const rt = vm['rt'] || 0;
+                const rs = vm['rs'] || 0;
+                const nz = vm['nz'] || 0;
+                const nt = vm['nt'] || 0;
+                const tz = vm['tz'] || 0;
+                detailNodes = (
+                    <span className="font-mono">
+                        <span className="inline-flex items-baseline"><ScientificNotation value={rt} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span>0,01</span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
+                        <span className="mx-0.5">/</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
+                        <span className="mx-0.5">/</span>
+                        <span>8760</span>
+                    </span>
+                );
+            } else if (lossKey === 'LB') {
+                const rs = vm['rs'] || 0;
+                const rp = vm['rp'] || 0;
+                const rf = vm['rf'] || 0;
+                const hz = vm['hz'] || 0;
+                const LF = vm['LF'] || 0;
+                const nz = vm['nz'] || 0;
+                const nt = vm['nt'] || 0;
+                const tz = vm['tz'] || 0;
+                detailNodes = (
+                    <span className="font-mono">
+                        <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={rp} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={rf} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={hz} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={LF} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
+                        <span className="mx-0.5">/</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
+                        <span className="mx-0.5">/</span>
+                        <span>8760</span>
+                    </span>
+                );
+            } else if (lossKey === 'LC') {
+                const LO = vm['LO'] || 0;
+                const rs = vm['rs'] || 0;
+                const nz = vm['nz'] || 0;
+                const nt = vm['nt'] || 0;
+                const tz = vm['tz'] || 0;
+                detailNodes = (
+                    <span className="font-mono">
+                        <span className="inline-flex items-baseline"><ScientificNotation value={LO} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
+                        <span className="mx-0.5">/</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
+                        <span className="mx-0.5">×</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
+                        <span className="mx-0.5">/</span>
+                        <span>8760</span>
+                    </span>
+                );
+            }
         }
 
         const tooltipStyle: React.CSSProperties = {
@@ -218,17 +314,23 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
         return (
             <div 
                 style={tooltipStyle}
-                className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-max max-w-sm"
+                className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-auto min-w-[18rem] max-w-[48rem]"
             >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
                 {description && <p className="text-slate-400 text-xs mb-2">{description}</p>}
-                <p className="text-blue-400 font-mono">Valor: {formatValue(value)}</p>
+                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(value)} precision={2} /></p>
                 {formulaInfo && (
                      <>
                         <p className="text-slate-300 mt-2 font-semibold">Fórmula:</p>
-                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">{formulaString}</p>
-                        <p className="text-slate-300 mt-2 font-semibold">Cálculo:</p>
-                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{valuesString}</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight">{formulaString}</p>
+                        <p className="text-slate-300 mt-2 font-semibold">Valores:</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{valuesString}</p>
+                        {detailNodes && (
+                            <>
+                                <p className="text-slate-300 mt-2 font-semibold">Detalhe:</p>
+                                <div className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{detailNodes}</div>
+                            </>
+                        )}
                     </>
                 )}
             </div>
@@ -238,9 +340,14 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
 };
 
 
-export function LossStep({ data, onChange }: LossStepProps) {
+export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEditor }: LossStepProps) {
     const { zones, risks_to_analyze } = data;
     const [activeZoneId, setActiveZoneId] = useState(zones[0]?.id || '');
+    useEffect(() => {
+        if (forceActiveZoneId && forceActiveZoneId !== activeZoneId) {
+            setActiveZoneId(forceActiveZoneId);
+        }
+    }, [forceActiveZoneId]);
     const isMobile = useIsMobile();
 
     const [isFireRiskPanelOpen, setIsFireRiskPanelOpen] = useState(false);
@@ -249,6 +356,12 @@ export function LossStep({ data, onChange }: LossStepProps) {
     const totalNt = useMemo(() => zones[0]?.loss_data?.nt ?? 0, [zones]);
     const sumOfNz = useMemo(() => zones.reduce((sum, zone) => sum + (zone.loss_data.nz ?? 0), 0), [zones]);
     const isPopulationMismatch = zones.length > 1 && sumOfNz !== totalNt;
+    const weightedTimeHours = useMemo(() => {
+        const nt = Number(zones[0]?.loss_data?.nt) || 1;
+        if (nt <= 0) return 0;
+        return zones.reduce((acc, z) => acc + (((Number(z.loss_data.nz) || 0) / nt) * (Number(z.loss_data.tz) || 0)), 0);
+    }, [zones]);
+    const isWeightedTimeExceeded = weightedTimeHours > 8760 + 1e-6;
 
     const availableTabs = useMemo(() => {
         const tabs = [];
@@ -278,6 +391,8 @@ export function LossStep({ data, onChange }: LossStepProps) {
 
     const currentZone = zones.find(z => z.id === activeZoneId) || zones[0];
     const lossData = currentZone?.loss_data || {};
+    const homogeneousType = currentZone?.homogeneous_type || 'L';
+    const effectiveHomogeneousType: 'P' | 'L' = hideProbabilityEditor ? 'L' : homogeneousType;
 
     const handleUpdate = useCallback((field: keyof LossData, value: number) => {
         const updatedZones = zones.map(z => {
@@ -301,6 +416,34 @@ export function LossStep({ data, onChange }: LossStepProps) {
         const updates: Partial<AnalysisData> = { zones: updatedZones };
         
         onChange(updates);
+    }, [zones, activeZoneId, onChange]);
+
+    const handleHomogeneousTypeChange = useCallback((type: 'P' | 'L') => {
+        const updatedZones = zones.map(z => z.id === activeZoneId ? { ...z, homogeneous_type: type } : z);
+        onChange({ zones: updatedZones });
+    }, [zones, activeZoneId, onChange]);
+
+    const PROB_KEYS: string[] = ['PA','PB','PC','PCT','PM','PMT','PU','PUT','PV','PVT','PW','PWT','PZ','PZT'];
+
+    const handleProbOverrideUpdate = useCallback((key: string, value: number) => {
+        const updatedZones = zones.map(z => {
+            if (z.id !== activeZoneId) return z;
+            const nextOverrides = { ...(z.probability_overrides || {}) };
+            if (!key) return z;
+            nextOverrides[key] = value;
+            return { ...z, probability_overrides: nextOverrides };
+        });
+        onChange({ zones: updatedZones });
+    }, [zones, activeZoneId, onChange]);
+
+    const handleRemoveProbOverride = useCallback((key: string) => {
+        const updatedZones = zones.map(z => {
+            if (z.id !== activeZoneId) return z;
+            const next = { ...(z.probability_overrides || {}) };
+            delete next[key];
+            return { ...z, probability_overrides: next };
+        });
+        onChange({ zones: updatedZones });
     }, [zones, activeZoneId, onChange]);
 
     const handleAnalyzeFireRisk = useCallback(async () => {
@@ -351,7 +494,7 @@ export function LossStep({ data, onChange }: LossStepProps) {
         <div className="grid grid-cols-1 gap-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Fatores de Perda Consequente (L) - {currentZone.name}</CardTitle>
+                    <CardTitle>Zona: {currentZone.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     
@@ -369,7 +512,17 @@ export function LossStep({ data, onChange }: LossStepProps) {
                         </div>
                     )}
 
-                    {availableTabs.length > 0 && (
+                    {!hideProbabilityEditor && (
+                        <div className="flex items-center gap-2">
+                            <Label>Modo homogêneo da zona:</Label>
+                            <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
+                                <TabButton isActive={homogeneousType === 'P'} onClick={() => handleHomogeneousTypeChange('P')}>Probabilidade (P)</TabButton>
+                                <TabButton isActive={homogeneousType === 'L'} onClick={() => handleHomogeneousTypeChange('L')}>Perdas (L)</TabButton>
+                            </div>
+                        </div>
+                    )}
+
+                    {effectiveHomogeneousType === 'L' && availableTabs.length > 0 && (
                         <div className="flex flex-wrap gap-2 p-1 bg-slate-800/70 rounded-lg">
                             {availableTabs.map(tab => (
                                 <TabButton
@@ -383,28 +536,36 @@ export function LossStep({ data, onChange }: LossStepProps) {
                         </div>
                     )}
 
-                    {activeLossTypeTab === 'populacao' && (
+                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'populacao' && (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 items-start">
                                 <DecimalInput
                                     label="Nº Pessoas na Zona (nz)"
                                     value={lossData.nz ?? 0}
                                     onUpdate={val => handleUpdate('nz', val)}
                                     readOnly={zones.length === 1}
                                     title={zones.length === 1 ? "O número de pessoas na zona é igual ao total da estrutura." : ""}
-                                    className={zones.length === 1 ? 'opacity-70' : ''}
+                                    className={`space-y-2 ${zones.length === 1 ? 'opacity-70' : ''}`}
                                 />
                                 <DecimalInput
                                     label="Nº Pessoas Total (nt)"
                                     value={lossData.nt ?? 1}
                                     onUpdate={val => handleUpdate('nt', val)}
                                     isAiSuggested={data.preliminaryAiStatus === 'success'}
+                                    className="space-y-2"
                                 />
                                 <DecimalInput
                                     label="Tempo na Zona (tz) h/ano"
                                     value={lossData.tz ?? 8760}
                                     onUpdate={val => handleUpdate('tz', val)}
                                     isAiSuggested={data.preliminaryAiStatus === 'success'}
+                                    className="space-y-2"
+                                />
+                                <SelectInput
+                                    label="rs - Robustez da Estrutura"
+                                    value={lossData.rs ?? 1}
+                                    options={RS_OPTIONS}
+                                    onUpdate={val => handleUpdate('rs', val)}
                                 />
                             </div>
                              {isPopulationMismatch && (
@@ -416,13 +577,22 @@ export function LossStep({ data, onChange }: LossStepProps) {
                                     </AlertDescription>
                                 </Alert>
                             )}
+                            {isWeightedTimeExceeded && (
+                                <Alert variant="destructive" className="mt-4">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Atenção: Tempo ponderado excede 8760 h</AlertTitle>
+                                    <AlertDescription>
+            A soma ponderada do tempo por zona (∑(nz/nt × tz) = {formatSmartNumber(weightedTimeHours, { maxDecimals: 1, useScientificBelow: 0 })} h) excede 8760 h/ano. Ajuste os tempos de permanência.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                         </>
                     )}
                     
-                    {activeLossTypeTab === 'incendio' && (
+                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'incendio' && (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                <SelectInput label="LF - Danos Físicos" value={lossData.LF ?? 0.01} options={LF_OPTIONS} onUpdate={val => handleUpdate('LF', val)} />
+                                <SelectInput label="LF - Danos Físicos" value={lossData.LF ?? 0.1} options={LF_OPTIONS} onUpdate={val => handleUpdate('LF', val)} />
                                 <SelectInput label="rp - Medidas de Proteção" value={lossData.rp ?? 1} options={RP_OPTIONS} onUpdate={val => handleUpdate('rp', val)} />
                                 <SelectInput label="rf - Risco de Incêndio" value={lossData.rf ?? 0.001} options={RF_OPTIONS} onUpdate={val => handleUpdate('rf', val)} />
                                 <SelectInput label="hz - Risco de Pânico" value={lossData.hz ?? 1} options={HZ_OPTIONS} onUpdate={val => handleUpdate('hz', val)} />
@@ -431,19 +601,19 @@ export function LossStep({ data, onChange }: LossStepProps) {
                         </>
                     )}
 
-                    {activeLossTypeTab === 'choque' && (
+                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'choque' && (
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                             <SelectInput label="rt - Resist. do Piso" value={lossData.rt ?? 0.01} options={RT_OPTIONS} onUpdate={val => handleUpdate('rt', val)} />
                         </div>
                     )}
 
-                    {activeLossTypeTab === 'equipamentos' && (
+                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'equipamentos' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                             <SelectInput label="LO - Falha de Sist." value={lossData.LO ?? 0} options={LO_OPTIONS} onUpdate={val => handleUpdate('LO', val)} />
+                             <SelectInput label="LO - Falha de Sist." value={lossData.LO ?? 0.001} options={LO_OPTIONS} onUpdate={val => handleUpdate('LO', val)} />
                         </div>
                     )}
 
-                    {activeLossTypeTab === 'cultural' && (
+                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'cultural' && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                             <SelectInput label="Lf3 - Tipo de Dano" value={lossData.lf3 ?? 0.1} options={LF3_OPTIONS} onUpdate={val => handleUpdate('lf3', val)} />
                             <DecimalInput label="Valor do Patrimônio (cz)" value={lossData.cz ?? 0} onUpdate={val => handleUpdate('cz', val)} />
@@ -451,7 +621,7 @@ export function LossStep({ data, onChange }: LossStepProps) {
                         </div>
                     )}
 
-                    {activeLossTypeTab === 'economica' && (
+                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'economica' && (
                          <div>
                             <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4 pt-2">
                                 <SelectInput label="Lf4 - Dano Físico" value={lossData.lf4 ?? 0.2} options={LF4_OPTIONS} onUpdate={val => handleUpdate('lf4', val)} />
@@ -465,6 +635,52 @@ export function LossStep({ data, onChange }: LossStepProps) {
                                 <DecimalInput label="Atividades (ce)" value={lossData.ce ?? 0} onUpdate={val => handleUpdate('ce', val)} />
                                 <DecimalInput label="Valor Total (ct)" value={lossData.ct_economic ?? 1} onUpdate={val => handleUpdate('ct_economic', val)} />
                             </div>
+                        </div>
+                    )}
+
+                    {effectiveHomogeneousType === 'P' && !hideProbabilityEditor && (
+                        <div className="space-y-4 pt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Probabilidade (P) da zona</Label>
+                                    <Select 
+                                        value={''}
+                                        onValueChange={() => {}}
+                                        options={PROB_KEYS.map(k => ({ value: k, label: k }))}
+                                    >
+                                        <SelectTrigger><SelectValue placeholder="Selecione uma probabilidade" /></SelectTrigger>
+                                        <SelectContent>
+                                            {PROB_KEYS.map(k => (
+                                                <SelectItem key={k} value={k} label={k} />
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {/* Campo manual simples para inserir/ajustar overrides */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {PROB_KEYS.slice(0,6).map(k => (
+                                            <DecimalInput key={k} label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                        ))}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {PROB_KEYS.slice(6).map(k => (
+                                            <DecimalInput key={k} label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            {currentZone?.probability_overrides && Object.keys(currentZone.probability_overrides).length > 0 && (
+                                <div className="mt-2">
+                                    <Label>Overrides definidos</Label>
+                                    <div className="flex flex-wrap gap-2 mt-1">
+                                        {Object.entries(currentZone.probability_overrides).map(([k,v]) => (
+                                            <div key={k} className="px-3 py-1 bg-slate-800/70 rounded-lg border border-slate-600 text-sm flex items-center gap-2">
+                                                <span className="text-slate-200">{k}: {String(v).replace('.', ',')}</span>
+                                                <button className="text-red-400 hover:text-red-300" onClick={() => handleRemoveProbOverride(k)}>remover</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

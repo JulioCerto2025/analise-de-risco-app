@@ -10,7 +10,7 @@ interface Step1InputProps {
     onUpdate: (newData: Partial<AnalysisData>) => void;
 }
 
-const ResultBox = ({ label, value, unit, color }: { label: React.ReactNode; value: number; unit: string; color: string; }) => {
+const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValues }: { label: React.ReactNode; value: number; unit: string; color: string; formula?: string; formulaKey?: string; formulaValues?: { [key: string]: any } }) => {
     const colorClasses: { [key: string]: { bg: string, text: string } } = {
         blue: { bg: "bg-blue-950/80", text: "text-white" },
         purple: { bg: "bg-purple-950/80", text: "text-white" },
@@ -18,7 +18,7 @@ const ResultBox = ({ label, value, unit, color }: { label: React.ReactNode; valu
     };
     const { bg, text } = colorClasses[color] || colorClasses.blue;
 
-    return (
+    const content = (
         <div className={`p-4 rounded-lg flex flex-col items-center justify-center text-center ${bg}`}>
             <div className={`font-bold text-2xl ${text}`}>{value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
             <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
@@ -26,6 +26,16 @@ const ResultBox = ({ label, value, unit, color }: { label: React.ReactNode; valu
             </div>
         </div>
     );
+
+    if (formula && formulaKey) {
+        return (
+            <FormulaTooltip formulas={{ [formulaKey]: formula }} values={formulaValues}>
+                {content}
+            </FormulaTooltip>
+        );
+    }
+
+    return content;
 };
 
 const DimensionInput = ({ icon, label, id, value, onUpdate, color }: { icon: string; label: string; id: keyof AnalysisData; value: number; onUpdate: (val: number) => void; color: string }) => {
@@ -103,10 +113,26 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                             Resultados da Área de Exposição
                         </Label>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
-                            <ResultBox label={<>A<sub>d</sub><FormulaTooltip formulas={{ Ad: "L×W+2(3×H)(L+W)+π(3×H)²" }} values={{ L: data.l, W: data.w, H: data.h }} /></>} value={ad} unit="m²" color="blue" />
-                            <ResultBox label={<>A<sub>d'</sub><FormulaTooltip formulas={{ "Ad'": "π(3×Hp)²" }} values={{ Hp: data.hp }}/></>} value={adp} unit="m²" color="purple" />
-                            <ResultBox label={<>A<sub>df</sub><FormulaTooltip formulas={{ Adf: "max(Ad, Adp)" }} values={{ Ad: ad, Adp: adp }}/></>} value={adf} unit="m² (max)" color="blue" />
-                            <ResultBox label={<>A<sub>m</sub><FormulaTooltip formulas={{ Am: "2×500(L+W)+π(500)²" }} values={{ L: data.l, W: data.w }}/></>} value={am} unit="m²" color="green" />
+                            <ResultBox 
+                                label={<span>A<sub>d</sub></span>} 
+                                value={ad} unit="m²" color="blue" 
+                                formula="L×W+2(3×H)(L+W)+π(3×H)²" formulaKey="Ad" formulaValues={{ L: data.l, W: data.w, H: data.h }}
+                            />
+                            <ResultBox 
+                                label={<span>A<sub>d'</sub></span>} 
+                                value={adp} unit="m²" color="purple" 
+                                formula="π(3×Hp)²" formulaKey="Ad'" formulaValues={{ Hp: data.hp }}
+                            />
+                            <ResultBox 
+                                label={<span>A<sub>df</sub></span>} 
+                                value={adf} unit="m² (max)" color="blue" 
+                                formula="max(Ad, Adp)" formulaKey="Adf" formulaValues={{ Ad: ad, Adp: adp }}
+                            />
+                            <ResultBox 
+                                label={<span>A<sub>m</sub></span>} 
+                                value={am} unit="m²" color="green" 
+                                formula="2×500(L+W)+π(500)²" formulaKey="Am" formulaValues={{ L: data.l, W: data.w }}
+                            />
                         </div>
                     </div>
                 </CardContent>

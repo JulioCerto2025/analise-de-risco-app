@@ -17,6 +17,8 @@ import { STEPS } from "./constants";
 import { AnalysisData } from './types';
 import { useAnalysisData } from './hooks/useAnalysisData';
 import { validateStep } from './utils/validation';
+import ErrorBoundary from './components/ErrorBoundary';
+import { getNgByCity, getCitiesByUf } from './data/ngByCity';
 // FIX: Removed unused import from './lib/geminiService' which was causing a build error.
 
 const SidebarNav = ({ currentStep, setStep }: { currentStep: number; setStep: (step: number) => void }) => {
@@ -87,10 +89,12 @@ const getRegionFromState = (stateUF: string = ''): string => {
 
 export default function App() {
     const [currentStep, setCurrentStep] = useState(1);
+    // Índice da zona atualmente em edição no loop de etapas 7 e 8
+    const [currentZoneIndex, setCurrentZoneIndex] = useState(0);
     const { data, updateData } = useAnalysisData();
     const [errors, setErrors] = useState<string[]>([]);
 
-    const handleNext = useCallback(() => {
+    const handleNext = useCallback(async () => {
         try {
             const validationErrors = validateStep(currentStep, data);
             if (validationErrors.length > 0) {
@@ -100,26 +104,59 @@ export default function App() {
 
             if (currentStep === 1) {
                 const address = data.clientAddress || '';
-                // Aceita formatos no final do endereço como:
-                // "Bairro - Cidade/UF", "Cidade/UF" ou "Cidade - UF".
-                const matchWithSlash = address.match(/([^,]+?)\s*\/\s*([A-Z]{2})$/i);
-                const matchWithHyphen = address.match(/([^,]+?)\s*-\s*([A-Z]{2})$/i);
+                // Aceita formatos ao final do endereço como:
+                // "Cidade/UF", "Cidade - UF", "Cidade, UF" e "Cidade UF" (UF ao final)
+                const matchWithSlash = address.match(/^(.*)\s\/\s([A-Z]{2})$/i);
+                const matchWithHyphen = address.match(/^(.*)\s-\s([A-Z]{2})$/i);
+                const matchWithComma = address.match(/^(.*),\s*([A-Z]{2})$/i);
+                const matchWithSpace = address.match(/^(.*)\s([A-Z]{2})$/i);
 
-                if ((matchWithSlash && matchWithSlash[1] && matchWithSlash[2]) || (matchWithHyphen && matchWithHyphen[1] && matchWithHyphen[2])) {
-                    const rawCityPart = (matchWithSlash ? matchWithSlash[1] : matchWithHyphen![1]).trim();
-                    const uf = (matchWithSlash ? matchWithSlash[2] : matchWithHyphen![2]).toUpperCase();
+                if (matchWithSlash || matchWithHyphen || matchWithComma || matchWithSpace) {
+                    const rawCityPart = (matchWithSlash?.[1] || matchWithHyphen?.[1] || matchWithComma?.[1] || matchWithSpace?.[1] || '').trim();
+                    const uf = (matchWithSlash?.[2] || matchWithHyphen?.[2] || matchWithComma?.[2] || matchWithSpace?.[2] || '').toUpperCase();
 
-                    // Se houver "Bairro - Cidade", pegue somente a última parte como cidade.
-                    const city = (rawCityPart.split(/\s-\s/).pop() || rawCityPart).trim();
+                    // Resolver cidade ignorando bairro, usando lista oficial de cidades do UF
+                    const normalize = (s: string) => (s || '')
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .toLowerCase().replace(/[.,]/g, ' ')
+                        .replace(/\s+/g, ' ').trim();
+                    let city = (rawCityPart || '').trim();
+                    try {
+                        const cities = await getCitiesByUf(uf);
+                        const rawNorm = normalize(rawCityPart);
+                        let best: string | null = null;
+                        for (const c of cities) {
+                            const cn = normalize(c);
+                            if (rawNorm === cn || rawNorm.endsWith(cn) || rawNorm.includes(' ' + cn) || rawNorm.startsWith(cn + ' ')) {
+                                if (!best || normalize(best).length < cn.length) best = c;
+                            }
+                        }
+                        if (best) city = best;
+                        else if (/[-–—]/.test(rawCityPart)) city = rawCityPart.split(/[-–—]/).pop()!.trim();
+                        else if (/,/.test(rawCityPart)) city = rawCityPart.split(',').pop()!.trim();
+                    } catch (_) {
+                        // fallback simples se lista não carregar
+                        city = (rawCityPart.split(/\s-\s/).pop() || rawCityPart).trim();
+                    }
                     const region = getRegionFromState(uf);
 
-                    // Remover o hífen imediatamente antes de "Cidade/UF" no final
-                    const sanitizedAddress = address.replace(/\s-\s(?=[^,]*\/[A-Z]{2}$)/, '  ');
+                    // Sanitiza apenas o caso com hífen antes de barra; demais formatos mantêm original
+                    const sanitizedAddress = matchWithSlash ? address.replace(/\s-\s(?=[^,]*\/[A-Z]{2}$)/, '  ') : address;
+
+                    // Buscar Ng pela cidade/UF e preencher Etapa 3 automaticamente
+                    let nextNg = (typeof data.ng === 'number' && data.ng > 0) ? data.ng : 18; // fallback
+                    try {
+                        const preset = await getNgByCity(uf, city);
+                        if (typeof preset === 'number' && preset > 0) {
+                            nextNg = preset;
+                        }
+                    } catch (_) { /* ignora erro e usa fallback */ }
 
                     updateData({
                         mapRegion: region,
                         location: `${city} - ${uf}`,
-                        clientAddress: sanitizedAddress
+                        clientAddress: sanitizedAddress,
+                        ng: nextNg
                     });
                 }
             }
@@ -134,6 +171,33 @@ export default function App() {
                 }
             }
 
+            // Lógica de loop por zona entre Etapas 7 (Probabilidades) e 8 (Perdas)
+            if (currentStep === 7) {
+                // Ao sair da etapa de Probabilidades, persistir P calculado como overrides da zona atual
+                const zones = data.zones || [];
+                const zone = zones[currentZoneIndex];
+                if (zone) {
+                    const mergedOverrides = { ...(zone.probability_overrides || {}), ...(data.probability_calculations || {}) };
+                    const nextZones = zones.map((z, idx) => idx === currentZoneIndex ? { ...z, probability_overrides: mergedOverrides } : z);
+                    updateData({ zones: nextZones });
+                }
+                setErrors([]);
+                setCurrentStep(8);
+                return;
+            }
+
+            if (currentStep === 8) {
+                // Ao finalizar Perdas da zona atual, avançar para próxima zona (se houver), retornando à etapa 7
+                const zonesCount = (data.zones || []).length;
+                const isLastZone = currentZoneIndex >= zonesCount - 1;
+                if (!isLastZone) {
+                    setCurrentZoneIndex(prev => prev + 1);
+                    setErrors([]);
+                    setCurrentStep(7);
+                    return;
+                }
+            }
+
             setErrors([]);
             if (currentStep < STEPS.length) setCurrentStep(prev => prev + 1);
         } catch (error) {
@@ -144,8 +208,14 @@ export default function App() {
 
     const handlePrev = useCallback(() => {
         setErrors([]);
+        // Navegação reversa no loop de zonas: se estamos na Etapa 7 e não é a primeira zona, voltar para Etapa 8 da zona anterior
+        if (currentStep === 7 && currentZoneIndex > 0) {
+            setCurrentZoneIndex(prev => Math.max(0, prev - 1));
+            setCurrentStep(8);
+            return;
+        }
         if (currentStep > 1) setCurrentStep(prev => prev - 1);
-    }, [currentStep]);
+    }, [currentStep, currentZoneIndex]);
     
     const setStep = useCallback((step: number) => {
         if (step > 0 && step <= STEPS.length) {
@@ -164,7 +234,10 @@ export default function App() {
                 case 5: return <ConnectedLinesStep data={data} onUpdate={updateData} />;
                 case 6: return <Step3Events data={data} />;
                 case 7: return <ProbabilityStep data={data} onChange={updateData} />;
-                case 8: return <LossStep data={data} onChange={updateData} />;
+                case 8: {
+                    const activeZoneId = data.zones?.[currentZoneIndex]?.id || data.zones?.[0]?.id || '';
+                    return <LossStep data={data} onChange={updateData} forceActiveZoneId={activeZoneId} hideProbabilityEditor />;
+                }
                 case 9: return <RiskResultsStep data={data} onUpdate={updateData} />;
                 case 10: return <FrequencyConfigStep data={data} onUpdate={updateData} />;
                 case 11: return <ReportStep data={data} onUpdate={updateData} />;
@@ -184,11 +257,12 @@ export default function App() {
 
     return (
         <>
-            <div className="min-h-screen p-3 sm:p-4 md:p-6">
+            <div className="min-h-screen p-3 sm:p-4 md:p-6" style={{ minHeight: '100svh' }}>
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-stretch">
                 <aside className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
                     <div className="sticky top-4 flex flex-col gap-4">
                         <SidebarNav currentStep={currentStep} setStep={setStep}/>
+                        {/* Ações rápidas do projeto removidas conforme solicitação */}
                         <div className="grid grid-cols-2 gap-2">
                             <Button
                                 variant="outline"
@@ -257,7 +331,7 @@ export default function App() {
                         )}
                         </AnimatePresence>
                     </div>
-                    <div className="min-h-full pb-20 md:pb-0">
+                    <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentStep}
@@ -266,13 +340,17 @@ export default function App() {
                                 exit={{ opacity: 0, x: -30 }}
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                             >
-                                {renderStep}
+                                <ErrorBoundary variant="inline">
+                                    {renderStep}
+                                </ErrorBoundary>
                             </motion.div>
                         </AnimatePresence>
                     </div>
-                    {/* Barra de navegação móvel fixa: somente botões, sem fundo */}
+                    {/* Barra de navegação móvel fixa com respeito ao safe-area e leve fundo */}
                     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-                        <div className="mx-auto max-w-7xl px-3 pb-2">
+                        {/* Fundo sutil para evitar faixa branca ao tocar o final */}
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[64px]" style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(to top, rgba(2,6,23,0.95), rgba(2,6,23,0))' }} />
+                        <div className="mx-auto max-w-7xl px-3 pb-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
                             <div className="grid grid-cols-2 gap-2">
                                 <Button
                                     variant="outline"
