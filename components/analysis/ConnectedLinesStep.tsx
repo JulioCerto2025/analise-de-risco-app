@@ -4,7 +4,9 @@ import { Zap, Server, PlusCircle, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData, LineSection } from '../../types';
-import { CD_OPTIONS, CI_OPTIONS, CE_OPTIONS, CT_OPTIONS_ELECTRIC, CT_OPTIONS_DATA } from '../../constants';
+import { CD_OPTIONS, CI_OPTIONS, CE_OPTIONS, CT_OPTIONS_ELECTRIC, CT_OPTIONS_DATA, COMBINED_CLD_CLI_OPTIONS, UW_OPTIONS } from '../../constants';
+import { ShieldingSlider } from '../ShieldingSlider';
+import { calculatePld, calculatePli } from '../../utils/calculations';
 
 interface ConnectedLinesStepProps {
     data: AnalysisData;
@@ -24,18 +26,45 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
         ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) 
         : value.toExponential(2).replace('.', ',');
 
-    return (
+    const content = (
         <div className={`p-4 rounded-lg flex flex-col items-center justify-center text-center ${bg}`}>
             <div className={`font-bold text-2xl ${text}`}>{displayValue}</div>
             <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
-                {label} <span>({unit})</span>
-                {formula && <FormulaTooltip formulas={formulas} values={formulaValues} />}
+                {label}
+                <span>({unit})</span>
             </div>
         </div>
     );
+
+    if (formula) {
+        return (
+            <FormulaTooltip formulas={formulas} values={formulaValues}>
+                {content}
+            </FormulaTooltip>
+        );
+    }
+
+    return content;
 };
 
 export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) {
+    const shortLabelForCombined = (value: string) => {
+        const [cld, cli] = (value || '').split('_');
+        return `${cld},${cli}`;
+    };
+
+    // Texto resumido para cada combinação CLD/CLI, mantendo entendimento sem truncar
+    const shortTextForCombined = (value: string) => {
+        const map: Record<string, string> = {
+            '1_1': 'Aérea/Subt. s/ blind.',
+            '1_0.2': 'Neutro multiat.',
+            '1_0.3': 'Subt. blind. s/ equipot.',
+            '1_0.1': 'Aérea blind. s/ equipot.',
+            '1_0': 'Blind. equipot. c/ equip.',
+            '0_0': 'Linha/Cabo sem risco'
+        };
+        return map[value] || shortLabelForCombined(value);
+    };
 
     const handleSelectChange = (field: keyof AnalysisData, value: string) => {
         onUpdate({ [field]: parseFloat(value) || 0 });
@@ -101,6 +130,25 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
         exit: { opacity: 0, height: 0, y: -20, transition: { duration: 0.3, ease: "easeInOut" } }
     };
 
+    const prob = data.probability_data;
+    const ks4_electric = (prob.Uw_electric_ext || 0) > 0 ? 1 / (prob.Uw_electric_ext || 1) : 1;
+    const ks4_data = (prob.Uw_data_ext || 0) > 0 ? 1 / (prob.Uw_data_ext || 1) : 1;
+    const pli_electric = calculatePli('electric', prob.Uw_electric_ext || 1);
+    const handleCombinedChange = (_value: string, _lineType: 'electric' | 'data') => {
+        // Step 5 no longer changes CLD/CLI; managed in Step 7.
+        return;
+    };
+
+    const handleUwChange = (_uw: number, _lineType: 'electric' | 'data') => {
+        // Step 5 no longer controls Uw/PLD; managed in Step 7.
+        return;
+    };
+
+    const handleShieldingChange = (_lineType: 'electric' | 'data', _isShielded: boolean, _rsValue: number) => {
+        // Step 5 no longer controls shielding; managed in Step 7.
+        return;
+    };
+
 
     return (
         <div className="space-y-6">
@@ -156,6 +204,8 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     <Button variant="outline" onClick={() => addSection('line_sections_1')} className="w-full mt-4 flex items-center gap-2">
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
+
+                                    
 
                                     <div className="hidden sm:grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
                                         <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
@@ -232,6 +282,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     <Button variant="outline" onClick={() => addSection('line_sections_2')} className="w-full mt-4 flex items-center gap-2">
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
+                                    
                                     
                                     <div className="hidden sm:grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
                                         <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>

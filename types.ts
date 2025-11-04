@@ -50,29 +50,41 @@ export interface ProbabilityData {
   wm1: number; // Mesh width for ZPR0 -> ZPR1 (replaces Ks1 selection)
   wm2: number; // Mesh width for ZPR1 -> ZPR2 (replaces Ks2 selection)
   
-  // For electric line
+  // For electric line (shared factors)
   PSPD_electric: number;
-  CLD_electric: number;
   PTU_electric: number;
-  PEB_electric: number; 
-  PLD_electric: number; 
-  CLI_electric: number;
-  Ks3_electric: number;
-  Uw_electric: number;
-  is_shielded_electric: boolean;
-  rs_electric: number; // Shield resistance in Ω/km
-  
-  // For data line
+  PEB_electric: number;
+
+  // Electric line - External
+  CLD_electric_ext: number;
+  CLI_electric_ext: number;
+  Uw_electric_ext: number;
+  is_shielded_electric_ext: boolean;
+  rs_electric_ext: number; // Shield resistance in Ω/km
+  PLD_electric_ext: number; 
+
+  // Electric line - Internal
+  CLD_electric_int: number;
+  Ks3_electric_int: number;
+  Uw_electric_int: number;
+
+  // Data line (shared factors)
   PSPD_data: number;
-  CLD_data: number;
   PTU_data: number;
   PEB_data: number;
-  PLD_data: number;
-  CLI_data: number;
-  Ks3_data: number;
-  Uw_data: number;
-  is_shielded_data: boolean;
-  rs_data: number; // Shield resistance in Ω/km
+
+  // Data line - External
+  CLD_data_ext: number;
+  CLI_data_ext: number;
+  Uw_data_ext: number;
+  is_shielded_data_ext: boolean;
+  rs_data_ext: number; // Shield resistance in Ω/km
+  PLD_data_ext: number;
+
+  // Data line - Internal
+  CLD_data_int: number;
+  Ks3_data_int: number;
+  Uw_data_int: number;
 }
 
 export interface LossData {
@@ -110,6 +122,10 @@ export interface Zone {
   id: string;
   name: string;
   loss_data: Partial<LossData>;
+  // Overrides for derived probabilities per zone (keys like PB, PC, PCT, PM, PMT, etc.)
+  probability_overrides?: { [key: string]: number };
+  // Define qual conjunto é homogêneo na zona: Probabilidade (P) ou Perdas (L)
+  homogeneous_type?: 'P' | 'L';
 }
 
 export interface FireRiskInfo {

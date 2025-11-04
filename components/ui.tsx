@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
 import { correctText } from '../lib/geminiService';
 
@@ -295,8 +296,8 @@ SelectContent.displayName = "SelectContent";
 
 export const SelectItem = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { value: string | number; label: string }
->(({ label, value, className, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & { value: string | number; label: string; showRightValue?: boolean }
+>(({ label, value, showRightValue = false, className, ...props }, ref) => {
   const context = useContext(SelectContext);
   if (!context) throw new Error("SelectItem must be used within a Select");
   
@@ -311,11 +312,13 @@ export const SelectItem = React.forwardRef<
   const isSelected = (context.selectedLabel ? context.selectedLabel === label : (selectedOption ? selectedOption.label === label : false));
   const isValueRedundant = String(value) === String(label);
 
+  const justifyClass = showRightValue && !isValueRedundant ? 'justify-between' : 'justify-start';
+
   return (
     <div 
         ref={ref} 
         onClick={handleClick} 
-        className={`relative flex w-full cursor-pointer select-none items-center justify-between rounded-lg py-1.5 px-3 text-sm outline-none focus:bg-slate-700/80 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-slate-700/80 ${isSelected ? 'bg-slate-700/80' : ''} ${className}`} 
+        className={`relative flex w-full cursor-pointer select-none items-center ${justifyClass} rounded-lg py-1.5 px-3 text-sm outline-none focus:bg-slate-700/80 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-slate-700/80 ${isSelected ? 'bg-slate-700/80' : ''} ${className}`}
         {...props}
     >
         <div className="flex items-center">
@@ -326,7 +329,7 @@ export const SelectItem = React.forwardRef<
             )}
             <span className="ml-2 truncate">{label}{isValueRedundant ? '' : ':'}</span>
         </div>
-        {!isValueRedundant && <span className="font-medium text-blue-400">{String(value)}</span>}
+        {showRightValue && !isValueRedundant && <span className="font-medium text-blue-400">{String(value)}</span>}
     </div>
   );
 });
@@ -394,7 +397,7 @@ export const AutoCorrectingInput = ({ id, label, value, onUpdate, placeholder, c
 };
 
 // Autocomplete Input (typeahead)
-export const AutocompleteInput = ({ id, label, value, onUpdate, suggestions, placeholder, className, maxSuggestions = 8, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void, suggestions: string[], maxSuggestions?: number }) => {
+export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, suggestions, placeholder, className, maxSuggestions = 8, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void, onCommit?: (value: string) => void, suggestions: string[], maxSuggestions?: number }) => {
     const [open, setOpen] = useState(false);
     const [filtered, setFiltered] = useState<string[]>([]);
     const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -436,6 +439,7 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, suggestions, pla
 
     const handleSelect = (item: string) => {
         onUpdate(item);
+        if (onCommit) onCommit(item);
         setOpen(false);
         setActiveIndex(-1);
     };
@@ -509,11 +513,11 @@ export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, childre
 );
 
 
-export const FormulaTooltip = ({ formulas, values }: { formulas: { [key: string]: string }, values?: { [key: string]: any } }) => {
+export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [key: string]: string }, values?: { [key: string]: any }, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [style, setStyle] = useState<React.CSSProperties>({});
     const containerRef = useRef<HTMLDivElement>(null);
-    const triggerRef = useRef<HTMLButtonElement>(null);
+    const triggerRef = useRef<HTMLSpanElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -529,90 +533,181 @@ export const FormulaTooltip = ({ formulas, values }: { formulas: { [key: string]
         };
     }, [isOpen]);
     
-    const handleToggle = () => {
-        if (!isOpen && triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            
-            const newStyle: React.CSSProperties = {
-                position: 'fixed',
-                zIndex: 100,
-            };
-
-            const tooltipMaxWidth = 320; // Estimated max-width of the tooltip
-            const tooltipMaxHeight = 300; // Estimated max-height of the tooltip
-            const viewportPadding = 8;
-
-            // Horizontal positioning: prefer left, fallback to right
-            if (rect.left + tooltipMaxWidth > window.innerWidth - viewportPadding) {
-                newStyle.right = `${window.innerWidth - rect.right}px`;
-            } else {
-                newStyle.left = `${rect.left}px`;
-            }
-
-            // Vertical positioning: prefer below, fallback to above
-            if (rect.bottom + tooltipMaxHeight > window.innerHeight - viewportPadding) {
-                newStyle.bottom = `${window.innerHeight - rect.top + viewportPadding}px`;
-            } else {
-                newStyle.top = `${rect.bottom + viewportPadding}px`;
-            }
-            
-            setStyle(newStyle);
+    const updateStyleFromTrigger = () => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const newStyle: React.CSSProperties = {
+            position: 'fixed',
+            zIndex: 100,
+        };
+        const tooltipMaxWidth = 320;
+        const tooltipMaxHeight = 300;
+        const viewportPadding = 8;
+        if (rect.left + tooltipMaxWidth > window.innerWidth - viewportPadding) {
+            newStyle.right = `${window.innerWidth - rect.right}px`;
+        } else {
+            newStyle.left = `${rect.left}px`;
         }
+        if (rect.bottom + tooltipMaxHeight > window.innerHeight - viewportPadding) {
+            newStyle.bottom = `${window.innerHeight - rect.top + viewportPadding}px`;
+        } else {
+            newStyle.top = `${rect.bottom + viewportPadding}px`;
+        }
+        setStyle(newStyle);
+    };
+
+    const handleMouseEnter = () => {
+        updateStyleFromTrigger();
+        setIsOpen(true);
+    };
+
+    const handleMouseLeave = () => {
+        setIsOpen(false);
+    };
+
+    const handleToggle = () => {
+        if (!isOpen) updateStyleFromTrigger();
         setIsOpen(!isOpen);
     };
 
-    const formatValue = (value: any) => {
-        if (typeof value !== 'number') return String(value);
-        if (value === 0) return '0';
-    
-        // For very small numbers, use scientific notation with more precision
-        if (Math.abs(value) < 0.001 && value !== 0) {
-             return value.toExponential(3).replace('.', ',');
-        }
-    
-        // For other numbers, use more decimal places to avoid unwanted rounding to zero.
-        // And format numbers like 1 to 1,000 to match user expectation.
-        return value.toFixed(3).replace('.', ',');
+    // Componente local para notação científica em base 10 com duas casas
+    const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
+        if (value === 0 || !isFinite(value)) return <span>0</span>;
+        const [mantissa, exponent] = value.toExponential(precision).split('e');
+        return (
+            <span className="font-mono tracking-tight whitespace-nowrap" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+        );
     };
 
-    const renderFormulaWithValues = (formula: string) => {
+    const formatNumberNode = (value: any): React.ReactNode => {
+        if (typeof value !== 'number') return <span>{String(value)}</span>;
+        if (value === 0) return <span>0</span>;
+        const abs = Math.abs(value);
+        if (abs < 0.001) return <ScientificNotation value={value} precision={2} />;
+        const maxDecimals = (
+            abs >= 1000 ? 0 :
+            abs >= 100 ? 1 :
+            abs >= 1 ? 2 :
+            3
+        );
+        return <span className="font-mono">{formatSmartNumber(Number(value), { maxDecimals, useScientificBelow: 0.001 })}</span>;
+    };
+
+    // Renderiza "Valores" com substituição das variáveis, quebrando somente em '+' e nunca dentro de multiplicações
+    const renderFormulaWithValues = (formula: string): React.ReactNode => {
         if (!values || Object.keys(values).length === 0) return null;
-        // Using word boundaries to avoid replacing parts of words
-        const regex = new RegExp(`\\b(${Object.keys(values).join('|')})\\b`, 'g');
-        const populatedFormula = formula.replace(regex, (match) => formatValue(values[match]));
-        
-        // A simple check to see if any value was actually replaced.
-        if (populatedFormula === formula) return null;
-        return populatedFormula;
+        const varKeys = Object.keys(values);
+        const normalize = (s: string) => s
+            .replace(/\*/g, ' × ')
+            .replace(/×/g, ' × ')
+            .replace(/\+/g, ' + ')
+            .replace(/\)\(/g, ') × (')
+            .replace(/([0-9])\(/g, '$1 × (')
+            .replace(/\)([0-9A-Za-zπ])/g, ') × $1');
+        const normalized = normalize(formula);
+        const segments = normalized.split(/\s*\+\s*/);
+        const renderSegment = (seg: string, segIdx: number) => {
+            const scanRegex = new RegExp(`\\b(${varKeys.join('|')})\\b`, 'g');
+            const localParts: React.ReactNode[] = [];
+            let lastIndex = 0;
+            let match: RegExpExecArray | null;
+            while ((match = scanRegex.exec(seg)) !== null) {
+                const [varName] = match;
+                const start = match.index;
+                if (start > lastIndex) {
+                    localParts.push(<span key={`t-${segIdx}-${lastIndex}`}>{seg.slice(lastIndex, start)}</span>);
+                }
+                localParts.push(<span key={`v-${segIdx}-${start}`}>{formatNumberNode(values[varName])}</span>);
+                lastIndex = start + varName.length;
+            }
+            if (lastIndex < seg.length) {
+                localParts.push(<span key={`t-${segIdx}-end`}>{seg.slice(lastIndex)}</span>);
+            }
+            return <span key={`seg-${segIdx}`} className="inline-flex items-baseline whitespace-nowrap">{localParts}</span>;
+        };
+        const nodes: React.ReactNode[] = [];
+        segments.forEach((seg, idx) => {
+            nodes.push(renderSegment(seg, idx));
+            if (idx < segments.length - 1) nodes.push(<span key={`plus-${idx}`} className="mx-0.5">+</span>);
+        });
+        return <span className="break-normal whitespace-normal">{nodes}</span>;
+    };
+
+    const formatOperators = (expr: string) => (
+        expr
+            .replace(/\*/g, ' × ')
+            .replace(/×/g, ' × ')
+            .replace(/\+/g, ' + ')
+            .replace(/\)\(/g, ') × (')
+    );
+
+    // Renderiza a fórmula crua em segmentos que só quebram entre '+'
+    const renderPlainFormulaSegments = (formula: string): React.ReactNode => {
+        const normalized = (
+            formula
+                .replace(/\*/g, ' × ')
+                .replace(/×/g, ' × ')
+                .replace(/\+/g, ' + ')
+                .replace(/\)\(/g, ') × (')
+                .replace(/([0-9])\(/g, '$1 × (')
+                .replace(/\)([0-9A-Za-zπ])/g, ') × $1')
+        );
+        const segs = normalized.split(/\s*\+\s*/);
+        const nodes: React.ReactNode[] = [];
+        segs.forEach((seg, idx) => {
+            nodes.push(<span key={`pf-${idx}`} className="inline-flex items-baseline whitespace-nowrap">{seg}</span>);
+            if (idx < segs.length - 1) nodes.push(<span key={`pf-plus-${idx}`} className="mx-0.5">+</span>);
+        });
+        return <span className="break-normal whitespace-normal">{nodes}</span>;
     };
     
     return (
-        <div className="hidden sm:inline-block ml-2 align-middle" ref={containerRef}>
-            <button type="button" ref={triggerRef} onClick={handleToggle}>
-                 <Info className="w-4 h-4 text-slate-400 cursor-pointer hover:text-blue-500 transition-colors" />
-            </button>
+        <span className="hidden sm:inline-block ml-1 align-middle w-full" ref={containerRef}>
+            {children && (
+                <span ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onClick={handleToggle} className="cursor-help inline-block w-full">
+                    {children}
+                </span>
+            )}
             {isOpen && (
                 <div 
                     style={style}
-                    className={`w-max max-w-sm p-4 bg-slate-800/95 backdrop-blur-sm text-slate-200 text-sm rounded-xl shadow-lg font-normal border border-slate-600 animate-in fade-in-80`}
+                    className={`w-auto min-w-[18rem] max-w-[48rem] p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm animate-in fade-in-80`}
+                    
                 >
-                    <p className="font-bold mb-3 text-base">Fórmulas Utilizadas:</p>
-                    <ul className="space-y-3">
-                    {Object.entries(formulas).map(([key, formula]) => {
-                        const populatedFormula = renderFormulaWithValues(formula);
-                        return (
-                            <li key={key}>
-                                <code className="font-mono bg-slate-700 p-2 rounded-lg block text-white">{`${key} = ${formula}`}</code>
-                                {populatedFormula && (
-                                     <code className="font-mono bg-slate-900 p-2 rounded-lg block mt-2 break-words text-white">{`${key} = ${populatedFormula}`}</code>
-                                )}
-                            </li>
-                        )
-                    })}
+                    <p className="font-bold mb-3 text-base">Fórmulas Utilizadas</p>
+                    <ul className="space-y-4">
+                        {Object.entries(formulas).map(([key, formula]) => {
+                            const populated = renderFormulaWithValues(formula);
+                            const valueNode = values && key in (values || {}) ? formatNumberNode(Number((values as any)[key]) || 0) : null;
+                            return (
+                                <li key={key} className="space-y-2">
+                                    {/* Valor */}
+                                    {valueNode && (
+                                        <p className="text-blue-400 font-mono">{`Valor:`} <span className="align-baseline">{valueNode}</span></p>
+                                    )}
+                                    {/* Fórmula */}
+                                    <div>
+                                        <p className="text-slate-300">Fórmula:</p>
+                                        <code className="font-mono bg-slate-700 p-2 rounded-lg block text-white break-normal whitespace-normal text-xs sm:text-sm leading-tight">
+                                            <span className="align-baseline">{key} = {renderPlainFormulaSegments(formula)}</span>
+                                        </code>
+                                    </div>
+                                    {/* Valores */}
+                                    {populated && (
+                                        <div>
+                                            <p className="text-slate-300">Valores:</p>
+                                            <code className="font-mono bg-slate-900 p-2 rounded-lg block text-white break-normal whitespace-normal text-xs sm:text-sm leading-tight">
+                                                <span className="align-baseline">{key} = {populated}</span>
+                                            </code>
+                                        </div>
+                                    )}
+                                </li>
+                            );
+                        })}
                     </ul>
                 </div>
             )}
-        </div>
+        </span>
     );
 };
 

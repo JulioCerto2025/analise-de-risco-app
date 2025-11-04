@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, useIsMobile } from '../ui';
+import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, SlidersHorizontal } from 'lucide-react';
 import { AnalysisData, ProbabilityData, LossData } from '../../types';
@@ -10,10 +11,17 @@ interface FrequencyConfigStepProps {
     onUpdate: (newData: Partial<AnalysisData>) => void;
 }
 
-const formatValue = (value: number) => {
-    if (value === 0) return '0';
-    if (Math.abs(value) < 0.001) return value.toExponential(2).replace('.', ',');
-    return value.toFixed(3).replace('.', ',');
+const formatValue = (value: number) => formatSmartNumber(value, { useScientificBelow: 0.001, scientificPrecision: 2, maxDecimals: 3 });
+
+// Exibe números como "9,98 × 10⁻⁷" com precisão ajustável para seção Detalhe
+const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
+    if (value === 0 || !isFinite(value)) {
+        return <span>0</span>;
+    }
+    const [mantissa, exponent] = value.toExponential(precision).split('e');
+    return (
+        <span className="font-mono tracking-tight whitespace-nowrap" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+    );
 };
 
 
@@ -32,12 +40,25 @@ const CustomTooltip = ({ active, payload, label, data, formulas }: any) => {
         
         let formulaString = "N/A";
         let valuesString = "N/A";
+        let extraComboString: string | null = null;
+        let detailNodes: React.ReactNode | null = null;
 
         if (isTotal) {
             const components = ['FC', 'FM', 'FV', 'FW', 'FZ'];
             if (config.has_equipment_in_ZPR0A) components.unshift('FB');
             formulaString = components.join(' + ');
             valuesString = components.map(key => formatValue(data.frequency_results[key] || 0)).join(' + ');
+            // Detalhe: soma dos componentes em notação científica
+            detailNodes = (
+                <span className="font-mono break-normal whitespace-normal leading-tight">
+                    {components.map((key, idx) => (
+                        <span key={key} className="inline-flex items-baseline">
+                            <ScientificNotation value={data.frequency_results[key] || 0} precision={2} />
+                            {idx < components.length - 1 ? <span className="mx-0.5">+</span> : null}
+                        </span>
+                    ))}
+                </span>
+            );
         } else {
             const formulaInfo = formulas[label];
             if (formulaInfo) {
@@ -50,6 +71,136 @@ const CustomTooltip = ({ active, payload, label, data, formulas }: any) => {
                 } else {
                     valuesString = formulaString;
                 }
+
+                // Exibir explicitamente a combinação quando FC/FM
+                if (label === 'FC') {
+                    const PC = (valueMap as any).PC || 0;
+                    const PCT = (valueMap as any).PCT || 0;
+                    const PC_total = 1 - ((1 - PC) * (1 - PCT));
+                    extraComboString = `PC_total = 1 − (1 − ${formatValue(PC)}) × (1 − ${formatValue(PCT)}) = ${formatValue(PC_total)}`;
+                    const nd = (valueMap as any).nd || 0;
+                    // Detalhe: nd × PC_total ou nd × PC/PCT conforme fórmula dinâmica
+                    if (formulaInfo.vars.includes('PC') && formulaInfo.vars.includes('PCT')) {
+                        detailNodes = (
+                            <span className="font-mono break-normal whitespace-normal leading-tight">
+                                <span className="inline-flex items-baseline"><ScientificNotation value={nd} precision={2} /></span>
+                                <span className="mx-0.5">×</span>
+                                <span className="inline-flex items-baseline"><ScientificNotation value={PC_total} precision={2} /></span>
+                                <span className="block mt-1 text-xs leading-tight">
+                                    PC_total = 1 − (1 − <ScientificNotation value={PC} precision={2} />) × (1 − <ScientificNotation value={PCT} precision={2} />) = <ScientificNotation value={PC_total} precision={2} />
+                                </span>
+                            </span>
+                        );
+                    } else if (formulaInfo.vars.includes('PC')) {
+                        detailNodes = (
+                            <span className="font-mono break-normal whitespace-normal leading-tight">
+                                <span className="inline-flex items-baseline"><ScientificNotation value={nd} precision={2} /></span>
+                                <span className="mx-0.5">×</span>
+                                <span className="inline-flex items-baseline"><ScientificNotation value={PC} precision={2} /></span>
+                            </span>
+                        );
+                    } else if (formulaInfo.vars.includes('PCT')) {
+                        detailNodes = (
+                            <span className="font-mono break-normal whitespace-normal leading-tight">
+                                <span className="inline-flex items-baseline"><ScientificNotation value={nd} precision={2} /></span>
+                                <span className="mx-0.5">×</span>
+                                <span className="inline-flex items-baseline"><ScientificNotation value={PCT} precision={2} /></span>
+                            </span>
+                        );
+                    }
+                } else if (label === 'FM') {
+                    const PM = (valueMap as any).PM || 0;
+                    const PMT = (valueMap as any).PMT || 0;
+                    const PM_total = 1 - ((1 - PM) * (1 - PMT));
+                    extraComboString = `PM_total = 1 − (1 − ${formatValue(PM)}) × (1 − ${formatValue(PMT)}) = ${formatValue(PM_total)}`;
+                    const nm = (valueMap as any).nm || 0;
+                    if (formulaInfo.vars.includes('PM') && formulaInfo.vars.includes('PMT')) {
+                        detailNodes = (
+                            <span className="font-mono break-normal whitespace-normal leading-tight">
+                                <span className="inline-flex items-baseline"><ScientificNotation value={nm} precision={2} /></span>
+                                <span className="mx-0.5">×</span>
+                                <span className="inline-flex items-baseline"><ScientificNotation value={PM_total} precision={2} /></span>
+                                <span className="block mt-1 text-xs leading-tight">
+                                    PM_total = 1 − (1 − <ScientificNotation value={PM} precision={2} />) × (1 − <ScientificNotation value={PMT} precision={2} />) = <ScientificNotation value={PM_total} precision={2} />
+                                </span>
+                            </span>
+                        );
+                    } else if (formulaInfo.vars.includes('PM')) {
+                        detailNodes = (
+                            <span className="font-mono break-normal whitespace-normal leading-tight">
+                                <span className="inline-flex items-baseline"><ScientificNotation value={nm} precision={2} /></span>
+                                <span className="mx-0.5">×</span>
+                                <span className="inline-flex items-baseline"><ScientificNotation value={PM} precision={2} /></span>
+                            </span>
+                        );
+                    } else if (formulaInfo.vars.includes('PMT')) {
+                        detailNodes = (
+                            <span className="font-mono break-normal whitespace-normal leading-tight">
+                                <span className="inline-flex items-baseline"><ScientificNotation value={nm} precision={2} /></span>
+                                <span className="mx-0.5">×</span>
+                                <span className="inline-flex items-baseline"><ScientificNotation value={PMT} precision={2} /></span>
+                            </span>
+                        );
+                    }
+                } else if (label === 'FB') {
+                    const nd = (valueMap as any).nd || 0;
+                    const PB = (valueMap as any).PB || 0;
+                    detailNodes = (
+                        <span className="font-mono break-normal whitespace-normal leading-tight">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nd} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PB} precision={2} /></span>
+                        </span>
+                    );
+                } else if (label === 'FV') {
+                    const nl_electric = (valueMap as any).nl_electric || 0;
+                    const PEB_electric = (valueMap as any).PEB_electric || 0;
+                    const nl_data = (valueMap as any).nl_data || 0;
+                    const PEB_data = (valueMap as any).PEB_data || 0;
+                    detailNodes = (
+                        <span className="font-mono break-normal whitespace-normal leading-tight">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nl_electric} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PEB_electric} precision={2} /></span>
+                            <span className="mx-0.5">+</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nl_data} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PEB_data} precision={2} /></span>
+                        </span>
+                    );
+                } else if (label === 'FW') {
+                    const nl_electric = (valueMap as any).nl_electric || 0;
+                    const PW = (valueMap as any).PW || 0;
+                    const nl_data = (valueMap as any).nl_data || 0;
+                    const PWT = (valueMap as any).PWT || 0;
+                    detailNodes = (
+                        <span className="font-mono break-normal whitespace-normal leading-tight">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nl_electric} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PW} precision={2} /></span>
+                            <span className="mx-0.5">+</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nl_data} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PWT} precision={2} /></span>
+                        </span>
+                    );
+                } else if (label === 'FZ') {
+                    const ni_electric = (valueMap as any).ni_electric || 0;
+                    const PZ = (valueMap as any).PZ || 0;
+                    const ni_data = (valueMap as any).ni_data || 0;
+                    const PZT = (valueMap as any).PZT || 0;
+                    detailNodes = (
+                        <span className="font-mono break-normal whitespace-normal leading-tight">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={ni_electric} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PZ} precision={2} /></span>
+                            <span className="mx-0.5">+</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={ni_data} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={PZT} precision={2} /></span>
+                        </span>
+                    );
+                }
             }
         }
 
@@ -61,15 +212,27 @@ const CustomTooltip = ({ active, payload, label, data, formulas }: any) => {
         return (
             <div 
                 style={tooltipStyle}
-                className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-64"
+                className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-auto min-w-[18rem] max-w-[48rem]"
             >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
-                <p className="text-blue-400 font-mono">Valor: {formatValue(Number(payload[0].value))}</p>
+                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
                 <>
                     <p className="text-slate-300 mt-2 font-semibold">Fórmula:</p>
-                    <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">{formulaString.replace(/×/g, '*')}</p>
+                    <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight">{formulaString}</p>
                     <p className="text-slate-300 mt-2 font-semibold">Valores:</p>
-                    <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{valuesString}</p>
+                    <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{valuesString}</p>
+                    {detailNodes && (
+                        <>
+                            <p className="text-slate-300 mt-2 font-semibold">Detalhe:</p>
+                            <div className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{detailNodes}</div>
+                        </>
+                    )}
+                    {extraComboString && (
+                        <>
+                            <p className="text-slate-300 mt-2 font-semibold">Combinação:</p>
+                            <p className="text-cyan-200 font-mono bg-slate-900/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{extraComboString}</p>
+                        </>
+                    )}
                 </>
             </div>
         );
@@ -111,7 +274,9 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         const formulas: { [key: string]: { formula: string; vars: string[] } } = { ...BASE_FREQUENCY_FORMULAS };
 
         const hasInternalElectric = has_electric_line;
-        const hasInternalData = has_data_line && analyze_data_line_probabilities;
+        // Sempre considerar a presença de linha de dados para a combinação de FC/FM,
+        // mesmo quando a análise detalhada de probabilidades de dados estiver desativada.
+        const hasInternalData = has_data_line;
 
         // Dynamic FC formula
         if (hasInternalElectric && hasInternalData) {
@@ -136,7 +301,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         }
 
         return formulas;
-    }, [has_electric_line, has_data_line, analyze_data_line_probabilities]);
+    }, [has_electric_line, has_data_line]);
 
 
     const handleConfigChange = (field: keyof typeof config, value: boolean) => {
@@ -150,14 +315,41 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         value: number
     ) => {
         if (field in data.probability_data) {
-             const updatedProbData: Partial<ProbabilityData> = { [field]: value };
+            const updatedProbData: Partial<ProbabilityData> = { [field]: value };
             if (field === 'PSPD_electric') {
                 updatedProbData.PSPD_data = value;
             }
             if (field === 'PEB_electric') {
                 updatedProbData.PEB_data = value;
             }
-            onUpdate({ probability_data: { ...data.probability_data, ...updatedProbData } });
+            // Atualiza dados globais
+            const nextUpdate: Partial<AnalysisData> = { probability_data: { ...data.probability_data, ...updatedProbData } };
+
+            // Propaga alterações relevantes para overrides por zona, garantindo que F reflita o simulador
+            if (field === 'PSPD_electric' || field === 'PEB_electric') {
+                const newZones = (data.zones || []).map(zone => {
+                    const overrides = { ...(zone.probability_overrides || {}) };
+                    // Atualiza o valor principal
+                    overrides[field as keyof typeof overrides] = Number(value);
+                    // Sincroniza com variantes de dados
+                    if (field === 'PSPD_electric') overrides.PSPD_data = Number(value);
+                    if (field === 'PEB_electric') overrides.PEB_data = Number(value);
+
+                    // Remove chaves derivadas para forçar recálculo com novos valores
+                    if (field === 'PSPD_electric') {
+                        delete overrides.PC; delete overrides.PM; delete overrides.PW; delete overrides.PZ;
+                        delete overrides.PCT; delete overrides.PMT; delete overrides.PWT; delete overrides.PZT;
+                    }
+                    if (field === 'PEB_electric') {
+                        delete overrides.PV; delete overrides.PVT; delete overrides.PU; delete overrides.PUT;
+                    }
+
+                    return { ...zone, probability_overrides: overrides };
+                });
+                nextUpdate.zones = newZones;
+            }
+
+            onUpdate(nextUpdate);
         } else {
              const newZones = data.zones.map(zone => {
                  const newLossData = { ...zone.loss_data, [field]: value };
@@ -265,15 +457,14 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                 <Card className={`border-2 ${isAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between text-base">
-                            <span className="flex items-center gap-2">
-                                Frequência Total (F)
-                                <FormulaTooltip formulas={{ F: getFFormulaString() }} values={calculations} />
-                            </span>
+                            <FormulaTooltip formulas={{ F: getFFormulaString() }} values={calculations}>
+                                <span className="flex items-center gap-2">Frequência Total (F)</span>
+                            </FormulaTooltip>
                             {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="text-center p-6">
-                        <div className={`text-4xl font-bold mb-2 ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>{F.toFixed(3)}</div>
+                    <div className={`text-4xl font-bold mb-2 ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(F, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
                         <div className="text-sm text-slate-400 mb-3">Limite: {toleranceLimit} ({is_critical_system ? 'Crítico' : 'Não Crítico'})</div>
                         <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
                              {isAcceptable ? "Frequência Aceitável." : "Frequência Não Aceitável."}

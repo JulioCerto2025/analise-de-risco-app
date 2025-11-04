@@ -1,9 +1,10 @@
 import React from 'react';
 
 type ErrorBoundaryState = { hasError: boolean; error?: Error };
+type ErrorBoundaryProps = React.PropsWithChildren<{ variant?: 'fullscreen' | 'inline'; onReset?: () => void }>;
 
-export default class ErrorBoundary extends React.Component<React.PropsWithChildren<{}>, ErrorBoundaryState> {
-  constructor(props: React.PropsWithChildren<{}>) {
+export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -22,8 +23,38 @@ export default class ErrorBoundary extends React.Component<React.PropsWithChildr
     window.location.reload();
   };
 
+  handleReset = () => {
+    this.setState({ hasError: false, error: undefined });
+    if (this.props.onReset) this.props.onReset();
+  }
+
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    // Se os filhos mudarem (por exemplo, troca de etapa), limpe o erro automaticamente.
+    if (prevProps.children !== this.props.children && this.state.hasError) {
+      this.setState({ hasError: false, error: undefined });
+    }
+  }
+
   render() {
     if (this.state.hasError) {
+      if (this.props.variant === 'inline') {
+        return (
+          <div className="p-4 rounded-lg border border-slate-600 bg-slate-800 text-slate-200">
+            <div className="flex items-start gap-3">
+              <div className="text-red-400 font-bold">!</div>
+              <div className="flex-1">
+                <h2 className="text-sm font-semibold">Falha ao renderizar esta seção</h2>
+                <p className="text-xs text-slate-400">Tente novamente. Se persistir, mude de etapa ou recarregue.</p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={this.handleReset} className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs">Tentar novamente</button>
+                  <button onClick={this.handleReload} className="px-3 py-1.5 rounded border border-slate-500 text-slate-200 text-xs">Recarregar app</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-200 p-6">
           <div className="max-w-md w-full space-y-4 text-center">

@@ -149,7 +149,7 @@ export function calculateEvents(data: Pick<AnalysisData,
  * @param uw Nominal impulse withstand voltage in kV.
  * @returns The calculated PLI value.
  */
-function calculatePli(lineType: 'electric' | 'data', uw: number): number {
+export function calculatePli(lineType: 'electric' | 'data', uw: number): number {
     const uwValue = Number(uw);
 
     // According to Table B.9, for Uw=1kV, PLI is 1. It is assumed that for any Uw <= 1kV, the probability is 1.
@@ -182,60 +182,70 @@ export function calculateProbabilities(probData: ProbabilityData, analyzeDataLin
     const safeValues = {
         wm1: Number(p.wm1) || 0,
         wm2: Number(p.wm2) || 0,
-        Uw_electric: Number(p.Uw_electric) || 1,
         PTA: Number(p.PTA) || 0,
         PB: Number(p.PB) || 0,
+        // Elétrica - compartilhados
         PSPD_electric: Number(p.PSPD_electric) || 0,
-        CLD_electric: Number(p.CLD_electric) || 0,
-        Ks3_electric: Number(p.Ks3_electric) || 0,
         PTU_electric: Number(p.PTU_electric) || 0,
         PEB_electric: Number(p.PEB_electric) || 0,
-        PLD_electric: Number(p.PLD_electric) || 0,
-        CLI_electric: Number(p.CLI_electric) || 0,
-        Uw_data: Number(p.Uw_data) || 1,
+        // Elétrica - externa
+        Uw_electric_ext: Number(p.Uw_electric_ext) || 1,
+        PLD_electric_ext: Number(p.PLD_electric_ext) || 0,
+        CLD_electric_ext: Number(p.CLD_electric_ext) || 0,
+        CLI_electric_ext: Number(p.CLI_electric_ext) || 0,
+        // Elétrica - interna
+        Uw_electric_int: Number(p.Uw_electric_int) || 1,
+        Ks3_electric_int: Number(p.Ks3_electric_int) || 0,
+        CLD_electric_int: Number(p.CLD_electric_int) || 0,
+        // Dados - compartilhados
+        PSPD_data: Number(p.PSPD_data) || 0,
         PTU_data: Number(p.PTU_data) || 0,
         PEB_data: Number(p.PEB_data) || 0,
-        PLD_data: Number(p.PLD_data) || 0,
-        CLD_data: Number(p.CLD_data) || 0,
-        PSPD_data: Number(p.PSPD_data) || 0,
-        CLI_data: Number(p.CLI_data) || 0,
-        Ks3_data: Number(p.Ks3_data) || 0
+        // Dados - externa
+        Uw_data_ext: Number(p.Uw_data_ext) || 1,
+        PLD_data_ext: Number(p.PLD_data_ext) || 0,
+        CLD_data_ext: Number(p.CLD_data_ext) || 0,
+        CLI_data_ext: Number(p.CLI_data_ext) || 0,
+        // Dados - interna
+        Uw_data_int: Number(p.Uw_data_int) || 1,
+        Ks3_data_int: Number(p.Ks3_data_int) || 0,
+        CLD_data_int: Number(p.CLD_data_int) || 0,
     };
 
     // Fatores derivados
     const Ks1 = Math.min(1, safeValues.wm1 * 0.12);
     const Ks2 = Math.min(1, safeValues.wm2 * 0.12);
-    const Ks4_electric = safeValues.Uw_electric > 0 ? 1 / safeValues.Uw_electric : 1;
+    const Ks4_electric_int = safeValues.Uw_electric_int > 0 ? 1 / safeValues.Uw_electric_int : 1;
     
     // Probabilidades - Estrutura e Linha Elétrica
     const PA = safeValues.PTA * safeValues.PB;
-    const PC = safeValues.PSPD_electric * safeValues.CLD_electric;
-    const Pms = Math.pow(Ks1 * Ks2 * safeValues.Ks3_electric * Ks4_electric, 2);
+    const PC = safeValues.PSPD_electric * safeValues.CLD_electric_int;
+    const Pms = Math.pow(Ks1 * Ks2 * safeValues.Ks3_electric_int * Ks4_electric_int, 2);
     const PM = safeValues.PSPD_electric * Pms;
-    const PU = safeValues.PTU_electric * safeValues.PEB_electric * safeValues.PLD_electric * safeValues.CLD_electric;
-    const PV = safeValues.PEB_electric * safeValues.PLD_electric * safeValues.CLD_electric;
-    const PW = safeValues.PSPD_electric * safeValues.PLD_electric * safeValues.CLD_electric;
-    const Pli_electric = calculatePli('electric', safeValues.Uw_electric);
-    const PZ = safeValues.PSPD_electric * safeValues.CLI_electric * Pli_electric; 
+    const PU = safeValues.PTU_electric * safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
+    const PV = safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
+    const PW = safeValues.PSPD_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
+    const Pli_electric_ext = calculatePli('electric', safeValues.Uw_electric_ext);
+    const PZ = safeValues.PSPD_electric * safeValues.CLI_electric_ext * Pli_electric_ext; 
 
     // Probabilidades - Linha de Dados
-    const Ks4_data = safeValues.Uw_data > 0 ? 1 / safeValues.Uw_data : 1;
-    const Pli_data = calculatePli('data', safeValues.Uw_data);
+    const Ks4_data_int = safeValues.Uw_data_int > 0 ? 1 / safeValues.Uw_data_int : 1;
+    const Pli_data_ext = calculatePli('data', safeValues.Uw_data_ext);
     
     let PUT = 0, PVT = 0, PWT = 0, PZT = 0;
     let PCT = 0, Pmst = 0, PMT = 0;
 
     if (has_data_line) {
-        PUT = safeValues.PTU_data * safeValues.PEB_data * safeValues.PLD_data * safeValues.CLD_data;
-        PVT = safeValues.PEB_data * safeValues.PLD_data * safeValues.CLD_data;
-        PWT = safeValues.PSPD_data * safeValues.PLD_data * safeValues.CLD_data;
-        PZT = safeValues.PSPD_data * safeValues.CLI_data * Pli_data;
+        PUT = safeValues.PTU_data * safeValues.PEB_data * safeValues.PLD_data_ext * safeValues.CLD_data_ext;
+        PVT = safeValues.PEB_data * safeValues.PLD_data_ext * safeValues.CLD_data_ext;
+        PWT = safeValues.PSPD_data * safeValues.PLD_data_ext * safeValues.CLD_data_ext;
+        PZT = safeValues.PSPD_data * safeValues.CLI_data_ext * Pli_data_ext;
 
         // These probabilities relate to the failure of INTERNAL systems.
         // They are only calculated if the user wants to analyze the internal data line.
         if (analyzeDataLineProbs) {
-            PCT = safeValues.PSPD_data * safeValues.CLD_data;
-            Pmst = Math.pow(Ks1 * Ks2 * safeValues.Ks3_data * Ks4_data, 2);
+            PCT = safeValues.PSPD_data * safeValues.CLD_data_int;
+            Pmst = Math.pow(Ks1 * Ks2 * safeValues.Ks3_data_int * Ks4_data_int, 2);
             PMT = safeValues.PSPD_data * Pmst;
         }
     }
@@ -260,10 +270,10 @@ export function calculateProbabilities(probData: ProbabilityData, analyzeDataLin
         PZT: Number(PZT) || 0,
         Ks1: Number(Ks1) || 0,
         Ks2: Number(Ks2) || 0,
-        Ks4_electric: Number(Ks4_electric) || 0,
-        Ks4_data: Number(Ks4_data) || 0,
-        Pli_electric: Number(Pli_electric) || 0,
-        Pli_data: Number(Pli_data) || 0,
+        Ks4_electric_int: Number(Ks4_electric_int) || 0,
+        Ks4_data_int: Number(Ks4_data_int) || 0,
+        Pli_electric_ext: Number(Pli_electric_ext) || 0,
+        Pli_data_ext: Number(Pli_data_ext) || 0,
         PEB_electric: Number(safeValues.PEB_electric) || 0,
         PEB_data: Number(safeValues.PEB_data) || 0
     };
@@ -343,11 +353,18 @@ export function calculateRisksForZone(
     const p = probCalcs;
     const l = lossCalcs;
 
+    // Combinação de probabilidades para falha de sistemas internos (estrutura e proximidade)
+    // Quando mais de um sistema interno é considerado na zona, aplica-se:
+    // P_total = 1 − (1 − P1) × (1 − P2) × ...
+    const PC_total = 1 - ((1 - (p.PC || 0)) * (1 - (p.PCT || 0)));
+    const PM_total = 1 - ((1 - (p.PM || 0)) * (1 - (p.PMT || 0)));
+
     // R1 Components
     const RA = nd * (p.PA || 0) * (l.LA || 0);
     const RB = nd * (p.PB || 0) * (l.LB || 0);
-    const RC = nd * (p.PC || 0) * (l.LC || 0);
-    const RM = nm * (p.PM || 0) * (l.LM || 0);
+    // Internal system failures use combined probability across systems
+    const RC = nd * (PC_total) * (l.LC || 0);
+    const RM = nm * (PM_total) * (l.LM || 0);
     const RU = nl_electric * (p.PU || 0) * (l.LU || 0);
     const RUT = nl_data * (p.PUT || 0) * (l.LU || 0);
     const RV = nl_electric * (p.PV || 0) * (l.LV || 0);
@@ -365,8 +382,9 @@ export function calculateRisksForZone(
     // R4 Components
     const RA4 = nd * (p.PA || 0) * (l.LA4 || 0);
     const RB4 = nd * (p.PB || 0) * (l.LB4 || 0);
-    const RC4 = nd * (p.PC || 0) * (l.LC4 || 0);
-    const RM4 = nm * (p.PM || 0) * (l.LM4 || 0);
+    // Internal system failures use combined probability across systems (R4)
+    const RC4 = nd * (PC_total) * (l.LC4 || 0);
+    const RM4 = nm * (PM_total) * (l.LM4 || 0);
     const RU4 = nl_electric * (p.PU || 0) * (l.LU4 || 0);
     const RUT4 = nl_data * (p.PUT || 0) * (l.LU4 || 0);
     const RV4 = nl_electric * (p.PV || 0) * (l.LV4 || 0);
@@ -457,6 +475,46 @@ export function calculateFrequencies(
     const F = FB + FC + FM + FV + FW + FZ;
 
     return { F, FB, FC, FM, FV, FW, FZ };
+}
+
+/**
+ * Merge global probability calculations with zone-specific overrides.
+ * Zone overrides are keyed by the derived probability labels (e.g., PA, PB, PC, PCT...).
+ */
+export function mergeZoneProbabilities(
+    baseProbCalcs: { [key: string]: number },
+    zone: Zone
+): { [key: string]: number } {
+    const overrides = zone?.probability_overrides || {};
+    return { ...baseProbCalcs, ...overrides };
+}
+
+/**
+ * Calculate and aggregate frequency components across zones.
+ * Only use zone-level aggregation when zones define probability overrides;
+ * otherwise, callers should keep using global frequency calculation to avoid duplicating totals.
+ */
+export function aggregateFrequenciesForZones(
+    zones: Zone[],
+    eventCalcs: Partial<CalculationResults>,
+    baseProbCalcs: { [key: string]: number },
+    freqConfig: AnalysisData['frequency_config'],
+    has_electric_line: boolean,
+    has_data_line: boolean
+): { [key: string]: number } {
+    const total: { [key: string]: number } = { F: 0, FB: 0, FC: 0, FM: 0, FV: 0, FW: 0, FZ: 0 };
+    zones.forEach((zone) => {
+        const pZone = mergeZoneProbabilities(baseProbCalcs, zone);
+        const fr = calculateFrequencies(eventCalcs, pZone, freqConfig, has_electric_line, has_data_line);
+        total.F += fr.F || 0;
+        total.FB += fr.FB || 0;
+        total.FC += fr.FC || 0;
+        total.FM += fr.FM || 0;
+        total.FV += fr.FV || 0;
+        total.FW += fr.FW || 0;
+        total.FZ += fr.FZ || 0;
+    });
+    return total;
 }
 
 /**

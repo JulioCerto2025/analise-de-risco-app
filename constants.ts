@@ -1,30 +1,30 @@
 export const CD_OPTIONS = [
-    { value: 0.25, label: 'Estrut. cercada p/ estrut. maiores' },
-    { value: 0.5, label: 'Estrut. cercada p obj  alt igual ou menores' },
-    { value: 1, label: 'Estrutura isolada em terreno plano' },
-    { value: 2, label: 'Estrutura isolada no topo de um morro ou colina' }
+    { value: 0.25, label: 'Estrut. cercada p/ estrut. maiores 0,25' },
+    { value: 0.5, label: 'Estrut. cercada p obj  alt igual ou menores 0,5' },
+    { value: 1, label: 'Estrutura isolada em terreno plano 1' },
+    { value: 2, label: 'Estrutura isolada no topo de um morro ou colina 2' }
 ];
 
 export const CI_OPTIONS = [
-    { value: 1, label: 'Aéreo' },
-    { value: 0.5, label: 'Enterrado' },
-    { value: 0.01, label: 'Enterrado em malha' }
+    { value: 1, label: 'Aéreo 1' },
+    { value: 0.5, label: 'Enterrado 0,5' },
+    { value: 0.01, label: 'Enterrado em malha 0,01' }
 ];
 
 export const CE_OPTIONS = [
-    { value: 1, label: 'Rural' },
-    { value: 0.5, label: 'Suburbano' },
-    { value: 0.1, label: 'Urbano' },
-    { value: 0.01, label: 'Urbano denso' }
+    { value: 1, label: 'Rural 1' },
+    { value: 0.5, label: 'Suburbano 0,5' },
+    { value: 0.1, label: 'Urbano 0,1' },
+    { value: 0.01, label: 'Urbano denso 0,01' }
 ];
 
 export const CT_OPTIONS_ELECTRIC = [
-    { value: 1, label: 'BT ou sinal' },
-    { value: 0.2, label: 'AT com transformador' }
+    { value: 1, label: 'BT ou sinal 1' },
+    { value: 0.2, label: 'AT com transformador 0,2' }
 ];
 
 export const CT_OPTIONS_DATA = [
-    { value: 1, label: 'Linha de dados/sinal' }
+    { value: 1, label: 'Linha de dados/sinal 1' }
 ];
 
 export const RISK_COMPONENTS_DEFS: { [key: string]: { description: string, type: string } } = {
@@ -70,37 +70,37 @@ export const STEPS = [
 
 // Options for Probability and Loss Steps, centralized for reuse in ReportStep simulator
 export const PB_OPTIONS = [
-    { value: 1, label: "Não protegida" }, 
-    { value: 0.2, label: "SPDA Nível IV" }, 
-    { value: 0.1, label: "SPDA Nível III" }, 
-    { value: 0.05, label: "SPDA Nível II" }, 
-    { value: 0.02, label: "SPDA Nível I" },
-    { value: 0.01, label: "SPDA Nível I+" },
-    { value: 0.001, label: "SPDA Nível I++" }
+    { value: 1, label: "Não protegida 1" }, 
+    { value: 0.2, label: "SPDA Nível IV 0,2" }, 
+    { value: 0.1, label: "SPDA Nível III 0,1" }, 
+    { value: 0.05, label: "SPDA Nível II 0,05" }, 
+    { value: 0.02, label: "SPDA Nível I 0,02" },
+    { value: 0.01, label: "SPDA Nível I+ 0,01" },
+    { value: 0.001, label: "SPDA Nível I++ 0,001" }
 ];
 
 export const PSPD_OPTIONS = [
-    { value: 1, label: "Sem DPS" }, 
-    { value: 0.05, label: "DPS III e IV" }, 
-    { value: 0.02, label: "DPS II" },
-    { value: 0.01, label: "DPS I" }
+    { value: 1, label: "Sem DPS 1" }, 
+    { value: 0.05, label: "DPS III e IV 0,05" }, 
+    { value: 0.02, label: "DPS II 0,02" },
+    { value: 0.01, label: "DPS I 0,01" }
 ];
 
 export const RP_OPTIONS = [
-    { value: 1, label: "Nenhuma" }, 
-    { value: 0.5, label: "Não Automática" }, 
-    { value: 0.2, label: "Automática" }
+    { value: 1, label: "Nenhuma 1" }, 
+    { value: 0.5, label: "Não Automática 0,5" }, 
+    { value: 0.2, label: "Automática 0,2" }
 ];
 
 // From ProbabilityStep
 export const PTA_OPTIONS = [
-    { value: 1, label: "Nenhuma" },
-    { value: 0.1, label: "Avisos de alerta" },
-    { value: 0.01, label: "Isolamento elétrico" },
-    { value: 0.01, label: "Equip. Solo" },
-    { value: 0.001, label: "Est Metálica ou CA" },
-    { value: 0.0001, label: "Equip Solo + Isol. Desc" },
-    { value: 0, label: "Restrições Acesso" }
+    { value: 1, label: "Nenhuma 1" },
+    { value: 0.1, label: "Avisos de alerta 0,1" },
+    { value: 0.01, label: "Isolamento elétrico 0,01" },
+    { value: 0.01, label: "Equip. Solo 0,01" },
+    { value: 0.001, label: "Est Metálica ou CA 0,001" },
+    { value: 0.0001, label: "Equip Solo + Isol. Desc 0,0001" },
+    { value: 0, label: "Restrições Acesso 0" }
 ];
 
 export const COMBINED_CLD_CLI_OPTIONS = [
@@ -113,18 +113,18 @@ export const COMBINED_CLD_CLI_OPTIONS = [
 ];
 
 export const PTU_OPTIONS = [
-    { value: 1, label: "Sem Proteção" },
-    { value: 0.1, label: "Alertas Visíveis" },
-    { value: 0.01, label: "Isolação elétrica" },
-    { value: 0, label: "Restrições físicas" }
+    { value: 1, label: "Sem Proteção 1" },
+    { value: 0.1, label: "Alertas Visíveis 0,1" },
+    { value: 0.01, label: "Isolação elétrica 0,01" },
+    { value: 0, label: "Restrições físicas 0" }
 ];
 
 export const KS3_OPTIONS = [
-    { value: 1, label: "Laços ≤ 50m²" },
-    { value: 0.5, label: "Laços ≤ 25m²" },
-    { value: 0.2, label: "Laços ≤ 10m²" },
-    { value: 0.01, label: "Laços ≤ 0,5m²" },
-    { value: 0.0001, label: "Blind. Met." }
+    { value: 1, label: "Laços ≤ 50m² 1" },
+    { value: 0.5, label: "Laços ≤ 25m² 0,5" },
+    { value: 0.2, label: "Laços ≤ 10m² 0,2" },
+    { value: 0.01, label: "Laços ≤ 0,5m² 0,01" },
+    { value: 0.0001, label: "Blind. Met. 0,0001" }
 ];
 
 export const UW_OPTIONS = [
@@ -139,21 +139,25 @@ export const UW_OPTIONS = [
 
 // From LossStep
 export const RT_OPTIONS = [
-    { value: 0.01, label: "Terra, concreto" }, 
-    { value: 0.001, label: "Mármore, cerâmica" }, 
-    { value: 0.0001, label: "Brita, tapete, carpete" }, 
-    { value: 0.00001, label: "Asfalto, linóleo, madeira" }
+    { value: 0.01, label: "Terra, concreto 0,01" }, 
+    { value: 0.001, label: "Mármore, cerâmica 0,001" }, 
+    { value: 0.0001, label: "Brita, tapete, carpete 0,0001" }, 
+    { value: 0.00001, label: "Asfalto, linóleo, madeira 0,00001" }
 ];
-export const RF_OPTIONS = [{ value: 0.001, label: "Baixo" }, { value: 0.01, label: "Médio" }, { value: 0.1, label: "Alto" }, { value: 1, label: "Explosivo" }];
-export const HZ_OPTIONS = [{ value: 1, label: "Nenhum" }, { value: 2, label: "Baixo" }, { value: 5, label: "Médio" }, { value: 10, label: "Alto" }];
+export const RF_OPTIONS = [{ value: 0.001, label: "Baixo 0,001" }, { value: 0.01, label: "Médio 0,01" }, { value: 0.1, label: "Alto 0,1" }, { value: 1, label: "Explosivo 1" }];
+export const HZ_OPTIONS = [{ value: 1, label: "Nenhum 1" }, { value: 2, label: "Baixo 2" }, { value: 5, label: "Médio 5" }, { value: 10, label: "Alto 10" }];
 export const LF_OPTIONS = [
-    { value: 0.1, label: 'Risco de explosão' },
-    { value: 0.1, label: 'Hospital, hotel, escola, edifício cívico' },
-    { value: 0.05, label: 'Entretenimento público, igreja, museu' },
-    { value: 0.02, label: 'Industrial, comercial' },
-    { value: 0.01, label: 'Outros' }
+    { value: 0.1, label: 'Hospital, hotel, escola, edifício cívico 0,1' },
+    { value: 0.1, label: 'Risco de explosão 0,1' },
+    { value: 0.05, label: 'Entretenimento público, igreja, museu 0,05' },
+    { value: 0.02, label: 'Industrial, comercial 0,02' },
+    { value: 0.01, label: 'Outros 0,01' }
 ];
-export const LO_OPTIONS = [{ value: 0.01, label: 'UTI/Centro Cirúrgico D3' }, { value: 0.001, label: 'Outras partes de hospital D3' }, { value: 0, label: 'Não é um hospital' }];
-export const LF3_OPTIONS = [{ value: 0.1, label: 'Museus, galerias' }];
-export const LF4_OPTIONS = [{ value: 0.5, label: 'Hospital, industrial, museu' }, { value: 0.2, label: 'Hotel, escola, escritório' }];
-export const LO4_OPTIONS = [{ value: 0.01, label: 'Hospital, Industrial' }];
+export const LO_OPTIONS = [
+  { value: 0.1, label: 'Risco de explosão 0,1' },
+  { value: 0.01, label: 'UTI/Centro Cirúrgico D3 0,01' },
+  { value: 0.001, label: 'Outras partes de hospital D3 0,001' }
+];
+export const LF3_OPTIONS = [{ value: 0.1, label: 'Museus, galerias 0,1' }];
+export const LF4_OPTIONS = [{ value: 0.5, label: 'Hospital, industrial, museu 0,5' }, { value: 0.2, label: 'Hotel, escola, escritório 0,2' }];
+export const LO4_OPTIONS = [{ value: 0.01, label: 'Hospital, Industrial 0,01' }];

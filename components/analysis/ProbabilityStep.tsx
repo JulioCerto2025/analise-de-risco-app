@@ -1,5 +1,6 @@
-import React, { useCallback, memo, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Alert, AlertDescription, Checkbox, useIsMobile } from '../ui';
+import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { AnalysisData, ProbabilityData } from '../../types';
 import { PB_OPTIONS, PSPD_OPTIONS, PTA_OPTIONS, COMBINED_CLD_CLI_OPTIONS, PTU_OPTIONS, KS3_OPTIONS, UW_OPTIONS } from '../../constants';
@@ -20,7 +21,7 @@ const PldDisplayBox = ({ value }: { value: number }) => (
     <div className="space-y-2">
         <Label>PLD Calculado</Label>
         <div className="flex h-10 w-full items-center justify-center rounded-xl border border-slate-700 bg-slate-950/70 px-3 font-mono text-slate-200">
-            {value.toFixed(2).replace('.', ',')}
+            {formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 })}
         </div>
     </div>
 );
@@ -29,7 +30,7 @@ const Ks4DisplayBox = ({ value }: { value: number }) => (
     <div className="space-y-2">
         <Label>Ks4 Calculado</Label>
         <div className="flex h-10 w-full items-center justify-center rounded-xl border border-slate-700 bg-slate-950/70 px-3 font-mono text-slate-200">
-            {value.toFixed(2).replace('.', ',')}
+            {formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 })}
         </div>
     </div>
 );
@@ -38,29 +39,42 @@ const PliDisplayBox = ({ value }: { value: number }) => (
     <div className="space-y-2">
         <Label>PLI Calculado</Label>
         <div className="flex h-10 w-full items-center justify-center rounded-xl border border-slate-700 bg-slate-950/70 px-3 font-mono text-slate-200">
-            {value.toFixed(2).replace('.', ',')}
+            {formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 })}
         </div>
     </div>
 );
+
+// Exibe números como "9,98 × 10⁻⁷" com precisão ajustável para seção Detalhe/Valor
+const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
+    if (value === 0 || !isFinite(value)) {
+        return <span>0</span>;
+    }
+    const [mantissa, exponent] = value.toExponential(precision).split('e');
+    return (
+        <span className="font-mono tracking-tight" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+    );
+};
 
 
 const PROBABILITY_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
     PA: { formula: "PTA × PB", vars: ["PTA", "PB"] },
     PB: { formula: "Seleção Direta (Nível SPDA)", vars: ["PB"] },
-    PC: { formula: "PSPDₑ × CLDₑ", vars: ["PSPD_electric", "CLD_electric"] },
-    PCT: { formula: "PSPDₐ × CLDₐ", vars: ["PSPD_data", "CLD_data"] },
-    Pms: { formula: "(Ks1 × Ks2 × Ks3ₑ × Ks4ₑ)²", vars: ["Ks1", "Ks2", "Ks3_electric", "Ks4_electric"] },
-    Pmst: { formula: "(Ks1 × Ks2 × Ks3ₐ × Ks4ₐ)²", vars: ["Ks1", "Ks2", "Ks3_data", "Ks4_data"] },
+    // Internas
+    PC: { formula: "PSPDₑ × CLDₑ(int)", vars: ["PSPD_electric", "CLD_electric_int"] },
+    PCT: { formula: "PSPDₐ × CLDₐ(int)", vars: ["PSPD_data", "CLD_data_int"] },
+    Pms: { formula: "(Ks1 × Ks2 × Ks3ₑ(int) × Ks4ₑ(int))²", vars: ["Ks1", "Ks2", "Ks3_electric_int", "Ks4_electric_int"] },
+    Pmst: { formula: "(Ks1 × Ks2 × Ks3ₐ(int) × Ks4ₐ(int))²", vars: ["Ks1", "Ks2", "Ks3_data_int", "Ks4_data_int"] },
     PM: { formula: "PSPDₑ × Pms", vars: ["PSPD_electric", "Pms"] },
     PMT: { formula: "PSPDₐ × Pmst", vars: ["PSPD_data", "Pmst"] },
-    PU: { formula: "PTUₑ × PEBₑ × PLDₑ × CLDₑ", vars: ["PTU_electric", "PEB_electric", "PLD_electric", "CLD_electric"] },
-    PUT: { formula: "PTUₐ × PEBₐ × PLDₐ × CLDₐ", vars: ["PTU_data", "PEB_data", "PLD_data", "CLD_data"] },
-    PV: { formula: "PEBₑ × PLDₑ × CLDₑ", vars: ["PEB_electric", "PLD_electric", "CLD_electric"] },
-    PVT: { formula: "PEBₐ × PLDₐ × CLDₐ", vars: ["PEB_data", "PLD_data", "CLD_data"] },
-    PW: { formula: "PSPDₑ × PLDₑ × CLDₑ", vars: ["PSPD_electric", "PLD_electric", "CLD_electric"] },
-    PWT: { formula: "PSPDₐ × PLDₐ × CLDₐ", vars: ["PSPD_data", "PLD_data", "CLD_data"] },
-    PZ: { formula: "PSPDₑ × CLIₑ × Pliₑ", vars: ["PSPD_electric", "CLI_electric", "Pli_electric"] },
-    PZT: { formula: "PSPDₐ × CLIₐ × Pliₐ", vars: ["PSPD_data", "CLI_data", "Pli_data"] },
+    // Externas
+    PU: { formula: "PTUₑ × PEBₑ × PLDₑ(ext) × CLDₑ(ext)", vars: ["PTU_electric", "PEB_electric", "PLD_electric_ext", "CLD_electric_ext"] },
+    PUT: { formula: "PTUₐ × PEBₐ × PLDₐ(ext) × CLDₐ(ext)", vars: ["PTU_data", "PEB_data", "PLD_data_ext", "CLD_data_ext"] },
+    PV: { formula: "PEBₑ × PLDₑ(ext) × CLDₑ(ext)", vars: ["PEB_electric", "PLD_electric_ext", "CLD_electric_ext"] },
+    PVT: { formula: "PEBₐ × PLDₐ(ext) × CLDₐ(ext)", vars: ["PEB_data", "PLD_data_ext", "CLD_data_ext"] },
+    PW: { formula: "PSPDₑ × PLDₑ(ext) × CLDₑ(ext)", vars: ["PSPD_electric", "PLD_electric_ext", "CLD_electric_ext"] },
+    PWT: { formula: "PSPDₐ × PLDₐ(ext) × CLDₐ(ext)", vars: ["PSPD_data", "PLD_data_ext", "CLD_data_ext"] },
+    PZ: { formula: "PSPDₑ × CLIₑ(ext) × Pliₑ(ext)", vars: ["PSPD_electric", "CLI_electric_ext", "Pli_electric_ext"] },
+    PZT: { formula: "PSPDₐ × CLIₐ(ext) × Pliₐ(ext)", vars: ["PSPD_data", "CLI_data_ext", "Pli_data_ext"] },
 };
 
 const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => {
@@ -85,40 +99,75 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
                 .map((v: string) => (allValues[v] ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 }))
                 .join(' × ');
         };
-        
-        const valuesString = formatValues(formulaInfo);
+
+        const formatFormulaWithValues = (info: any, rawFormula: string) => {
+            if (!info || !rawFormula) return formatValues(info);
+            if (!info.vars || info.vars.length === 0) return rawFormula;
+            try {
+                const regex = new RegExp(`\\b(${info.vars.join('|')})\\b`, 'g');
+                return rawFormula.replace(regex, (match) => (allValues[match] ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 }));
+            } catch {
+                return formatValues(info);
+            }
+        };
+
+        const valuesString = formatFormulaWithValues(formulaInfo, formulaInfo?.formula);
+        const formatPtBR = (n: number) => (n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+        const getCalcStringForSub = (subLabel: string): React.ReactNode => {
+            const k1 = allValues.Ks1 || 0;
+            const k2 = allValues.Ks2 || 0;
+            const k3 = subLabel === 'Pms' ? (allValues.Ks3_electric_int || 0) : (allValues.Ks3_data_int || 0);
+            const k4 = subLabel === 'Pms' ? (allValues.Ks4_electric_int || 0) : (allValues.Ks4_data_int || 0);
+            const baseStr = `(${formatPtBR(k1)} × ${formatPtBR(k2)} × ${formatPtBR(k3)} × ${formatPtBR(k4)})²`;
+            const subVal = (allValues[subLabel] ?? Math.pow(k1 * k2 * k3 * k4, 2));
+            return (
+                <span className="inline-flex items-baseline">
+                    <span>{baseStr}</span>
+                    <span className="mx-0.5">=</span>
+                    <ScientificNotation value={Number(subVal)} precision={2} />
+                </span>
+            );
+        };
 
         const tooltipStyle: React.CSSProperties = {
             transform: 'translate(10px, calc(-100% - 10px))',
             pointerEvents: 'none',
         };
 
-        return (
-            <div 
-                style={tooltipStyle}
-                className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-72"
-            >
+            return (
+                <div 
+                    style={tooltipStyle}
+                    className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-auto min-w-[18rem] max-w-[48rem]"
+                >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
-                <p className="text-blue-400 font-mono">Valor: {Number(payload[0].value).toExponential(3).replace('.',',')}</p>
+                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
                 
                 {formulaInfo && (
                     <div className="mt-2 border-b border-slate-700 pb-2">
                         <p className="text-slate-300 font-semibold">Fórmula:</p>
-                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">{formulaInfo.formula}</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight">{formulaInfo.formula}</p>
                         <p className="text-slate-300 mt-2 font-semibold">Valores:</p>
-                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{valuesString}</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{valuesString}</p>
+                        <p className="text-slate-300 mt-2 font-semibold">{label === 'PM' ? 'Cálculo (PM)' : label === 'PMT' ? 'Cálculo (PMT)' : 'Cálculo:'}</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">
+                            <span className="inline-flex items-baseline">{valuesString}</span>
+                            <span className="mx-0.5">=</span>
+                            <ScientificNotation value={Number(payload[0].value)} precision={2} />
+                        </p>
                     </div>
                 )}
                 
                 {subComponentLabel && subComponentFormulaInfo && (
                     <div className="mt-2">
                          <p className="font-bold text-slate-200 text-sm mb-1">Componente: {subComponentLabel}</p>
-                         <p className="text-cyan-400 font-mono text-xs">Valor: {(allValues[subComponentLabel] ?? 0).toExponential(3).replace('.',',')}</p>
+                         <p className="text-cyan-400 font-mono text-xs">Valor: <ScientificNotation value={Number(allValues[subComponentLabel] ?? 0)} precision={2} /></p>
                         
                          <p className="text-slate-300 mt-2 font-semibold text-xs">Fórmula ({subComponentLabel}):</p>
-                         <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">{subComponentFormulaInfo.formula}</p>
+                         <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight">{subComponentFormulaInfo.formula}</p>
                          <p className="text-slate-300 mt-2 font-semibold text-xs">Valores ({subComponentLabel}):</p>
-                         <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{formatValues(subComponentFormulaInfo)}</p>
+                         <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{formatFormulaWithValues(subComponentFormulaInfo, subComponentFormulaInfo?.formula)}</p>
+                         <p className="text-slate-300 mt-2 font-semibold text-xs">Cálculo ({subComponentLabel}):</p>
+                         <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm break-normal whitespace-normal leading-tight">{getCalcStringForSub(subComponentLabel)}</p>
                     </div>
                 )}
             </div>
@@ -127,10 +176,15 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
     return null;
 };
 
+// Removido: utilitário de modo de testes (não utilizado)
+
 export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const [activeTab, setActiveTab] = useState('structure');
+    const [electricSubTab, setElectricSubTab] = useState<'external' | 'internal'>('external');
+    const [dataSubTab, setDataSubTab] = useState<'external' | 'internal'>('external');
     const isMobile = useIsMobile();
     const prob = data.probability_data;
+    // Removidos: estados do modo de testes
 
     useEffect(() => {
         if (activeTab === 'electric' && !data.has_electric_line) {
@@ -145,42 +199,48 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const handleProbabilityChange = useCallback((updates: Partial<ProbabilityData>) => {
         const newProbData = { ...data.probability_data, ...updates };
 
-        const electricInputsChanged = 'is_shielded_electric' in updates || 'rs_electric' in updates || 'Uw_electric' in updates;
-        if (electricInputsChanged) {
-            newProbData.PLD_electric = calculatePld(
-                newProbData.rs_electric,
-                newProbData.Uw_electric,
-                newProbData.is_shielded_electric
+        // Recalcular PLD somente para parâmetros EXTERNOS
+        const electricExtChanged = 'is_shielded_electric_ext' in updates || 'rs_electric_ext' in updates || 'Uw_electric_ext' in updates;
+        if (electricExtChanged) {
+            newProbData.PLD_electric_ext = calculatePld(
+                newProbData.rs_electric_ext,
+                newProbData.Uw_electric_ext,
+                newProbData.is_shielded_electric_ext
             );
         }
-        
-        const dataInputsChanged = 'is_shielded_data' in updates || 'rs_data' in updates || 'Uw_data' in updates;
-        if (dataInputsChanged) {
-            newProbData.PLD_data = calculatePld(
-                newProbData.rs_data,
-                newProbData.Uw_data,
-                newProbData.is_shielded_data
+        const dataExtChanged = 'is_shielded_data_ext' in updates || 'rs_data_ext' in updates || 'Uw_data_ext' in updates;
+        if (dataExtChanged) {
+            newProbData.PLD_data_ext = calculatePld(
+                newProbData.rs_data_ext,
+                newProbData.Uw_data_ext,
+                newProbData.is_shielded_data_ext
             );
         }
 
         onChange({ probability_data: newProbData });
     }, [data.probability_data, onChange]);
     
-    const handleCombinedChange = (value: string, lineType: 'electric' | 'data') => {
+    const handleCombinedChange = (value: string, lineType: 'electric' | 'data', scope: 'external' | 'internal' = 'external') => {
         const [cld, cli] = value.split('_').map(parseFloat);
         if (lineType === 'electric') {
-            handleProbabilityChange({ CLD_electric: cld, CLI_electric: cli });
+            if (scope === 'external') {
+                handleProbabilityChange({ CLD_electric_ext: cld, CLI_electric_ext: cli });
+            } else {
+                handleProbabilityChange({ CLD_electric_int: cld });
+            }
         } else {
-            handleProbabilityChange({ CLD_data: cld, CLI_data: cli });
+            if (scope === 'external') {
+                handleProbabilityChange({ CLD_data_ext: cld, CLI_data_ext: cli });
+            } else {
+                handleProbabilityChange({ CLD_data_int: cld });
+            }
         }
     };
 
-    // Calculate Ks4 values
-    const ks4_electric = prob.Uw_electric > 0 ? 1 / prob.Uw_electric : 1;
-    const ks4_data = prob.Uw_data > 0 ? 1 / prob.Uw_data : 1;
+    // Removido: cálculos locais de Ks4 não utilizados
 
     const chartData = Object.entries(data.probability_calculations)
-        .filter(([key]) => !['Ks1', 'Ks2', 'Ks4_electric', 'Ks4_data', 'Pli_electric', 'Pli_data', 'PEB_electric', 'PEB_data', 'Pms', 'Pmst'].includes(key)) 
+        .filter(([key]) => !['Ks1', 'Ks2', 'Ks4_electric_int', 'Ks4_data_int', 'Pli_electric_ext', 'Pli_data_ext', 'PEB_electric', 'PEB_data', 'Pms', 'Pmst'].includes(key)) 
         .map(([key, value]) => ({ name: key, value, fill: '#3b82f6' }));
     
     const { Ks1: calculatedKs1 = 0, Ks2: calculatedKs2 = 0 } = data.probability_calculations;
@@ -203,12 +263,16 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
                     {activeTab === 'structure' && (
                         <div className="grid md:grid-cols-2 gap-4 pt-2">
-                            <SelectInput label="PTA - Medidas de Proteção" value={prob.PTA} options={PTA_OPTIONS} onUpdate={v => handleProbabilityChange({ PTA: v })} />
-                            <SelectInput label="PB - Nível do SPDA" value={prob.PB} options={PB_OPTIONS} onUpdate={v => handleProbabilityChange({ PB: v })} />
+                            <div>
+                                <SelectInput label="PTA - Medidas de Proteção" value={prob.PTA} options={PTA_OPTIONS} onUpdate={v => handleProbabilityChange({ PTA: v })} />
+                            </div>
+                            <div>
+                                <SelectInput label="PB - Nível do SPDA" value={prob.PB} options={PB_OPTIONS} onUpdate={v => handleProbabilityChange({ PB: v })} />
+                            </div>
                             
                             <div>
-                                <DecimalInput label="Largura da malha wm1 (m)" value={prob.wm1} onUpdate={v => handleProbabilityChange({ wm1: v })} />
-                                <p className="text-xs text-slate-400 mt-1">Ks1 calculado: <span className="font-bold text-blue-300">{calculatedKs1.toFixed(3)}</span></p>
+                                <DecimalInput label="KS1: Largura da malha wm1 (m)" value={prob.wm1} onUpdate={v => handleProbabilityChange({ wm1: v })} />
+                                <p className="text-xs text-slate-400 mt-1">Ks1 calculado: <span className="font-bold text-blue-300">{formatSmartNumber(calculatedKs1, { maxDecimals: 3, useScientificBelow: 0 })}</span></p>
                                 {isKs1Capped && (
                                     <Alert variant="destructive" className="mt-2 p-2 text-xs flex items-center">
                                         <AlertTriangle className="h-4 w-4 mr-2"/>
@@ -217,8 +281,8 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 )}
                             </div>
                              <div>
-                                <DecimalInput label="Largura da malha wm2 (m)" value={prob.wm2} onUpdate={v => handleProbabilityChange({ wm2: v })} />
-                                <p className="text-xs text-slate-400 mt-1">Ks2 calculado: <span className="font-bold text-blue-300">{calculatedKs2.toFixed(3)}</span></p>
+                                <DecimalInput label="KS2: Largura da malha wm2 (m)" value={prob.wm2} onUpdate={v => handleProbabilityChange({ wm2: v })} />
+                                <p className="text-xs text-slate-400 mt-1">Ks2 calculado: <span className="font-bold text-blue-300">{formatSmartNumber(calculatedKs2, { maxDecimals: 3, useScientificBelow: 0 })}</span></p>
                                  {isKs2Capped && (
                                     <Alert variant="destructive" className="mt-2 p-2 text-xs flex items-center">
                                         <AlertTriangle className="h-4 w-4 mr-2"/>
@@ -228,57 +292,100 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                             </div>
                         </div>
                     )}
-                     {activeTab === 'electric' && (
-                        <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 pt-2">
-                            <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="PTU - Medida de proteção" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PTU_electric: v })} />
-                            </div>
-                            <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="PEB - Prot. Surto Cond. D1/D2" value={prob.PEB_electric} options={pebOptions} onUpdate={(v) => handleProbabilityChange({ PEB_electric: v })} />
-                            </div>
-                            <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="PSPD - Surto Ind. - D3" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_electric: v })} />
-                            </div>
-                            <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_electric} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChange({ Ks3_electric: v })} />
-                            </div>
-
-                            <div className="md:col-span-3 lg:col-span-3">
-                                <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_electric} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric: v })} />
-                            </div>
-                            <div className="md:col-span-3 lg:col-span-3">
-                                <ShieldingSlider 
-                                    isShielded={prob.is_shielded_electric}
-                                    rsValue={prob.rs_electric}
-                                    onChange={(isShielded, rs) => handleProbabilityChange({ is_shielded_electric: isShielded, rs_electric: rs })}
-                                />
-                            </div>
-                            <div className="md:col-span-2 lg:col-span-2">
-                                <Ks4DisplayBox value={ks4_electric} />
-                            </div>
-                             <div className="md:col-span-2 lg:col-span-2">
-                                <PldDisplayBox value={prob.PLD_electric} />
-                            </div>
-                            <div className="md:col-span-2 lg:col-span-2">
-                                <PliDisplayBox value={data.probability_calculations.Pli_electric || 0} />
-                            </div>
-
-                            <div className="md:col-span-6 lg:col-span-12">
-                                <div className="space-y-2">
-                                    <Label>CLD/CLI - Blindagem da Linha e Comp. Interno (Tabela B.4)</Label>
-                                    <Select
-                                        value={`${prob.CLD_electric}_${prob.CLI_electric}`}
-                                        onValueChange={(v) => handleCombinedChange(v, 'electric')}
-                                        options={COMBINED_CLD_CLI_OPTIONS}
-                                        placeholder="Selecione o tipo de blindagem e componente..."
-                                    >
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
-                                        </SelectContent>
-                                    </Select>
+                    {activeTab === 'electric' && (
+                        <div className="space-y-4 pt-2">
+                            <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4">
+                                <div className="md:col-span-3 lg:col-span-3">
+                                    <SelectInput label="PTU - Medida de proteção" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PTU_electric: v })} />
+                                </div>
+                                <div className="md:col-span-3 lg:col-span-3">
+                                    <SelectInput label="PEB - Prot. Surto Cond. D1/D2" value={prob.PEB_electric} options={pebOptions} onUpdate={(v) => handleProbabilityChange({ PEB_electric: v })} />
+                                </div>
+                                <div className="md:col-span-3 lg:col-span-3">
+                                    <SelectInput label="PSPD - Surto Ind. - D3" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_electric: v })} />
                                 </div>
                             </div>
+
+                            <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg">
+                                <TabButton isActive={electricSubTab === 'external'} onClick={() => setElectricSubTab('external')}>Externa</TabButton>
+                                <TabButton isActive={electricSubTab === 'internal'} onClick={() => setElectricSubTab('internal')}>Interna</TabButton>
+                            </div>
+
+                            {electricSubTab === 'external' && (
+                                <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4">
+                                    <div className="md:col-span-3 lg:col-span-3">
+                                        <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_electric_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric_ext: v })} />
+                                    </div>
+                                    <div className="md:col-span-3 lg:col-span-3">
+                                        <ShieldingSlider 
+                                            isShielded={prob.is_shielded_electric_ext}
+                                            rsValue={prob.rs_electric_ext}
+                                            onChange={(isShielded, rs) => handleProbabilityChange({ is_shielded_electric_ext: isShielded, rs_electric_ext: rs })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-2">
+                                        <Ks4DisplayBox value={(prob.Uw_electric_ext || 1) > 0 ? (1 / (prob.Uw_electric_ext || 1)) : 1} />
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-2">
+                                        <PldDisplayBox value={prob.PLD_electric_ext || 0} />
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-2">
+                                        <PliDisplayBox value={data.probability_calculations.Pli_electric_ext || 0} />
+                                    </div>
+                                    <div className="md:col-span-6 lg:col-span-12">
+                                        <div className="space-y-2">
+                                            <Label>CLD/CLI - Blindagem da Linha e Comp. Interno (Tabela B.4)</Label>
+                                            <Select
+                                                value={`${prob.CLD_electric_ext}_${prob.CLI_electric_ext}`}
+                                                onValueChange={(v) => handleCombinedChange(v, 'electric', 'external')}
+                                                options={COMBINED_CLD_CLI_OPTIONS}
+                                                placeholder="Selecione o tipo de blindagem e componente..."
+                                            >
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="text-xs text-slate-300 italic mt-2">
+                                            Estes parâmetros (CLD/CLI, Uw, Rs) impactam PU, PV, PW e PZ.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {electricSubTab === 'internal' && (
+                                <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4">
+                                    <div className="md:col-span-3 lg:col-span-3">
+                                        <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_electric_int} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChange({ Ks3_electric_int: v })} />
+                                    </div>
+                                    <div className="md:col-span-3 lg:col-span-3">
+                                        <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_electric_int} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric_int: v })} />
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-2">
+                                        <Ks4DisplayBox value={(prob.Uw_electric_int || 1) > 0 ? (1 / (prob.Uw_electric_int || 1)) : 1} />
+                                    </div>
+                                    <div className="md:col-span-6 lg:col-span-12">
+                                        <div className="space-y-2">
+                                            <Label>CLD - Blindagem da Linha (Tabela B.4)</Label>
+                                            <Select
+                                                value={`${prob.CLD_electric_int}_1`}
+                                                onValueChange={(v) => handleCombinedChange(v, 'electric', 'internal')}
+                                                options={COMBINED_CLD_CLI_OPTIONS}
+                                                placeholder="Selecione o tipo de blindagem..."
+                                            >
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="text-xs text-slate-300 italic mt-2">
+                                            Estes parâmetros (CLD, Ks3, Uw) impactam PC e PM.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                      {activeTab === 'data' && (
@@ -303,7 +410,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
                                         transition={{ duration: 0.3 }}
-                                        className="overflow-hidden"
+                                        className="overflow-visible"
                                     >
                                         <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 pt-2">
                                             <div className="md:col-span-3 lg:col-span-3">
@@ -315,46 +422,86 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                             <div className="md:col-span-3 lg:col-span-3">
                                                 <SelectInput label="PSPD - Surto Ind. - D3" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChange({ PSPD_data: v })} />
                                             </div>
-                                            <div className="md:col-span-3 lg:col-span-3">
-                                                <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_data} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChange({ Ks3_data: v })} />
-                                            </div>
-                                            
-                                            <div className="md:col-span-3 lg:col-span-3">
-                                                <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_data} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data: v })} />
-                                            </div>
-                                            <div className="md:col-span-3 lg:col-span-3">
-                                                <ShieldingSlider 
-                                                    isShielded={prob.is_shielded_data}
-                                                    rsValue={prob.rs_data}
-                                                    onChange={(isShielded, rs) => handleProbabilityChange({ is_shielded_data: isShielded, rs_data: rs })}
-                                                />
-                                            </div>
-                                            <div className="md:col-span-2 lg:col-span-2">
-                                                <Ks4DisplayBox value={ks4_data} />
-                                            </div>
-                                            <div className="md:col-span-2 lg:col-span-2">
-                                                <PldDisplayBox value={prob.PLD_data} />
-                                            </div>
-                                            <div className="md:col-span-2 lg:col-span-2">
-                                                <PliDisplayBox value={data.probability_calculations.Pli_data || 0} />
+                                            <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg md:col-span-6 lg:col-span-12">
+                                                <TabButton isActive={dataSubTab === 'external'} onClick={() => setDataSubTab('external')}>Externa</TabButton>
+                                                <TabButton isActive={dataSubTab === 'internal'} onClick={() => setDataSubTab('internal')}>Interna</TabButton>
                                             </div>
 
-                                            <div className="md:col-span-6 lg:col-span-12">
-                                                <div className="space-y-2">
-                                                    <Label>CLD/CLI - Blindagem da Linha e Comp. Interno (Tabela B.4)</Label>
-                                                    <Select
-                                                        value={`${prob.CLD_data}_${prob.CLI_data}`}
-                                                        onValueChange={(v) => handleCombinedChange(v, 'data')}
-                                                        options={COMBINED_CLD_CLI_OPTIONS}
-                                                        placeholder="Selecione o tipo de blindagem e componente..."
-                                                    >
-                                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
+                                            {dataSubTab === 'external' && (
+                                                <>
+                                                    <div className="md:col-span-3 lg:col-span-3">
+                                                        <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_data_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data_ext: v })} />
+                                                    </div>
+                                                    <div className="md:col-span-3 lg:col-span-3">
+                                                        <ShieldingSlider 
+                                                            isShielded={prob.is_shielded_data_ext}
+                                                            rsValue={prob.rs_data_ext}
+                                                            onChange={(isShielded, rs) => handleProbabilityChange({ is_shielded_data_ext: isShielded, rs_data_ext: rs })}
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-2 lg:col-span-2">
+                                                        <Ks4DisplayBox value={(prob.Uw_data_ext || 1) > 0 ? (1 / (prob.Uw_data_ext || 1)) : 1} />
+                                                    </div>
+                                                    <div className="md:col-span-2 lg:col-span-2">
+                                                        <PldDisplayBox value={prob.PLD_data_ext || 0} />
+                                                    </div>
+                                                    <div className="md:col-span-2 lg:col-span-2">
+                                                        <PliDisplayBox value={data.probability_calculations.Pli_data_ext || 0} />
+                                                    </div>
+                                                    <div className="md:col-span-6 lg:col-span-12">
+                                                        <div className="space-y-2">
+                                                            <Label>CLD/CLI - Blindagem da Linha e Comp. Interno (Tabela B.4)</Label>
+                                                            <Select
+                                                                value={`${prob.CLD_data_ext}_${prob.CLI_data_ext}`}
+                                                                onValueChange={(v) => handleCombinedChange(v, 'data', 'external')}
+                                                                options={COMBINED_CLD_CLI_OPTIONS}
+                                                                placeholder="Selecione o tipo de blindagem e componente..."
+                                                            >
+                                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                                <SelectContent>
+                                                                    {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <div className="text-xs text-slate-300 italic mt-2">
+                                                                Estes parâmetros (CLD/CLI, Uw, Rs) impactam PUT, PVT, PWT e PZT.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {dataSubTab === 'internal' && (
+                                                <>
+                                                    <div className="md:col-span-3 lg:col-span-3">
+                                                        <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_data_int} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChange({ Ks3_data_int: v })} />
+                                                    </div>
+                                                    <div className="md:col-span-3 lg:col-span-3">
+                                                        <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_data_int} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data_int: v })} />
+                                                    </div>
+                                                    <div className="md:col-span-2 lg:col-span-2">
+                                                        <Ks4DisplayBox value={(prob.Uw_data_int || 1) > 0 ? (1 / (prob.Uw_data_int || 1)) : 1} />
+                                                    </div>
+                                                    <div className="md:col-span-6 lg:col-span-12">
+                                                        <div className="space-y-2">
+                                                            <Label>CLD - Blindagem da Linha (Tabela B.4)</Label>
+                                                            <Select
+                                                                value={`${prob.CLD_data_int}_1`}
+                                                                onValueChange={(v) => handleCombinedChange(v, 'data', 'internal')}
+                                                                options={COMBINED_CLD_CLI_OPTIONS}
+                                                                placeholder="Selecione o tipo de blindagem..."
+                                                            >
+                                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                                <SelectContent>
+                                                                    {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="text-xs text-slate-300 italic mt-2">
+                                                            Estes parâmetros (CLD, Ks3, Uw) impactam PCT e PMT.
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </motion.div>
                                 )}

@@ -45,13 +45,13 @@ export const ShieldingSlider: React.FC<ShieldingSliderProps> = ({
 
     return (
         <div className="space-y-2">
-            <Label>Blindagem e Resistência (Rs)</Label>
+            <Label>Blind. e Resist. (Rs)</Label>
             <Select
                 value={String(selectedValue)}
                 onValueChange={handleValueChange}
                 options={rsOptions}
             >
-                <SelectTrigger className="w-full bg-slate-950/70">
+                <SelectTrigger className="w-full bg-slate-950/70 h-10">
                      <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -1,14 +1,16 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnalysisData, AnalysisInputData, ZoneCalculations } from '../types';
-import { getNgByCity } from '../data/ngByCity';
+import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
 import { 
     calculateEvents, 
     calculateProbabilities, 
     calculateLossesForZone, 
     calculateRisksForZone,
     aggregateRiskResults,
-    calculateFrequencies
-} from '../utils/calculations';
+    calculateFrequencies,
+    aggregateFrequenciesForZones,
+    mergeZoneProbabilities
+ } from '../utils/calculations';
 
 const STORAGE_KEY = 'spda-analysis-data';
 
@@ -27,7 +29,7 @@ const initialInputData: AnalysisInputData = {
             nz: 120, nt: 120, tz: 6903, te: 0,
             rt: 0.001, rp: 0.2, rf: 0.001, hz: 5, 
             rs: 1,
-            LF: 0.1, LO: 0,
+            LF: 0.1, LO: 0.001,
             // R3
             lf3: 0.1, cz: 1000000, ct_cultural: 1000000,
             // R4
@@ -67,32 +69,40 @@ const initialInputData: AnalysisInputData = {
     risks_to_analyze: { R1: true, R3: false, R4: false },
     frequency_config: { is_critical_system: false, has_equipment_in_ZPR0A: true },
     probability_data: {
-        // Structure
-        PTA: 1, PB: 1, 
-        wm1: 5, // Default mesh width for Ks1
-        wm2: 5, // Default mesh width for Ks2
-        // Electric Line - Default to NOT shielded
-        is_shielded_electric: false, 
-        rs_electric: 20, 
-        Uw_electric: 1.5,
-        PLD_electric: 1.0, 
-        PSPD_electric: 1, 
-        CLD_electric: 1, 
-        PTU_electric: 1, 
-        PEB_electric: 1, 
-        CLI_electric: 1,
-        Ks3_electric: 1,
-        // Data Line - Default to NOT shielded
-        is_shielded_data: false,
-        rs_data: 20,
-        Uw_data: 1.5,
-        PLD_data: 1.0,
+        // Estrutura
+        PTA: 1, PB: 1,
+        wm1: 5,
+        wm2: 5,
+        // Linha Elétrica - fatores compartilhados
+        PSPD_electric: 1,
+        PTU_electric: 1,
+        PEB_electric: 1,
+        // Linha Elétrica - Externa
+        is_shielded_electric_ext: false,
+        rs_electric_ext: 20,
+        Uw_electric_ext: 2.5,
+        PLD_electric_ext: 1.0,
+        CLD_electric_ext: 1,
+        CLI_electric_ext: 1,
+        // Linha Elétrica - Interna
+        CLD_electric_int: 1,
+        Ks3_electric_int: 1,
+        Uw_electric_int: 2.5,
+        // Linha de Dados - fatores compartilhados
         PSPD_data: 1,
-        CLD_data: 1,
         PTU_data: 1,
         PEB_data: 1,
-        CLI_data: 1,
-        Ks3_data: 1,
+        // Linha de Dados - Externa
+        is_shielded_data_ext: false,
+        rs_data_ext: 20,
+        Uw_data_ext: 1.5,
+        PLD_data_ext: 1.0,
+        CLD_data_ext: 1,
+        CLI_data_ext: 1,
+        // Linha de Dados - Interna
+        CLD_data_int: 1,
+        Ks3_data_int: 1,
+        Uw_data_int: 1.5,
     },
     analyze_data_line_probabilities: false,
     fireRiskAiResult: null,
@@ -110,7 +120,9 @@ export function useAnalysisData() {
         const defaultZoneTemplate: Zone = {
             id: 'default-zone-1',
             name: 'Zona 1',
-            loss_data: { ...initialInputData.zones[0].loss_data }
+            loss_data: { ...initialInputData.zones[0].loss_data },
+            probability_overrides: {},
+            homogeneous_type: 'L'
         };
         if (!Array.isArray(zs) || zs.length === 0) {
             return [defaultZoneTemplate];
@@ -119,7 +131,13 @@ export function useAnalysisData() {
             const id = (z && typeof z.id === 'string') ? z.id : `zone_${idx+1}`;
             const name = (z && typeof z.name === 'string' && z.name.trim().length) ? z.name : `Zona ${idx+1}`;
             const loss = { ...defaultZoneTemplate.loss_data, ...(z && z.loss_data ? z.loss_data : {}) };
-            return { id, name, loss_data: loss } as Zone;
+            // Aplicar LO padrão também para dados salvos antigos (quando ausente ou zerado)
+            if (loss.LO == null || Number(loss.LO) === 0) {
+                (loss as any).LO = 0.001;
+            }
+            const probability_overrides = (z && z.probability_overrides && typeof z.probability_overrides === 'object') ? z.probability_overrides : {};
+            const homogeneous_type = (z && (z.homogeneous_type === 'P' || z.homogeneous_type === 'L')) ? z.homogeneous_type : 'L';
+            return { id, name, loss_data: loss, probability_overrides, homogeneous_type } as Zone;
         });
     };
 
@@ -212,6 +230,49 @@ export function useAnalysisData() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Migração de preset de inicialização: garante pré-seleções solicitadas quando houver dados antigos
+    useEffect(() => {
+        try {
+            const p = data?.probability_data as any;
+            if (!p) return;
+            const probPatch: any = {};
+
+            // Atualizar Uw antigo (1.5) para novo padrão (2.5) apenas para elétrica externa; para dados externa manter 1.5
+            const toNum = (v: any) => typeof v === 'number' ? v : (typeof v === 'string' ? parseFloat(v) : undefined);
+            if (toNum(p.Uw_electric_ext) === 1.5) probPatch.Uw_electric_ext = 2.5;
+            // Para dados externa, se vier como string, apenas normaliza para número
+            if (typeof p.Uw_data_ext === 'string') {
+                const num = parseFloat(p.Uw_data_ext);
+                if (!isNaN(num)) probPatch.Uw_data_ext = num;
+            }
+
+            // Garantir CLD/CLI externos = 1,1 e CLD internos = 1 quando ausentes
+            if (typeof p.CLD_electric_ext !== 'number') probPatch.CLD_electric_ext = 1;
+            if (typeof p.CLI_electric_ext !== 'number') probPatch.CLI_electric_ext = 1;
+            if (typeof p.CLD_data_ext !== 'number') probPatch.CLD_data_ext = 1;
+            if (typeof p.CLI_data_ext !== 'number') probPatch.CLI_data_ext = 1;
+            if (typeof p.CLD_electric_int !== 'number') probPatch.CLD_electric_int = 1;
+            if (typeof p.CLD_data_int !== 'number') probPatch.CLD_data_int = 1;
+
+            // Garantir Ks3 internos = 1 quando ausentes
+            if (typeof p.Ks3_electric_int !== 'number') probPatch.Ks3_electric_int = 1;
+            if (typeof p.Ks3_data_int !== 'number') probPatch.Ks3_data_int = 1;
+
+            // Garantir não blindado se ausente; normalizar strings 'true'/'false' para externos
+            const toBool = (v: any) => typeof v === 'boolean' ? v : (typeof v === 'string' ? v.toLowerCase() === 'true' : undefined);
+            if (typeof toBool(p.is_shielded_electric_ext) === 'undefined') probPatch.is_shielded_electric_ext = false;
+            if (typeof toBool(p.is_shielded_data_ext) === 'undefined') probPatch.is_shielded_data_ext = false;
+
+            if (Object.keys(probPatch).length > 0) {
+                setData(prev => ({
+                    ...prev,
+                    probability_data: { ...prev.probability_data, ...probPatch }
+                }));
+            }
+        } catch (_) { /* silencioso */ }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     useEffect(() => {
         // Debounce gravar em localStorage para reduzir escrita e evitar travamentos
         if (saveTimeoutRef.current) {
@@ -268,11 +329,34 @@ export function useAnalysisData() {
                 let nextRegion: string | undefined;
 
                 if (lastCity && lastUf) {
-                    const preset = await getNgByCity(lastUf, lastCity);
+                    // Resolver cidade ignorando bairro usando lista do UF
+                    const normalize = (s: string) => (s || '')
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .toLowerCase().replace(/[.,]/g, ' ')
+                        .replace(/\s+/g, ' ').trim();
+                    let resolvedCity = lastCity.trim();
+                    try {
+                        const cities = await getCitiesByUf(lastUf);
+                        const rawNorm = normalize(lastCity);
+                        let best: string | null = null;
+                        for (const c of cities) {
+                            const cn = normalize(c);
+                            if (rawNorm === cn || rawNorm.endsWith(cn) || rawNorm.includes(' ' + cn) || rawNorm.startsWith(cn + ' ')) {
+                                if (!best || normalize(best).length < cn.length) best = c;
+                            }
+                        }
+                        if (best) resolvedCity = best;
+                        else if (/[-–—]/.test(lastCity)) resolvedCity = lastCity.split(/[-–—]/).pop()!.trim();
+                        else if (/,/.test(lastCity)) resolvedCity = lastCity.split(',').pop()!.trim();
+                    } catch (_) {
+                        // fallback conserva entrada original
+                    }
+
+                    const preset = await getNgByCity(lastUf, resolvedCity);
                     if (typeof preset === 'number' && preset > 0) {
                         nextNg = preset;
                     }
-                    nextLocation = `${lastCity} - ${lastUf}`;
+                    nextLocation = `${resolvedCity} - ${lastUf}`;
                     nextRegion = getRegionFromState(lastUf);
                 }
 
@@ -295,6 +379,72 @@ export function useAnalysisData() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Sincroniza cidade/UF, região e Ng quando o endereço muda (Step 1)
+    useEffect(() => {
+        const syncFromAddress = async () => {
+            try {
+                const address = (data.clientAddress || '').toString().trim();
+                if (!address) return;
+
+                // Aceita sufixo no fim em diversos formatos: "Cidade/UF", "Cidade - UF", "Cidade, UF" e "Cidade UF"
+                const mSlash = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s*\/\s*([A-Za-z]{2})$/i);
+                const mHyphen = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s-\s([A-Za-z]{2})$/i);
+                const mComma = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+),\s*([A-Za-z]{2})$/i);
+                const mSpace = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s([A-Za-z]{2})$/i);
+                const cityRaw = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
+                const ufRaw = (mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '').toUpperCase();
+                if (!cityRaw || !ufRaw) return;
+
+                // Resolver cidade ignorando bairro/rua usando lista oficial do UF
+                const normalize = (s: string) => (s || '')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase().replace(/[.,]/g, ' ')
+                    .replace(/\s+/g, ' ').trim();
+
+                let resolvedCity = cityRaw;
+                try {
+                    const cities = await getCitiesByUf(ufRaw);
+                    const rawNorm = normalize(cityRaw);
+                    let best: string | null = null;
+                    for (const c of cities) {
+                        const cn = normalize(c);
+                        if (rawNorm === cn || rawNorm.endsWith(cn) || rawNorm.includes(' ' + cn) || rawNorm.startsWith(cn + ' ')) {
+                            if (!best || normalize(best).length < cn.length) best = c;
+                        }
+                    }
+                    if (best) resolvedCity = best;
+                    else if (/[-–—]/.test(cityRaw)) resolvedCity = cityRaw.split(/[-–—]/).pop()!.trim();
+                    else if (/,/.test(cityRaw)) resolvedCity = cityRaw.split(',').pop()!.trim();
+                } catch (_) { /* mantém cityRaw */ }
+
+                const getRegionFromState = (uf: string = ''): string => {
+                    const U = uf.toUpperCase();
+                    if (["GO","MT","MS","DF"].includes(U)) return 'centro-oeste';
+                    if (["AL","BA","CE","MA","PB","PE","PI","RN","SE"].includes(U)) return 'nordeste';
+                    if (["AC","AP","AM","PA","RO","RR","TO"].includes(U)) return 'norte';
+                    if (["ES","MG","RJ","SP"].includes(U)) return 'sudeste';
+                    if (["PR","RS","SC"].includes(U)) return 'sul';
+                    return 'sudeste';
+                };
+
+                let nextNg: number | undefined = undefined;
+                try {
+                    const preset = await getNgByCity(ufRaw, resolvedCity);
+                    if (typeof preset === 'number' && preset > 0) nextNg = preset;
+                } catch (_) { /* ignora erro */ }
+
+                setData(prev => ({
+                    ...prev,
+                    location: `${resolvedCity} - ${ufRaw}`,
+                    mapRegion: getRegionFromState(ufRaw) as any,
+                    ng: (typeof nextNg === 'number') ? nextNg : prev.ng
+                }));
+            } catch (_) { /* silencioso */ }
+        };
+
+        syncFromAddress();
+    }, [data.clientAddress]);
+
     // Memoized calculation for events (N)
     const eventCalculations = useMemo(() => calculateEvents(data), [
         data.h, data.l, data.w, data.hp, data.ng, data.cd, 
@@ -313,9 +463,11 @@ export function useAnalysisData() {
     const zoneCalculations: ZoneCalculations[] = useMemo(() => {
         return data.zones.map(zone => {
             const lossCalculations = calculateLossesForZone(zone);
+            // Mesclar probabilidades globais com overrides da zona (se houver)
+            const zoneProbCalcs = mergeZoneProbabilities(probabilityCalculations, zone);
             const riskCalculations = calculateRisksForZone(
                 eventCalculations, 
-                probabilityCalculations, 
+                zoneProbCalcs, 
                 lossCalculations,
                 data.selected_risk_components // Pass selections to the calculator
             );
@@ -326,16 +478,41 @@ export function useAnalysisData() {
     // Memoized aggregation of risks from all zones
     const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
 
+    // Helper to check if any zone defines probability overrides
+    const anyZoneHasProbOverrides = useMemo(() => {
+        return (data.zones || []).some(z => z?.probability_overrides && Object.keys(z.probability_overrides).length > 0);
+    }, [data.zones]);
+
     // Memoized calculation for frequencies (F)
-    const frequencyResults = useMemo(() => calculateFrequencies(
-        eventCalculations, 
-        probabilityCalculations, 
+    const frequencyResults = useMemo(() => {
+        if (anyZoneHasProbOverrides) {
+            // Aggregate frequency across zones using per-zone probability overrides
+            return aggregateFrequenciesForZones(
+                data.zones,
+                eventCalculations,
+                probabilityCalculations,
+                data.frequency_config,
+                data.has_electric_line,
+                data.has_data_line
+            );
+        }
+        // Fallback to global calculation when no overrides are present to avoid duplicating totals
+        return calculateFrequencies(
+            eventCalculations,
+            probabilityCalculations,
+            data.frequency_config,
+            data.has_electric_line,
+            data.has_data_line
+        );
+    }, [
+        data.zones,
+        eventCalculations,
+        probabilityCalculations,
         data.frequency_config,
         data.has_electric_line,
-        data.has_data_line
-    ), 
-        [eventCalculations, probabilityCalculations, data.frequency_config, data.has_electric_line, data.has_data_line]
-    );
+        data.has_data_line,
+        anyZoneHasProbOverrides
+    ]);
 
     // Assemble the final, complete data object
     const fullAnalysisData: AnalysisData = useMemo(() => ({
@@ -353,6 +530,44 @@ export function useAnalysisData() {
         setData(prevData => ({ ...prevData, ...newData }));
     }, []);
 
+    // Restaura o preset padrão solicitado (CLD/CLI 1.1, Uw: elétrico 2.5 kV, dados 1.5 kV, Não blindada)
+    const restoreDefaultPreset = useCallback(() => {
+        setData(prev => ({
+            ...prev,
+            probability_data: {
+                ...prev.probability_data,
+                // Elétrica - Externa
+                is_shielded_electric_ext: false,
+                rs_electric_ext: 20,
+                Uw_electric_ext: 2.5,
+                CLD_electric_ext: 1,
+                CLI_electric_ext: 1,
+                PLD_electric_ext: calculatePld(20, 2.5, false),
+                // Elétrica - Interna
+                CLD_electric_int: 1,
+                Ks3_electric_int: 1,
+                Uw_electric_int: 2.5,
+                // Dados - Externa
+                is_shielded_data_ext: false,
+                rs_data_ext: 20,
+                Uw_data_ext: 1.5,
+                CLD_data_ext: 1,
+                CLI_data_ext: 1,
+                PLD_data_ext: calculatePld(20, 1.5, false),
+                // Dados - Interna
+                CLD_data_int: 1,
+                Ks3_data_int: 1,
+                Uw_data_int: 1.5,
+            }
+        }));
+    }, []);
 
-    return { data: fullAnalysisData, updateData };
+    // Reseta todo o projeto para o estado inicial com preset padrão
+    const resetToInitialPreset = useCallback(() => {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* silencioso */ }
+        setData({ ...initialInputData });
+    }, []);
+
+
+    return { data: fullAnalysisData, updateData, restoreDefaultPreset, resetToInitialPreset };
 }

@@ -1,5 +1,6 @@
 import React, { useState, FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle, FormulaTooltip, Alert, AlertTitle, AlertDescription, useIsMobile } from '../ui';
+import { formatSmartNumber } from '../../lib/format';
 import { AnalysisData } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Home, Zap } from 'lucide-react';
@@ -17,17 +18,17 @@ const formatFrequencyAsPeriod = (value: number): { period: string; unit: string 
         if (periodInMonths < 1) {
             const periodInDays = periodInMonths * 30;
             return {
-                period: periodInDays.toFixed(0), // No decimals for days
+                period: String(Math.round(periodInDays)), // dias como inteiros
                 unit: 'dias/evento'
             };
         }
         return {
-            period: periodInMonths.toFixed(1).replace('.', ','),
+            period: formatSmartNumber(periodInMonths, { maxDecimals: 1, useScientificBelow: 0 }),
             unit: 'meses/evento'
         };
     }
     return {
-        period: periodInYears.toFixed(1).replace('.', ','),
+        period: formatSmartNumber(periodInYears, { maxDecimals: 1, useScientificBelow: 0 }),
         unit: 'anos/evento'
     };
 };
@@ -66,8 +67,13 @@ const EventPeriodCard: FC<EventPeriodCardProps> = ({
             <CardContent className="p-4 sm:p-3 flex items-center justify-between gap-3">
                 <div className="flex-1">
                     <p className="text-[11px] sm:text-sm font-semibold text-slate-300 leading-tight flex items-center">
-                        {description}
-                        {formula && <FormulaTooltip formulas={{[badge]: formula}} values={formulaValues} />}
+                        {formula ? (
+                            <FormulaTooltip formulas={{[badge]: formula}} values={formulaValues}>
+                                <span className="inline-flex items-center">{description}</span>
+                            </FormulaTooltip>
+                        ) : (
+                            description
+                        )}
                     </p>
                     <p className="text-2xl sm:text-3xl font-extrabold text-white mt-1">{period}</p>
                     <p className="text-[10px] sm:text-xs text-slate-400 -mt-1">{unit}</p>
@@ -84,9 +90,17 @@ const EventPeriodCard: FC<EventPeriodCardProps> = ({
     );
 };
 
-const formatValue = (value: number) => {
-    if (value === 0) return '0';
-    return value.toExponential(2).replace('.', ',');
+const formatValue = (value: number) => formatSmartNumber(value, { useScientificBelow: 0.001, scientificPrecision: 2, maxDecimals: 3 });
+
+// Exibe números como "9,98 × 10⁻⁷" com precisão ajustável
+const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
+    if (value === 0 || !isFinite(value)) {
+        return <span>0</span>;
+    }
+    const [mantissa, exponent] = value.toExponential(precision).split('e');
+    return (
+        <span className="font-mono tracking-tight whitespace-nowrap" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+    );
 };
 
 
@@ -102,30 +116,110 @@ const CustomTooltip = ({ active, payload, label, calculations }: any) => {
         const eventKey = label === 'S1' ? 'ND' : label === 'S2' ? 'NM' : label === 'S3' ? 'NL' : 'NI';
         const eventInfo = events.find(e => e.key === label);
         const formulaInfo = EVENT_FORMULAS[eventKey];
-        
-        let valuesString = "N/A";
-        if (formulaInfo) {
-            valuesString = formulaInfo.vars.map(v => {
-                 const value = (calculations as any)[v] ?? 0;
-                 return formatValue(value);
-            }).join(formulaInfo.formula.includes('+') ? ' + ' : ' × ');
-        }
-        
+        const valueMap: Record<string, number> = { ...(calculations || {}) };
+
+        // Substituição direta na fórmula para exibir "Valores"
         let formulaDisplay = formulaInfo?.formula || "N/A";
         if (eventKey === 'ND') formulaDisplay = "Ng × Adf × Cd × 10⁻⁶";
         if (eventKey === 'NM') formulaDisplay = "Ng × Am × 10⁻⁶";
 
+        let valuesString = "N/A";
+        if (formulaInfo) {
+            const rawFormula = formulaInfo.formula;
+            const formatVarValue = (v: any) => {
+                if (typeof v !== 'number') return '0';
+                if (v === 0) return '0';
+                if (Math.abs(v) > 1000) return v.toLocaleString('pt-BR');
+                if (Math.abs(v) < 0.01) return v.toExponential(1).replace('.', ',');
+                return String(v).replace('.', ',');
+            };
+            valuesString = formulaInfo.vars.reduce(
+                (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((valueMap as any)[v] ?? 0)),
+                rawFormula
+            );
+    valuesString = valuesString.replace(/\*/g, '×');
+            // Adiciona o fator 10⁻⁶ explicitamente para ND/NM
+            if (eventKey === 'ND' || eventKey === 'NM') {
+                valuesString = `${valuesString} × 10⁻⁶`;
+            }
+        }
+
+        // Seção "Detalhe" com notação científica dos multiplicandos
+        let detailNodes: React.ReactNode | null = null;
+        if (formulaInfo) {
+            if (eventKey === 'ND') {
+                const parts = [valueMap['ng'] || 0, valueMap['adf'] || 0, valueMap['cd'] || 0];
+                detailNodes = (
+                    <span className="font-mono">
+                        {parts.map((val, idx) => (
+                            <span key={idx} className="inline-flex items-baseline">
+                                    <ScientificNotation value={val} precision={2} />
+                                {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
+                            </span>
+                        ))}
+                        <span className="mx-0.5">×</span>
+                        <span dangerouslySetInnerHTML={{ __html: `10<sup>-6</sup>` }} />
+                    </span>
+                );
+            } else if (eventKey === 'NM') {
+                const parts = [valueMap['ng'] || 0, valueMap['am'] || 0];
+                detailNodes = (
+                    <span className="font-mono">
+                        {parts.map((val, idx) => (
+                            <span key={idx} className="inline-flex items-baseline">
+                                <ScientificNotation value={val} precision={2} />
+                                {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
+                            </span>
+                        ))}
+                        <span className="mx-0.5">×</span>
+                        <span dangerouslySetInnerHTML={{ __html: `10<sup>-6</sup>` }} />
+                    </span>
+                );
+            } else if (eventKey === 'NL') {
+                const parts = [valueMap['nl_electric'] || 0, valueMap['nl_data'] || 0];
+                detailNodes = (
+                    <span className="font-mono">
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={parts[0]} precision={2} />
+                        </span>
+                        <span className="mx-0.5">+</span>
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={parts[1]} precision={2} />
+                        </span>
+                    </span>
+                );
+            } else if (eventKey === 'NI') {
+                const parts = [valueMap['ni_electric'] || 0, valueMap['ni_data'] || 0];
+                detailNodes = (
+                    <span className="font-mono">
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={parts[0]} precision={2} />
+                        </span>
+                        <span className="mx-0.5">+</span>
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={parts[1]} precision={2} />
+                        </span>
+                    </span>
+                );
+            }
+        }
 
         return (
-            <div className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-64">
+            <div className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-auto min-w-[18rem] max-w-[48rem]">
                 <p className="font-bold text-slate-100 text-base mb-1">{`${eventKey} - ${eventInfo?.description}`}</p>
-                <p className="text-blue-400 font-mono">Valor: {formatValue(Number(payload[0].value))}</p>
+                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
                  {formulaInfo && (
                     <>
                         <p className="text-slate-300 mt-2 font-semibold">Fórmula:</p>
-                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs">{formulaDisplay}</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight break-normal whitespace-normal">{formulaDisplay}</p>
                         <p className="text-slate-300 mt-2 font-semibold">Valores:</p>
-                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs break-all">{valuesString}</p>
+                        <p className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight break-normal whitespace-normal">{valuesString}</p>
+                        {detailNodes && (
+                            <>
+                                <p className="text-slate-300 mt-2 font-semibold">Detalhe:</p>
+                                <div className="text-slate-100 font-mono bg-slate-700/50 px-2 py-1 rounded text-xs sm:text-sm leading-tight break-normal whitespace-normal">{detailNodes}</div>
+                            </>
+                        )}
                     </>
                 )}
             </div>
