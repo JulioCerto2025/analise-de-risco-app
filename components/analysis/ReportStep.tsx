@@ -10,6 +10,11 @@ interface ReportStepProps {
     onUpdate: (newData: Partial<AnalysisData>) => void;
 }
 
+const escapeHtml = (str: string) => str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
 const markdownToHtml = (markdown: string): string => {
     if (!markdown) return '';
     const text = markdown.replace(/\\n/g, '\n');
@@ -21,7 +26,7 @@ const markdownToHtml = (markdown: string): string => {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        const processInline = (str: string) => str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        const processInline = (str: string) => escapeHtml(str).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
         if (line.startsWith('## ')) {
             if (inList) { html += '</ul>\n'; inList = false; }

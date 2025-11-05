@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { Component } from 'react';
 
 type ErrorBoundaryState = { hasError: boolean; error?: Error };
 type ErrorBoundaryProps = React.PropsWithChildren<{ variant?: 'fullscreen' | 'inline'; onReset?: () => void }>;
 
-export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: Readonly<ErrorBoundaryProps>;
+  declare state: Readonly<ErrorBoundaryState>;
+  declare setState: Component<ErrorBoundaryProps, ErrorBoundaryState>["setState"];
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -15,7 +18,9 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // You could send this to monitoring if needed.
-    console.error('App crashed with error:', error, info);
+    if (import.meta.env.DEV) {
+      console.error('App crashed with error:', error, info);
+    }
   }
 
   handleReload = () => {
@@ -49,6 +54,14 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
                   <button onClick={this.handleReset} className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs">Tentar novamente</button>
                   <button onClick={this.handleReload} className="px-3 py-1.5 rounded border border-slate-500 text-slate-200 text-xs">Recarregar app</button>
                 </div>
+                {this.state.error && (
+                  <div className="mt-3 rounded border border-slate-700 bg-slate-900/60 p-2">
+                    <p className="text-xs text-slate-300"><span className="font-semibold">Erro:</span> {this.state.error.message}</p>
+                    {this.state.error.stack && (
+                      <pre className="mt-2 text-[10px] whitespace-pre-wrap text-slate-400">{this.state.error.stack}</pre>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,6 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { NG_DOCUMENT_CONTENT } from '../data/ng-document-content';
-import { AnalysisData, FireRiskInfo, PreliminaryAiResult, ProbabilityData } from '../types';
+import { AnalysisData, FireRiskInfo, PreliminaryAiResult } from '../types';
 import {
     PB_OPTIONS,
     PSPD_OPTIONS,
@@ -8,16 +7,187 @@ import {
     PTA_OPTIONS,
     PTU_OPTIONS,
     KS3_OPTIONS,
-    UW_OPTIONS,
+    // UW_OPTIONS, // não utilizado após ajuste de tipos
     RT_OPTIONS,
     RF_OPTIONS,
     HZ_OPTIONS,
     LF_OPTIONS,
     LO_OPTIONS,
-    LF3_OPTIONS,
-    LF4_OPTIONS,
-    LO4_OPTIONS
+    // LF3_OPTIONS, // não utilizado neste módulo
+    // LF4_OPTIONS,
+    // LO4_OPTIONS
 } from '../constants';
+
+// Modelo padrão suportado pelo SDK atual
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
+// Timeout padrão para chamadas à IA (evita travamentos de carregamento)
+const DEFAULT_AI_TIMEOUT_MS = 15000; // 15s
+
+// Helper para aplicar timeout em promessas
+function withTimeout<T>(promise: Promise<T>, ms: number = DEFAULT_AI_TIMEOUT_MS): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('AI timeout')), ms);
+        promise.then(
+            (val) => { clearTimeout(timer); resolve(val); },
+            (err) => { clearTimeout(timer); reject(err); }
+        );
+    });
+}
+
+// Helper para obter um wrapper de modelo usando o SDK @google/genai
+// Mantém compatibilidade com chamadas existentes (string ou objeto)
+async function getModel(modelName: string = DEFAULT_MODEL): Promise<any | null> {
+    const envKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    const storageKey = typeof localStorage !== 'undefined' ? localStorage.getItem('VITE_GEMINI_API_KEY') : null;
+    const apiKey = envKey || storageKey;
+    if (!apiKey) return null;
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    // Retorna um objeto com a mesma interface mínima utilizada pelo app
+    return {
+        generateContent: async (arg: any) => {
+            if (typeof arg === 'string') {
+                return ai.models.generateContent({ model: modelName, contents: arg });
+            }
+            const { contents, generationConfig, tools, toolConfig } = arg || {};
+            return ai.models.generateContent({ model: modelName, contents, generationConfig, tools, toolConfig });
+        }
+    };
+}
+
+// Parse robusto para respostas que deveriam ser JSON
+function tryParseJson(raw: string): any | null {
+    if (!raw) return null;
+    let text = raw.trim();
+    // Remove cercas de código
+    if (text.startsWith('```')) {
+        text = text.replace(/^```(json|markdown)?\s*/i, '').replace(/```$/,'').trim();
+    }
+    // Normalizações rápidas para JSON malformado
+    text = text
+        // troca aspas simples por duplas quando aparentam delimitar strings
+        .replace(/'([^']*)'/g, '"$1"')
+        // remove vírgula à direita antes de fechar objeto/array
+        .replace(/,\s*([}\]])/g, '$1')
+        // remove comentários tipo // ou /* */ se houver
+        .replace(/\/\/.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .trim();
+    // Tenta parse direto
+    try {
+        return JSON.parse(text);
+    } catch (_) {
+        // Extrai bloco entre a primeira { e a última }
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+            const slice = text.slice(start, end + 1);
+            try {
+                return JSON.parse(slice);
+            } catch (err) {
+                console.warn('Falha ao parsear JSON da IA. Trecho recebido:', text.slice(0, 200));
+                return null;
+            }
+        }
+        console.warn('Resposta da IA não contém JSON válido. Trecho recebido:', text.slice(0, 200));
+        return null;
+    }
+}
+
+// Extrai texto das respostas do SDK antigo e novo
+function extractResponseText(res: any): string {
+    try {
+        const t = res?.text;
+        if (typeof t === 'function') return String(t());
+        if (typeof t === 'string') return t;
+        const rt = res?.response?.text;
+        if (typeof rt === 'function') return String(rt());
+        if (typeof rt === 'string') return rt;
+    } catch {}
+    return '';
+}
+
+// Ping simples ao serviço de IA para diagnóstico de conectividade
+export async function pingGemini(): Promise<{ ok: boolean; ms?: number; error?: string }>{
+    const model = await getModel(DEFAULT_MODEL);
+    if (!model) {
+        return { ok: false, error: 'API key ausente ou não detectada' };
+    }
+    const start = Date.now();
+    try {
+        await withTimeout(model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: 'Responda apenas com OK.' }]}],
+            generationConfig: { temperature: 0, maxOutputTokens: 5 }
+        }));
+        const ms = Date.now() - start;
+        return { ok: true, ms };
+    } catch (err: any) {
+        return { ok: false, error: String(err?.message || err) };
+    }
+}
+
+// Heurística reutilizável para análise preliminar (exportada)
+export function getPreliminaryHeuristic(projectName: string, address: string): PreliminaryAiResult {
+    const desc = (projectName || '').toString();
+    const norm = desc.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    // Ocupação: reconhecer A-2 e A-1
+    const isResidential = /(residencial|apartamento|condominio|condomino|moradia|habitacao|habitac\w+|edificio\s*residencial|residencia|residência|casa|sobrado|unifamiliar)/i.test(norm);
+    const isMultiFamily = /(multifamiliar|a-2|a2|grupo\s*a-2|grupo\s*a2)/i.test(norm);
+    const isSingleFamily = /(unifamiliar|casa(\s*de\s*campo)?|sobrado|residencia|residência|chacara|chácara|sitio|sítio)/i.test(norm);
+    const isCommercial = /(comercial|loja|shopping|escritorio|escritório|escritorio)/i.test(desc);
+    const isIndustrial = /(industrial|galpao|galpão|fabrica|fábrica|warehouse)/i.test(desc);
+    const isHospital = /(hospitalar|hospital|clínica|clinica|upa)/i.test(desc);
+
+    // rf por ocupação
+    let rf = 0.001; // padrão residencial baixo
+    if (isIndustrial) rf = 0.1;
+    else if (isCommercial) rf = 0.01;
+    else if (isHospital) rf = 0.01;
+
+    // altura e tipo de escada -> hz
+    const heightMatch = desc.match(/(altura|h\s*=)?\s*(\d{1,3})\s*m(?!2)/i);
+    const height = heightMatch ? Number(heightMatch[2]) : undefined;
+    const isGround = /(terreo|térreo|terrea|térrea|\b0\s*pavimentos?\b|andares?\s*0|pavimento\s*unico|andar\s*unico)/i.test(desc);
+    const mentionsProtectedStair = /(escada\s*(enclausurada|protegida)|epf|apf|escada\s*pressurizada|\ba\s*prova\s*de\s*fuma(c|ç)a)/i.test(norm);
+    let hz = 5; // médio por padrão
+    if (isGround) hz = 1;
+    else if (mentionsProtectedStair || (typeof height === 'number' && height >= 23)) hz = 2;
+
+    // rp: automático vs não automático
+    const mentionsAutomatic = /(detec(c|ç)ao\s*automatica|detetor(es)?\s*de\s*fuma(c|ç)a|sprinkler|sistema\s*automatico)/i.test(norm);
+    const rp = mentionsAutomatic ? 0.2 : 0.5;
+
+    // tz por ocupação
+    let tz = 6903; // residencial ~78% do ano
+    if (isCommercial || isIndustrial) tz = 2080; // ~8h/dia útil
+    if (isHospital) tz = 8760; // 24/7
+
+    // nz: estimativa por unidades
+    let nz = isSingleFamily ? 5 : 40; // menor para unifamiliar
+    const floorsMatch = desc.match(/(\b|\s)(\d{1,2})\s*(andares?|pavimentos?)/i);
+    const unitsPerFloorMatch = desc.match(/(\d{1,3})\s*(unidades?|apartamentos?)\s*(por\s*andar)?/i);
+    const totalUnitsMatch = desc.match(/totalizando\s*(\d{1,4})\s*(unidades?|apartamentos?)/i);
+    const occupantsMatch = desc.match(/(\d{1,3})\s*(moradores?|pessoas?|habitantes?)/i);
+    if (totalUnitsMatch) {
+        nz = Number(totalUnitsMatch[1]) * 4; // 4 pessoas por unidade
+    } else if (floorsMatch && unitsPerFloorMatch) {
+        nz = Number(floorsMatch[2]) * Number(unitsPerFloorMatch[1]) * 4;
+    } else if (occupantsMatch) {
+        nz = Math.max(1, Number(occupantsMatch[1]));
+    } else {
+        const areaMatch = desc.match(/(\d{2,5})\s*(m²|m2)/i);
+        if (areaMatch) {
+            const area = Number(areaMatch[1]);
+            const density = isResidential ? 30 : (isCommercial ? 15 : 20);
+            nz = Math.max(10, Math.round(area / density));
+        }
+    }
+
+    const explanation = `## Análise Preliminar (Heurística)\n\nA IA está indisponível; parâmetros estimados por regras práticas com base na descrição e normas usuais do CB.\n\n* **Ocupação:** ${isResidential ? (isMultiFamily ? 'Residencial Multifamiliar (A-2)' : (isSingleFamily ? 'Residencial Unifamiliar (A-1)' : 'Residencial')) : isCommercial ? 'Comercial' : isIndustrial ? 'Industrial' : isHospital ? 'Hospitalar' : 'Indefinida'}\n* **Altura:** ${typeof height === 'number' ? height + ' m' : (isGround ? 'Térrea' : 'não informada')}\n* **Saída de Emergência:** ${isGround ? 'Térrea (sem escada exigida)' : (mentionsProtectedStair || (typeof height==='number' && height>=23) ? 'Escada protegida/EPF presumida' : 'Escada simples')}\n\n**Fatores adotados:** rf=${rf}, hz=${hz}, rp=${rp}, tz=${tz}, nz=${nz}`;
+
+    return { rf, hz, rp, tz, nz, explanation };
+}
 
 
 /**
@@ -31,12 +201,11 @@ export async function correctText(text: string): Promise<string> {
         return text;
     }
 
-    const apiKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
+    const model = await getModel(DEFAULT_MODEL);
+    if (!model) {
         // Sem API key: não bloquear UI, retornar o próprio texto
         return text;
     }
-    const ai = new GoogleGenAI({ apiKey });
     
     const prompt = `
         Corrija o seguinte texto em português do Brasil, ajustando a ortografia, acentuação e capitalização de forma sutil e natural. Mantenha a intenção original.
@@ -47,16 +216,8 @@ export async function correctText(text: string): Promise<string> {
         Texto corrigido:`;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                temperature: 0.2, // Lower temperature for more predictable corrections
-            }
-        });
-
-        const correctedText = response.text.trim();
-        
+        const result = await model.generateContent(prompt);
+        const correctedText = extractResponseText(result).trim();
         // Return the corrected text if it's not empty, otherwise fallback to original
         return correctedText || text;
     } catch (error) {
@@ -82,11 +243,8 @@ export async function getNgFromAddress(address: string): Promise<LocationResult 
     if (!address || address.trim().length < 5) {
         return null;
     }
-    const apiKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-        return null;
-    }
-    const ai = new GoogleGenAI({ apiKey });
+    const model = await getModel(DEFAULT_MODEL);
+    if (!model) return null;
 
     const prompt = `
         Você é um especialista em geolocalização e na norma NBR 5419-2.
@@ -115,25 +273,21 @@ export async function getNgFromAddress(address: string): Promise<LocationResult 
       `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-            }
-        });
+        const aiRes = await withTimeout(model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }]}],
+            generationConfig: { responseMimeType: 'application/json' }
+        }));
+        const jsonString = extractResponseText(aiRes);
+        const parsed = tryParseJson(jsonString);
 
-        const jsonString = response.text;
-        const result = JSON.parse(jsonString);
-
-        if (result.location && typeof result.location === 'string' &&
-            result.ng !== undefined && typeof result.ng === 'number' &&
-            result.latitude !== undefined && typeof result.latitude === 'number' &&
-            result.longitude !== undefined && typeof result.longitude === 'number'
+        if (parsed?.location && typeof parsed.location === 'string' &&
+            parsed.ng !== undefined && typeof parsed.ng === 'number' &&
+            parsed.latitude !== undefined && typeof parsed.latitude === 'number' &&
+            parsed.longitude !== undefined && typeof parsed.longitude === 'number'
         ) {
-            return result as LocationResult;
+            return parsed as LocationResult;
         }
-        console.warn("Gemini response for getNgFromAddress did not match expected format:", result);
+        console.warn("Gemini response for getNgFromAddress did not match expected format:", parsed);
         return null;
     } catch (error) {
         console.error("Error getting Ng from address with Gemini API:", error);
@@ -148,7 +302,8 @@ export async function getNgFromAddress(address: string): Promise<LocationResult 
  * @returns A promise that resolves to a FireRiskInfo object or null.
  */
 export async function getFireRiskFactor(projectName: string, address: string): Promise<FireRiskInfo | null> {
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
+    const model = await getModel(DEFAULT_MODEL);
+    if (!model) return null;
 
     const prompt = `
     Aja como um engenheiro especialista em segurança contra incêndio e pânico.
@@ -169,27 +324,19 @@ export async function getFireRiskFactor(projectName: string, address: string): P
       "explanation": "**Análise de Risco de Incêndio:**\\n\\n*   **Ocupação Provável:** Comercial (Shopping Center).\\n*   **Classificação de Risco:** Conforme a IT-XX do CB local, a ocupação é de **Risco Médio**.\\n*   **Recomendação de 'rf':** Para Risco Médio, o fator 'rf' sugerido é **0.01**"
     }
     `;
-
-    // Guardar contra falta de API key
-    const apiKey2 = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-    if (!apiKey2) {
-        return null;
-    }
-    const ai2 = new GoogleGenAI({ apiKey: apiKey2 });
     try {
-        const response = await ai2.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
+        const aiRes = await withTimeout(model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }]}],
+            generationConfig: {
+                responseMimeType: 'application/json',
                 temperature: 0.2,
             }
-        });
-        const jsonString = response.text;
-        const result = JSON.parse(jsonString);
+        }));
+        const jsonString = aiRes.response?.text?.() ?? aiRes.text?.() ?? '';
+        const parsed = tryParseJson(jsonString);
 
-        if (result && typeof result.rf === 'number' && typeof result.explanation === 'string') {
-            return result as FireRiskInfo;
+        if (parsed && typeof parsed.rf === 'number' && typeof parsed.explanation === 'string') {
+            return parsed as FireRiskInfo;
         }
         return null;
     } catch (error) {
@@ -200,8 +347,70 @@ export async function getFireRiskFactor(projectName: string, address: string): P
 
 export async function getPreliminaryAnalysis(projectName: string, address: string): Promise<PreliminaryAiResult | null> {
     if (!projectName || !address) return null;
+    
+    // Fallback heurístico caso a IA esteja indisponível ou retorne inválido
+    const heuristic = (): PreliminaryAiResult => {
+        const desc = (projectName || '').toString();
+        const norm = desc.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        // Ocupação: ampliar reconhecimento para residencial multifamiliar (A-2) e unifamiliar (A-1)
+        const isResidential = /(residencial|apartamento|condominio|condomino|moradia|habitacao|habitac\w+|edificio\s*residencial|residencia|residência|casa|sobrado|unifamiliar)/i.test(norm);
+        const isMultiFamily = /(multifamiliar|a-2|a2|grupo\s*a-2|grupo\s*a2)/i.test(norm);
+        const isSingleFamily = /(unifamiliar|casa(\s*de\s*campo)?|sobrado|residencia|residência|chacara|chácara|sitio|sítio)/i.test(norm);
+        const isCommercial = /(comercial|loja|shopping|escritorio|escritório|escritorio)/i.test(desc);
+        const isIndustrial = /(industrial|galpao|galpão|fabrica|fábrica|warehouse)/i.test(desc);
+        const isHospital = /(hospitalar|hospital|clínica|clinica|upa)/i.test(desc);
 
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
+        // rf por ocupação
+        let rf = 0.001; // padrão residencial baixo
+        if (isIndustrial) rf = 0.1;
+        else if (isCommercial) rf = 0.01;
+        else if (isHospital) rf = 0.01;
+
+        // altura e tipo de escada -> hz
+        const heightMatch = desc.match(/(altura|h\s*=)?\s*(\d{1,3})\s*m(?!2)/i);
+        const height = heightMatch ? Number(heightMatch[2]) : undefined;
+        const isGround = /(terreo|térreo|terrea|térrea|\b0\s*pavimentos?\b|andares?\s*0|pavimento\s*unico|andar\s*unico)/i.test(desc);
+        // Escada protegida/EPF: incluir sinônimos usuais
+        const mentionsProtectedStair = /(escada\s*(enclausurada|protegida)|epf|apf|escada\s*pressurizada|\ba\s*prova\s*de\s*fuma(c|ç)a)/i.test(norm);
+        let hz = 5; // médio por padrão
+        if (isGround) hz = 1;
+        else if (mentionsProtectedStair || (typeof height === 'number' && height >= 23)) hz = 2; // EPF comum >=23m
+
+        // rp: automático vs não automático
+        const mentionsAutomatic = /(detec(c|ç)ao\s*automatica|detetor(es)?\s*de\s*fuma(c|ç)a|sprinkler|sistema\s*automatico)/i.test(norm);
+        const rp = mentionsAutomatic ? 0.2 : 0.5;
+
+        // tz por ocupação
+        let tz = 6903; // residencial ~78% do ano
+        if (isCommercial || isIndustrial) tz = 2080; // ~8h/dia útil
+        if (isHospital) tz = 8760; // 24/7
+
+        // nz: estimativa por unidades
+        let nz = isSingleFamily ? 5 : 40; // padrão inicial: menor para unifamiliar
+        const floorsMatch = desc.match(/(\b|\s)(\d{1,2})\s*(andares?|pavimentos?)/i);
+        const unitsPerFloorMatch = desc.match(/(\d{1,3})\s*(unidades?|apartamentos?)\s*(por\s*andar)?/i);
+        const totalUnitsMatch = desc.match(/totalizando\s*(\d{1,4})\s*(unidades?|apartamentos?)/i);
+        const occupantsMatch = desc.match(/(\d{1,3})\s*(moradores?|pessoas?|habitantes?)/i);
+        if (totalUnitsMatch) {
+            nz = Number(totalUnitsMatch[1]) * 4; // 4 pessoas por unidade
+        } else if (floorsMatch && unitsPerFloorMatch) {
+            nz = Number(floorsMatch[2]) * Number(unitsPerFloorMatch[1]) * 4;
+        } else if (occupantsMatch) {
+            nz = Math.max(1, Number(occupantsMatch[1]));
+        } else {
+            // fallback por área se disponível
+            const areaMatch = desc.match(/(\d{2,5})\s*(m²|m2)/i);
+            if (areaMatch) {
+                const area = Number(areaMatch[1]);
+                const density = isResidential ? 30 : (isCommercial ? 15 : 20); // m²/pessoa aprox.
+                nz = Math.max(10, Math.round(area / density));
+            }
+        }
+
+        const explanation = `## Análise Preliminar (Heurística)\n\nA IA está indisponível; parâmetros estimados por regras práticas com base na descrição e normas usuais do CB.\n\n* **Ocupação:** ${isResidential ? (isMultiFamily ? 'Residencial Multifamiliar (A-2)' : (isSingleFamily ? 'Residencial Unifamiliar (A-1)' : 'Residencial')) : isCommercial ? 'Comercial' : isIndustrial ? 'Industrial' : isHospital ? 'Hospitalar' : 'Indefinida'}\n* **Altura:** ${typeof height === 'number' ? height + ' m' : (isGround ? 'Térrea' : 'não informada')}\n* **Saída de Emergência:** ${isGround ? 'Térrea (sem escada exigida)' : (mentionsProtectedStair || (typeof height==='number' && height>=23) ? 'Escada protegida/EPF presumida' : 'Escada simples')}\n\n**Fatores adotados:** rf=${rf}, hz=${hz}, rp=${rp}, tz=${tz}, nz=${nz}`;
+
+        return { rf, hz, rp, tz, nz, explanation };
+    };
     
     const prompt = `
         Aja como um engenheiro sênior especialista em segurança contra incêndio e pânico, com profundo conhecimento das Instruções Técnicas (ITs) do Corpo de Bombeiros (CB) brasileiro.
@@ -235,30 +444,31 @@ export async function getPreliminaryAnalysis(projectName: string, address: strin
         }
     `;
 
-    const apiKey3 = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-    if (!apiKey3) {
-        return null;
-    }
-    const ai3 = new GoogleGenAI({ apiKey: apiKey3 });
+    const model = await getModel(DEFAULT_MODEL);
+    if (!model) return heuristic();
     try {
-        const response = await ai3.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
+        // Garante que a UI não ficará "analisando" por tempo indefinido
+        const aiRes = await withTimeout(model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }]}],
+            generationConfig: {
+                responseMimeType: 'application/json',
                 temperature: 0.3,
             }
-        });
-        const jsonString = response.text;
-        const result = JSON.parse(jsonString);
+        }));
+        const jsonString = extractResponseText(aiRes);
+        const parsed = tryParseJson(jsonString);
 
-        if (result && typeof result.rf === 'number' && typeof result.hz === 'number' && typeof result.nz === 'number' && typeof result.rp === 'number' && typeof result.tz === 'number' && typeof result.explanation === 'string') {
-            return result as PreliminaryAiResult;
+        if (parsed && typeof parsed.rf === 'number' && typeof parsed.hz === 'number' && typeof parsed.nz === 'number' && typeof parsed.rp === 'number' && typeof parsed.tz === 'number' && typeof parsed.explanation === 'string') {
+            return parsed as PreliminaryAiResult;
         }
-        return null;
+        // Resposta inválida -> aplicar heurística
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('AI_LAST_RAW', String(jsonString).slice(0, 2000)); } catch {}
+        return heuristic();
     } catch (error) {
         console.error("Error in preliminary analysis with Gemini API:", error);
-        return null;
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('AI_LAST_ERROR', String((error as any)?.message || error)); } catch {}
+        // Erro na IA -> aplicar heurística
+        return heuristic();
     }
 }
 
@@ -277,10 +487,10 @@ function buildDetailedCalculations(data: AnalysisData): string {
     details += `### 4.3. Probabilidades de Dano (P)\n\n`;
     details += `**PA - Danos a seres vivos por choque (Descarga na Estrutura)**\n* *Fórmula:* PA = PTA × PB\n* *Variáveis:*\n    * PTA: **${p.PTA}** (${getOptionLabel(PTA_OPTIONS, p.PTA)})\n    * PB: **${p.PB}** (${getOptionLabel(PB_OPTIONS, p.PB)})\n* *Cálculo:* PA = ${p.PTA} × ${p.PB}\n* *Resultado:* **PA = ${pc.PA?.toExponential(3)}**\n\n`;
     details += `**PB - Danos físicos (Descarga na Estrutura)**\n* *Fórmula:* PB = PB\n* *Variáveis:*\n    * PB (Nível do SPDA): **${p.PB}** (${getOptionLabel(PB_OPTIONS, p.PB)})\n* *Resultado:* **PB = ${pc.PB?.toExponential(3)}**\n\n`;
-    if (data.has_electric_line) details += `**PC - Falha de sistemas (Descarga na Estrutura, Linha Elétrica)**\n* *Fórmula:* PC = PSPDₑ × CLDₑ\n* *Variáveis:*\n    * PSPDₑ: **${p.PSPD_electric}** (${getOptionLabel(PSPD_OPTIONS, p.PSPD_electric)})\n    * CLDₑ: **${p.CLD_electric}**\n* *Cálculo:* PC = ${p.PSPD_electric} × ${p.CLD_electric}\n* *Resultado:* **PC = ${pc.PC?.toExponential(3)}**\n\n`;
-    if (data.has_data_line) details += `**PCT - Falha de sistemas (Descarga na Estrutura, Linha de Dados)**\n* *Fórmula:* PCT = PSPDₐ × CLDₐ\n* *Variáveis:*\n    * PSPDₐ: **${p.PSPD_data}** (${getOptionLabel(PSPD_OPTIONS, p.PSPD_data)})\n    * CLDₐ: **${p.CLD_data}**\n* *Cálculo:* PCT = ${p.PSPD_data} × ${p.CLD_data}\n* *Resultado:* **PCT = ${pc.PCT?.toExponential(3)}**\n\n`;
-    if (data.has_electric_line) details += `**PM - Falha de sistemas (Descarga Próxima, Linha Elétrica)**\n* *Fórmula:* PM = PSPDₑ × (Ks1 × Ks2 × Ks3ₑ × Ks4ₑ)²\n* *Variáveis:*\n    * PSPDₑ: **${p.PSPD_electric}** (${getOptionLabel(PSPD_OPTIONS, p.PSPD_electric)})\n    * Ks1 (Malha wm1=${p.wm1}m): **${pc.Ks1?.toFixed(3)}**\n    * Ks2 (Malha wm2=${p.wm2}m): **${pc.Ks2?.toFixed(3)}**\n    * Ks3ₑ: **${p.Ks3_electric}** (${getOptionLabel(KS3_OPTIONS, p.Ks3_electric)})\n    * Ks4ₑ (Uw=${p.Uw_electric}kV): **${pc.Ks4_electric?.toFixed(3)}**\n* *Cálculo:* PM = ${p.PSPD_electric} × (${pc.Ks1?.toFixed(3)} × ${pc.Ks2?.toFixed(3)} × ${p.Ks3_electric} × ${pc.Ks4_electric?.toFixed(3)})²\n* *Resultado:* **PM = ${pc.PM?.toExponential(3)}**\n\n`;
-    if (data.has_data_line) details += `**PU - Danos a seres vivos por choque (Descarga na Linha)**\n* *Fórmula:* PU = PTU × PEB × PLD × CLD\n* *Variáveis:*\n    * PTU: **${p.PTU_electric}** (${getOptionLabel(PTU_OPTIONS, p.PTU_electric)})\n    * PEB: **${p.PEB_electric}** (${getOptionLabel(PSPD_OPTIONS, p.PEB_electric)})\n    * PLD: **${p.PLD_electric?.toFixed(2)}**\n    * CLD: **${p.CLD_electric}**\n* *Cálculo:* PU = ${p.PTU_electric} × ${p.PEB_electric} × ${p.PLD_electric?.toFixed(2)} × ${p.CLD_electric}\n* *Resultado:* **PU = ${pc.PU?.toExponential(3)}**\n\n`;
+    if (data.has_electric_line) details += `**PC - Falha de sistemas (Descarga na Estrutura, Linha Elétrica)**\n* *Fórmula:* PC = PSPDₑ × CLDₑ\n* *Variáveis:*\n    * PSPDₑ: **${p.PSPD_electric}** (${getOptionLabel(PSPD_OPTIONS, p.PSPD_electric)})\n    * CLDₑ_int: **${p.CLD_electric_int}**\n    * CLDₑ_ext: **${p.CLD_electric_ext}**\n* *Cálculo:* PC = ${p.PSPD_electric} × (CLDₑ conforme configuração)\n* *Resultado:* **PC = ${pc.PC?.toExponential(3)}**\n\n`;
+    if (data.has_data_line) details += `**PCT - Falha de sistemas (Descarga na Estrutura, Linha de Dados)**\n* *Fórmula:* PCT = PSPDₐ × CLDₐ\n* *Variáveis:*\n    * PSPDₐ: **${p.PSPD_data}** (${getOptionLabel(PSPD_OPTIONS, p.PSPD_data)})\n    * CLDₐ_int: **${p.CLD_data_int}**\n    * CLDₐ_ext: **${p.CLD_data_ext}**\n* *Cálculo:* PCT = ${p.PSPD_data} × (CLDₐ conforme configuração)\n* *Resultado:* **PCT = ${pc.PCT?.toExponential(3)}**\n\n`;
+    if (data.has_electric_line) details += `**PM - Falha de sistemas (Descarga Próxima, Linha Elétrica)**\n* *Fórmula:* PM = PSPDₑ × (Ks1 × Ks2 × Ks3ₑ × Ks4ₑ)²\n* *Variáveis:*\n    * PSPDₑ: **${p.PSPD_electric}** (${getOptionLabel(PSPD_OPTIONS, p.PSPD_electric)})\n    * Ks1 (Malha wm1=${p.wm1}m): **${pc.Ks1?.toFixed(3)}**\n    * Ks2 (Malha wm2=${p.wm2}m): **${pc.Ks2?.toFixed(3)}**\n    * Ks3ₑ: **${p.Ks3_electric_int}** (${getOptionLabel(KS3_OPTIONS, p.Ks3_electric_int)})\n    * Ks4ₑ (Uw=${p.Uw_electric_int}kV): **${pc.Ks4_electric?.toFixed(3)}**\n* *Cálculo:* PM = ${p.PSPD_electric} × (${pc.Ks1?.toFixed(3)} × ${pc.Ks2?.toFixed(3)} × ${p.Ks3_electric_int} × ${pc.Ks4_electric?.toFixed(3)})²\n* *Resultado:* **PM = ${pc.PM?.toExponential(3)}**\n\n`;
+    if (data.has_electric_line) details += `**PU - Danos a seres vivos por choque (Descarga na Linha Elétrica)**\n* *Fórmula:* PU = PTU × PEB × PLD × CLD\n* *Variáveis:*\n    * PTU: **${p.PTU_electric}** (${getOptionLabel(PTU_OPTIONS, p.PTU_electric)})\n    * PEB: **${p.PEB_electric}** (${getOptionLabel(PSPD_OPTIONS, p.PEB_electric)})\n    * PLD (ext): **${p.PLD_electric_ext?.toFixed(2)}**\n    * CLD (ext): **${p.CLD_electric_ext}**\n* *Cálculo:* PU = ${p.PTU_electric} × ${p.PEB_electric} × ${p.PLD_electric_ext?.toFixed(2)} × ${p.CLD_electric_ext}\n* *Resultado:* **PU = ${pc.PU?.toExponential(3)}**\n\n`;
 
     // Section 4.4: Losses
     details += `### 4.4. Perdas Consequentes (L) - ${zones[0]?.name}\n\n`;
@@ -324,7 +534,6 @@ function buildDetailedCalculations(data: AnalysisData): string {
  * @returns A promise that resolves to the formatted report string.
  */
 export async function generateFullReportText(data: AnalysisData): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY! });
     
     const { calculations: c, risk_results: r, frequency_results: f } = data;
 
@@ -435,21 +644,13 @@ ${Object.entries(data.risks_to_analyze).filter(([,v])=>v).map(([riskKey], index)
 ---
 `;
 
-    const apiKey4 = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-    if (!apiKey4) {
+    const model = await getModel(DEFAULT_MODEL);
+    if (!model) {
         return "Relatório Técnico gerado localmente. Configure a variável VITE_GEMINI_API_KEY para habilitar análise AI.";
     }
-    const ai4 = new GoogleGenAI({ apiKey: apiKey4 });
     try {
-        const response = await ai4.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                temperature: 0.1,
-            }
-        });
-
-        let text = response.text.trim();
+        const result = await model.generateContent(prompt);
+        let text = extractResponseText(result).trim();
         // Clean up potential markdown code fences
         if (text.startsWith('```markdown')) text = text.substring(10).trim();
         if (text.startsWith('```')) text = text.substring(3).trim();
@@ -478,4 +679,56 @@ Este aplicativo atua **exclusivamente como uma ferramenta de apoio** para cálcu
         console.error("Error generating full report with Gemini API:", error);
         return "Ocorreu um erro ao gerar o relatório. Por favor, tente novamente.";
     }
+}
+
+/**
+ * Diagnóstico do subsistema de IA: verifica se a chave está carregada,
+ * se o SDK pode ser importado, se o modelo é inicializado e tenta uma
+ * chamada mínima para detectar bloqueios de rede/credenciais inválidas.
+ */
+export async function diagnoseGemini(): Promise<{
+    envKeyPresent: boolean;
+    storageKeyPresent: boolean;
+    canImportSdk: boolean;
+    modelReady: boolean;
+    testRequestStatus: 'ok' | 'error' | 'skipped';
+    responseText?: string;
+    errorMessage?: string;
+}> {
+    const envKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+    const storageKey = typeof localStorage !== 'undefined' ? localStorage.getItem('VITE_GEMINI_API_KEY') : null;
+    const envKeyPresent = Boolean(envKey);
+    const storageKeyPresent = Boolean(storageKey);
+    let canImportSdk = false;
+    let modelReady = false;
+    let testRequestStatus: 'ok' | 'error' | 'skipped' = 'skipped';
+    let responseText: string | undefined;
+    let errorMessage: string | undefined;
+
+    try {
+        const { GoogleGenAI } = await import('@google/genai');
+        canImportSdk = true;
+        const effectiveKey = envKey || storageKey || '';
+        if (effectiveKey) {
+            const ai = new GoogleGenAI({ apiKey: effectiveKey });
+            // Considera pronto se conseguimos instanciar o cliente
+            modelReady = !!ai;
+            try {
+                const res = await ai.models.generateContent({
+                    model: DEFAULT_MODEL,
+                    contents: [{ role: 'user', parts: [{ text: 'retorne {"ok": true} em JSON puro' }]}],
+                    generationConfig: { responseMimeType: 'application/json' }
+                });
+                responseText = extractResponseText(res);
+                testRequestStatus = 'ok';
+            } catch (e: any) {
+                errorMessage = String(e?.message || e);
+                testRequestStatus = 'error';
+            }
+        }
+    } catch (e: any) {
+        errorMessage = String(e?.message || e);
+    }
+
+    return { envKeyPresent, storageKeyPresent, canImportSdk, modelReady, testRequestStatus, responseText, errorMessage };
 }

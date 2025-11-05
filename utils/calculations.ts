@@ -176,7 +176,7 @@ export function calculatePli(lineType: 'electric' | 'data', uw: number): number 
 
 
 export function calculateProbabilities(probData: ProbabilityData, analyzeDataLineProbs: boolean, has_data_line: boolean): { [key: string]: number } {
-    const p = probData || {};
+    const p: Partial<ProbabilityData> = probData || {};
 
     // Garantir que todos os valores sejam números válidos
     const safeValues = {

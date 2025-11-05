@@ -1,16 +1,17 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { AnalysisData, AnalysisInputData, ZoneCalculations } from '../types';
+import { AnalysisData, AnalysisInputData, ZoneCalculations, Zone } from '../types';
 import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
-import { 
-    calculateEvents, 
-    calculateProbabilities, 
-    calculateLossesForZone, 
-    calculateRisksForZone,
-    aggregateRiskResults,
-    calculateFrequencies,
-    aggregateFrequenciesForZones,
-    mergeZoneProbabilities
- } from '../utils/calculations';
+ import { 
+     calculateEvents, 
+     calculateProbabilities, 
+     calculateLossesForZone, 
+     calculateRisksForZone,
+     aggregateRiskResults,
+     calculateFrequencies,
+     aggregateFrequenciesForZones,
+     mergeZoneProbabilities,
+     calculatePld
+  } from '../utils/calculations';
 
 const STORAGE_KEY = 'spda-analysis-data';
 
@@ -179,6 +180,21 @@ export function useAnalysisData() {
             if (typeof safe.ng === 'string') {
                 const n = parseFloat(safe.ng as any);
                 safe.ng = isNaN(n) ? undefined : n;
+            }
+            // Evitar travamento por estados de IA persistidos como "loading" no localStorage
+            // Se encontramos 'loading', redefinimos para 'idle' na carga.
+            const normalizeStatus = (s: any): 'idle' | 'success' | 'error' => {
+                return s === 'success' || s === 'error' ? s : 'idle';
+            };
+            safe.preliminaryAiStatus = normalizeStatus((raw?.preliminaryAiStatus ?? safe.preliminaryAiStatus));
+            safe.fireRiskAiStatus = normalizeStatus((raw?.fireRiskAiStatus ?? safe.fireRiskAiStatus));
+            // Se estava em loading, não manter erro anterior
+            if (safe.preliminaryAiStatus === 'idle') {
+                // Mantém resultado, mas limpa erro para evitar bloqueio visual
+                safe.preliminaryAiError = null;
+            }
+            if (safe.fireRiskAiStatus === 'idle') {
+                safe.fireRiskAiError = null;
             }
             return safe;
         } catch {
@@ -386,13 +402,70 @@ export function useAnalysisData() {
                 const address = (data.clientAddress || '').toString().trim();
                 if (!address) return;
 
+                // Busca global pela última ocorrência de Cidade/UF em qualquer posição,
+                // aceitando ponto, vírgula, traço ou espaço entre Cidade e UF.
+                const globalPatterns: RegExp[] = [
+                    /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s*\/\s*([A-Za-z]{2})/gi,
+                    /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s-\s([A-Za-z]{2})/gi,
+                    /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+),\s*([A-Za-z]{2})/gi,
+                    /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s([A-Za-z]{2})/gi,
+                ];
+                let lastCityGlobal: string | null = null;
+                let lastUfGlobal: string | null = null;
+                for (const re of globalPatterns) {
+                    let match: RegExpExecArray | null;
+                    while ((match = re.exec(address)) !== null) {
+                        lastCityGlobal = (match[1] || '').trim();
+                        lastUfGlobal = (match[2] || '').trim().toUpperCase();
+                    }
+                }
+
+                // Se não encontrou UF (sigla) acima, tenta estado por extenso no FINAL do endereço.
+                const normalizeSimple = (s: string) => (s || '')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase().replace(/[.,]/g, ' ')
+                    .replace(/\s+/g, ' ').trim();
+                const mapStateNameToUf = (name: string): string | null => {
+                    const n = normalizeSimple(name);
+                    const dict: Record<string, string> = {
+                        'acre': 'AC', 'alagoas': 'AL', 'amapa': 'AP', 'amazonas': 'AM', 'bahia': 'BA', 'ceara': 'CE',
+                        'distrito federal': 'DF', 'espirito santo': 'ES', 'goias': 'GO', 'maranhao': 'MA', 'mato grosso': 'MT',
+                        'mato grosso do sul': 'MS', 'minas gerais': 'MG', 'para': 'PA', 'paraiba': 'PB', 'parana': 'PR',
+                        'pernambuco': 'PE', 'piaui': 'PI', 'rio de janeiro': 'RJ', 'rio grande do norte': 'RN',
+                        'rio grande do sul': 'RS', 'rondonia': 'RO', 'roraima': 'RR', 'santa catarina': 'SC',
+                        'sao paulo': 'SP', 'sergipe': 'SE', 'tocantins': 'TO'
+                    };
+                    return dict[n] || null;
+                };
+
+                if (!lastUfGlobal) {
+                    const endPatterns: RegExp[] = [
+                        /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s*\/\s*([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)$/i,
+                        /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s-\s([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)$/i,
+                        /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+),\s*([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)$/i,
+                        /([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)$/i,
+                    ];
+                    for (const re of endPatterns) {
+                        const m = address.match(re);
+                        if (m) {
+                            const stateName = (m[2] || '').trim();
+                            const ufFromName = mapStateNameToUf(stateName);
+                            if (ufFromName) {
+                                lastCityGlobal = (m[1] || '').trim();
+                                lastUfGlobal = ufFromName;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // Aceita sufixo no fim em diversos formatos: "Cidade/UF", "Cidade - UF", "Cidade, UF" e "Cidade UF"
                 const mSlash = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s*\/\s*([A-Za-z]{2})$/i);
                 const mHyphen = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s-\s([A-Za-z]{2})$/i);
                 const mComma = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+),\s*([A-Za-z]{2})$/i);
                 const mSpace = address.match(/([A-Za-zÀ-ÖØ-öø-ÿ'-.\s]+)\s([A-Za-z]{2})$/i);
-                const cityRaw = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
-                const ufRaw = (mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '').toUpperCase();
+                const cityRaw = ((lastCityGlobal && lastCityGlobal.trim()) || (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '')).trim();
+                const ufRaw = ((lastUfGlobal && lastUfGlobal.toUpperCase()) || (mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
                 if (!cityRaw || !ufRaw) return;
 
                 // Resolver cidade ignorando bairro/rua usando lista oficial do UF

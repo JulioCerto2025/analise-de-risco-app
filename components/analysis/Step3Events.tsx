@@ -90,7 +90,6 @@ const EventPeriodCard: FC<EventPeriodCardProps> = ({
     );
 };
 
-const formatValue = (value: number) => formatSmartNumber(value, { useScientificBelow: 0.001, scientificPrecision: 2, maxDecimals: 3 });
 
 // Exibe números como "9,98 × 10⁻⁷" com precisão ajustável
 const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {

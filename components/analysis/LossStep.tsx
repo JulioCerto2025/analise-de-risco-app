@@ -9,6 +9,11 @@ import { RP_OPTIONS, RT_OPTIONS, RF_OPTIONS, HZ_OPTIONS, LF_OPTIONS, LO_OPTIONS,
 import { getFireRiskFactor } from '../../lib/geminiService';
 import { formatSmartNumber } from '../../lib/format';
 
+const escapeHtml = (str: string) => str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
 const markdownToHtml = (markdown: string): string => {
     if (!markdown) return '';
     const text = markdown.replace(/\\n/g, '\n');
@@ -20,7 +25,7 @@ const markdownToHtml = (markdown: string): string => {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        const processInline = (str: string) => str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        const processInline = (str: string) => escapeHtml(str).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
         if (line.startsWith('## ')) {
             if (inList) { html += '</ul>\n'; inList = false; }
@@ -462,7 +467,9 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                 onChange({ fireRiskAiStatus: 'error', fireRiskAiError: 'Não foi possível determinar o fator de risco de incêndio.' });
             }
         } catch (error) {
-            console.error("Fire Risk Analysis Error:", error);
+            if (import.meta.env.DEV) {
+                console.error("Fire Risk Analysis Error:", error);
+            }
             onChange({ fireRiskAiStatus: 'error', fireRiskAiError: 'Ocorreu um erro ao analisar o risco de incêndio. Verifique a Etapa 1 e tente novamente.' });
         }
     }, [data.projectName, data.clientAddress, data.zones, activeZoneId, lossData, onChange]);
@@ -658,12 +665,16 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                                     {/* Campo manual simples para inserir/ajustar overrides */}
                                     <div className="grid grid-cols-2 gap-2">
                                         {PROB_KEYS.slice(0,6).map(k => (
-                                            <DecimalInput key={k} label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                            <div key={k}>
+                                                <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                            </div>
                                         ))}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         {PROB_KEYS.slice(6).map(k => (
-                                            <DecimalInput key={k} label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                            <div key={k}>
+                                                <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                            </div>
                                         ))}
                                     </div>
                                 </div>

@@ -4,7 +4,7 @@ import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, SlidersHorizontal } from 'lucide-react';
 import { AnalysisData, ProbabilityData, LossData } from '../../types';
-import { PB_OPTIONS, PSPD_OPTIONS, RP_OPTIONS } from '../../constants';
+import { PSPD_OPTIONS } from '../../constants';
 
 interface FrequencyConfigStepProps {
     data: AnalysisData;

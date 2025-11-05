@@ -4,17 +4,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button, Alert, AlertDescription, AlertTitle } from "./components/ui";
 import { Step1Input } from './components/analysis/Step1Input';
 import { NgInputStep } from './components/analysis/NgInputStep';
-import { ConnectedLinesStep } from './components/analysis/ConnectedLinesStep';
-import { Step3Events } from './components/analysis/Step3Events';
+const ConnectedLinesStepLazy = React.lazy(() => import('./components/analysis/ConnectedLinesStep').then(m => ({ default: m.ConnectedLinesStep })));
+const Step3EventsLazy = React.lazy(() => import('./components/analysis/Step3Events').then(m => ({ default: m.Step3Events })));
 import { RiskComponentsSelection } from './components/analysis/RiskComponentsSelection';
-import { ProbabilityStep } from './components/analysis/ProbabilityStep';
+const ProbabilityStepLazy = React.lazy(() => import('./components/analysis/ProbabilityStep').then(m => ({ default: m.ProbabilityStep })));
 import { LossStep } from './components/analysis/LossStep';
-import { RiskResultsStep } from './components/analysis/RiskResultsStep';
-import { ReportStep } from './components/analysis/ReportStep';
-import { FrequencyConfigStep } from './components/analysis/FrequencyConfigStep';
+const RiskResultsStepLazy = React.lazy(() => import('./components/analysis/RiskResultsStep').then(m => ({ default: m.RiskResultsStep })));
+const ReportStepLazy = React.lazy(() => import('./components/analysis/ReportStep').then(m => ({ default: m.ReportStep })));
+const FrequencyConfigStepLazy = React.lazy(() => import('./components/analysis/FrequencyConfigStep').then(m => ({ default: m.FrequencyConfigStep })));
 import { ProjectInfoStep } from './components/analysis/ProjectInfoStep';
 import { STEPS } from "./constants";
-import { AnalysisData } from './types';
+import { AnalysisData, AnalysisInputData } from './types';
 import { useAnalysisData } from './hooks/useAnalysisData';
 import { validateStep } from './utils/validation';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -166,15 +166,15 @@ export default function App() {
                 if (!data.mapRegion) {
                     updateData({ mapRegion: 'sul' }); // Valor padrão
                 }
-                if (!data.ngValue) {
-                    updateData({ ngValue: 5 }); // Valor padrão
+                if (!data.ng) {
+                    updateData({ ng: 5 }); // Valor padrão
                 }
             }
 
             // Lógica de loop por zona entre Etapas 7 (Probabilidades) e 8 (Perdas)
             if (currentStep === 7) {
                 // Ao sair da etapa de Probabilidades, persistir P calculado como overrides da zona atual
-                const zones = data.zones || [];
+                const zones = (data as AnalysisInputData).zones || [];
                 const zone = zones[currentZoneIndex];
                 if (zone) {
                     const mergedOverrides = { ...(zone.probability_overrides || {}), ...(data.probability_calculations || {}) };
@@ -231,23 +231,49 @@ export default function App() {
                 case 2: return <RiskComponentsSelection data={data} onChange={updateData} />;
                 case 3: return <NgInputStep data={data} onUpdate={updateData} />;
                 case 4: return <Step1Input data={data} onUpdate={updateData} />;
-                case 5: return <ConnectedLinesStep data={data} onUpdate={updateData} />;
-                case 6: return <Step3Events data={data} />;
-                case 7: return <ProbabilityStep data={data} onChange={updateData} />;
+                case 5: return (
+                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
+                        <ConnectedLinesStepLazy data={data} onUpdate={updateData} />
+                    </React.Suspense>
+                );
+                case 6: return (
+                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
+                        <Step3EventsLazy data={data} />
+                    </React.Suspense>
+                );
+                case 7: return (
+                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
+                        <ProbabilityStepLazy data={data} onChange={updateData} />
+                    </React.Suspense>
+                );
                 case 8: {
                     const activeZoneId = data.zones?.[currentZoneIndex]?.id || data.zones?.[0]?.id || '';
                     return <LossStep data={data} onChange={updateData} forceActiveZoneId={activeZoneId} hideProbabilityEditor />;
                 }
-                case 9: return <RiskResultsStep data={data} onUpdate={updateData} />;
-                case 10: return <FrequencyConfigStep data={data} onUpdate={updateData} />;
-                case 11: return <ReportStep data={data} onUpdate={updateData} />;
+                case 9: return (
+                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
+                        <RiskResultsStepLazy data={data} onUpdate={updateData} />
+                    </React.Suspense>
+                );
+                case 10: return (
+                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
+                        <FrequencyConfigStepLazy data={data} onUpdate={updateData} />
+                    </React.Suspense>
+                );
+                case 11: return (
+                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
+                        <ReportStepLazy data={data} onUpdate={updateData} />
+                    </React.Suspense>
+                );
                 default: return <div className="p-6 bg-slate-800 rounded-lg">
                     <h2 className="text-xl font-bold text-slate-100 mb-4">Etapa não encontrada</h2>
                     <p className="text-slate-300">Por favor, retorne à etapa anterior e tente novamente.</p>
                 </div>;
             }
         } catch (error) {
-            console.error("Erro ao renderizar etapa:", error);
+            if (import.meta.env.DEV) {
+                console.error("Erro ao renderizar etapa:", error);
+            }
             return <div className="p-6 bg-slate-800 rounded-lg">
                 <h2 className="text-xl font-bold text-red-400 mb-4">Erro ao carregar esta etapa</h2>
                 <p className="text-slate-300">Ocorreu um erro ao carregar esta etapa. Por favor, tente retornar à etapa anterior.</p>

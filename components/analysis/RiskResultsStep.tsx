@@ -1,10 +1,10 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Alert, AlertDescription, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, FormulaTooltip, Checkbox, useIsMobile } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Alert, AlertDescription, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, FormulaTooltip, useIsMobile } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, SlidersHorizontal } from "lucide-react";
 import { AnalysisData, ProbabilityData, LossData } from '../../types';
-import { RISK_COMPONENTS_DEFS, TOLERABLE_RISKS, PB_OPTIONS, PSPD_OPTIONS, RP_OPTIONS } from '../../constants';
+import { RISK_COMPONENTS_DEFS, TOLERABLE_RISKS, PB_OPTIONS, RP_OPTIONS } from '../../constants';
 
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
 const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {

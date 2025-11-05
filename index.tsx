@@ -28,7 +28,9 @@ const checkAppMounted = () => {
     const now = Date.now();
     if (now - lastReloadTs > 5000) { // evita loops de recarga
       lastReloadTs = now;
-      console.warn('[AutoReload] App não montado após retorno. Recarregando...');
+      if (import.meta.env.DEV) {
+        console.warn('[AutoReload] App não montado após retorno. Recarregando...');
+      }
       window.location.reload();
     }
   }

@@ -9,6 +9,19 @@ export default defineConfig(() => {
         host: '0.0.0.0',
       },
       plugins: [react()],
+      build: {
+        chunkSizeWarningLimit: 1024,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              react: ['react', 'react-dom'],
+              motion: ['framer-motion'],
+              charts: ['recharts'],
+              icons: ['lucide-react'],
+            }
+          }
+        }
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

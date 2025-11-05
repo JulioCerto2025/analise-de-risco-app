@@ -72,8 +72,9 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         const finalCenterY = centerY === undefined ? rect.top + rect.height / 2 : centerY;
     
         setTransform(prev => {
-            const newScale = Math.max(1, Math.min(prev.scale * zoomFactor, 5));
-    
+            // Aumenta o zoom máximo para permitir aproximação adicional
+            const newScale = Math.max(1, Math.min(prev.scale * zoomFactor, 10));
+
             if (newScale === 1) {
                 return { scale: 1, x: 0, y: 0 };
             }
@@ -167,8 +168,8 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
     };
 
     useImperativeHandle(ref, () => ({
-        zoomIn: () => handleZoom(1.25),
-        zoomOut: () => handleZoom(0.8),
+        zoomIn: () => handleZoom(1.3),
+        zoomOut: () => handleZoom(0.85),
         reset: handleReset,
         setDetectionConfig: (cfg: Partial<DetectionConfig>) => {
             detectionCfgRef.current = { ...detectionCfgRef.current, ...cfg };
@@ -203,8 +204,15 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             const y2 = Math.max(0, Math.min(rect.y2, canvas.height - 1));
             const w = Math.max(1, x2 - x1 + 1);
             const h = Math.max(1, y2 - y1 + 1);
-            const img = context.getImageData(x1, y1, w, h);
-            return { width: w, height: h, data: img.data };
+            try {
+                const img = context.getImageData(x1, y1, w, h);
+                return { width: w, height: h, data: img.data };
+            } catch (err) {
+                if (import.meta.env.DEV) {
+                    console.error('MapViewer.getImageDataRect failed (likely CORS or timing):', err);
+                }
+                return null;
+            }
         },
         // Detecta retângulo da área útil do mapa (exclui margens/legenda) de forma heurística
         getContentBounds: () => {
@@ -212,7 +220,16 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             const context = canvas?.getContext('2d', { willReadFrequently: true });
             if (!context || !canvas) return null;
             const { width, height } = canvas;
-            const imageData = context.getImageData(0, 0, width, height);
+            let imageData: ImageData;
+            try {
+                imageData = context.getImageData(0, 0, width, height);
+            } catch (err) {
+                // Se o canvas estiver "tainted" por CORS, retorne área inteira
+                if (import.meta.env.DEV) {
+                    console.error('MapViewer.getContentBounds getImageData failed (CORS?):', err);
+                }
+                return { x1: 0, y1: 0, x2: width, y2: height };
+            }
             const data = imageData.data;
 
             let minX = width, minY = height, maxX = 0, maxY = 0;
@@ -271,7 +288,13 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             const { width, height } = canvas;
             const ignoreBottom = Math.floor(height * 0.15);
             if (point.x < 0 || point.y < 0 || point.x >= width || point.y >= height - ignoreBottom) return false;
-            const p = context.getImageData(point.x, point.y, 1, 1).data;
+            let p: Uint8ClampedArray;
+            try {
+                p = context.getImageData(point.x, point.y, 1, 1).data;
+            } catch (err) {
+                if (import.meta.env.DEV) console.error('MapViewer.isContentPixel failed:', err);
+                return false;
+            }
             const r = p[0], g = p[1], b = p[2];
             // rápido teste de conteúdo colorido
             const maxRGB = Math.max(r, g, b), minRGB = Math.min(r, g, b);
@@ -292,7 +315,12 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                     const rad = (a * Math.PI) / 180;
                     const x = clamp(Math.round(point.x + Math.cos(rad) * r), 0, width - 1);
                     const y = clamp(Math.round(point.y + Math.sin(rad) * r), 0, height - ignoreBottom - 1);
-                    const p = context.getImageData(x, y, 1, 1).data;
+                    let p: Uint8ClampedArray;
+                    try {
+                        p = context.getImageData(x, y, 1, 1).data;
+                    } catch {
+                        continue;
+                    }
                     const r1 = p[0], g1 = p[1], b1 = p[2];
                     const maxRGB = Math.max(r1, g1, b1), minRGB = Math.min(r1, g1, b1);
                     const saturationApprox = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
@@ -318,7 +346,13 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             
             if (width <= 0 || height <= 0) return null;
 
-            const imageData = context.getImageData(startX, startY, width, height);
+            let imageData: ImageData;
+            try {
+                imageData = context.getImageData(startX, startY, width, height);
+            } catch (err) {
+                if (import.meta.env.DEV) console.error('MapViewer.getAverageColorAtPoint failed:', err);
+                return null;
+            }
             const data = imageData.data;
             let r = 0, g = 0, b = 0;
 
@@ -349,7 +383,13 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             const height = Math.min(canvas.height - startY, radius * 2 + 1);
             if (width <= 0 || height <= 0) return null;
 
-            const imageData = context.getImageData(startX, startY, width, height);
+            let imageData: ImageData;
+            try {
+                imageData = context.getImageData(startX, startY, width, height);
+            } catch (err) {
+                if (import.meta.env.DEV) console.error('MapViewer.getDominantPaletteIndexAtPoint failed:', err);
+                return null;
+            }
             const data = imageData.data;
 
             // Precompute palette LAB for precise color distance
@@ -475,7 +515,13 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             // Read exactly the clicked pixel
             const x = Math.max(0, Math.min(point.x, (canvas?.width ?? 1) - 1));
             const y = Math.max(0, Math.min(point.y, (canvas?.height ?? 1) - 1));
-            const imageData = context.getImageData(x, y, 1, 1);
+            let imageData: ImageData;
+            try {
+                imageData = context.getImageData(x, y, 1, 1);
+            } catch (err) {
+                if (import.meta.env.DEV) console.error('MapViewer.getPaletteIndexAtPoint failed:', err);
+                return null;
+            }
             const data = imageData.data;
             const pr = data[0], pg = data[1], pb = data[2];
 
@@ -525,8 +571,8 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                 if (dE < bestScore) { bestScore = dE; bestIndex = k; }
             }
 
-            // Adjacent pair disambiguation using pure hue:
-            const ph = rgbToHsv(pixel.r, pixel.g, pixel.b);
+            // Adjacent pair disambiguation using pure hue (use center pixel):
+            const ph = rgbToHsv(pr, pg, pb);
             const hueDiff = (h1: number, h2: number) => Math.min(Math.abs(h1 - h2), 1 - Math.abs(h1 - h2));
 
             // Blue 14 (index 6) vs Cyan 16 (index 7)
@@ -584,7 +630,7 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
     
     const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
         e.preventDefault();
-        const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
         handleZoom(zoomFactor, e.clientX, e.clientY);
     };
 

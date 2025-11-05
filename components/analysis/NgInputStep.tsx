@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectContent, SelectItem, Label, Button, AutocompleteInput } from '../ui';
-import { ZoomIn, ZoomOut, RefreshCw, X, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, Button, AutocompleteInput } from '../ui';
+import { ZoomIn, ZoomOut, RefreshCw, X, Loader2, MapPin, Zap } from "lucide-react";
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData } from '../../types';
-import { MapViewer, MapViewerHandles } from './MapViewer';
+import { MapViewerHandles } from './MapViewer';
+const MapViewerLazy = React.lazy(() => import('./MapViewer').then(m => ({ default: m.MapViewer })));
 import { getUfs, getCitiesByUf, getNgByCity, toUfCode, getUfSuggestions } from '../../data/ngByCity';
-// Removido: geocodificação automática não é mais utilizada
+import { geocodeCityWithOSM } from '../../lib/osmGeocoding';
+// Removido: geocodificação/OCR não são utilizados
 
 interface NgInputStepProps {
     data: AnalysisData;
@@ -55,6 +57,9 @@ const CITY_PIXEL_OVERRIDES: { [region: string]: { [uf: string]: { [city: string]
 
 // Geographic bounds for each map image grid.
 const mapBounds: { [key: string]: { lonMin: number; lonMax: number; latMin: number; latMax: number } } = {
+    // Brasil inteiro (conforme grade do mapa nacional)
+    // Longitude: ~ -76 a -32; Latitude: ~ -32 a +6
+    'brasil':       { lonMin: -76.0, lonMax: -32.0, latMin: -32.0, latMax: 6.0 },
     'centro-oeste': { lonMin: -61.0, lonMax: -46.0, latMin: -24.0, latMax: -7.0 },
     'nordeste':     { lonMin: -48.0, lonMax: -34.0, latMin: -18.0, latMax: -1.0 },
     'norte':        { lonMin: -74.0, lonMax: -46.0, latMin: -13.0, latMax: 5.5 },
@@ -78,6 +83,9 @@ const mapPixelBounds: { [key: string]: { x1: number; y1: number; x2: number; y2:
 // Calibração por porcentagem da área da GRADE (retângulo com lat/long) dentro da imagem
 // Esses valores foram estimados para as imagens atuais e evitam usar o contorno colorido irregular.
 const mapPixelBoundsPercent: { [key: string]: { left: number; top: number; right: number; bottom: number } } = {
+  // Brasil (AQcWBhv.png): recorte da área da grade cartográfica, exclui margens e legenda
+  // Ajuste fino: reduz ligeiramente margem direita e superior para alinhar lon/lat
+  'brasil': { left: 0.120, top: 0.070, right: 0.952, bottom: 0.900 },
   // Sudeste (imagem atual WMhsjys.jpeg): margem esquerda/topo pequena, base com legenda
   // Ajuste fino: se necessário, podemos refinar após inspeção visual
   // Ajuste fino para alinhar ao retângulo da grade impresso
@@ -90,6 +98,8 @@ const mapPixelBoundsPercent: { [key: string]: { left: number; top: number; right
 // Viés percentual pós-conversão para correção fina por região
 // Aplica deslocamento proporcional à altura/largura útil do retângulo da grade
 const regionPixelBiasPercent: { [key: string]: { x?: number; y?: number } } = {
+  // Pequenos deslocamentos para compensar margens na imagem do Brasil
+  brasil: { x: -0.012, y: -0.010 },
   sudeste: { x: 0, y: 0.050 },
 };
 
@@ -125,8 +135,29 @@ const convertGeoToPixel = (
 
     return { x: Math.round(x), y: Math.round(y) };
 };
+// Converte posição em pixels (clique) para coordenadas geográficas (lat/lon) usando os limites precisos
+const convertPixelToGeo = (
+    x: number,
+    y: number,
+    geoBounds: { lonMin: number; lonMax: number; latMin: number; latMax: number },
+    pixelBounds: { x1: number; y1: number; x2: number; y2: number }
+): { lat: number; lon: number } | null => {
+    if (!geoBounds || !pixelBounds) return null;
+    const pixelWidth = pixelBounds.x2 - pixelBounds.x1;
+    const pixelHeight = pixelBounds.y2 - pixelBounds.y1;
+    if (pixelWidth <= 0 || pixelHeight <= 0) return null;
+    const clampedX = Math.max(pixelBounds.x1, Math.min(pixelBounds.x2, x));
+    const clampedY = Math.max(pixelBounds.y1, Math.min(pixelBounds.y2, y));
+    const xRatio = (clampedX - pixelBounds.x1) / pixelWidth;
+    const yRatio = (clampedY - pixelBounds.y1) / pixelHeight;
+    const lon = geoBounds.lonMin + xRatio * (geoBounds.lonMax - geoBounds.lonMin);
+    // Inverte a latitude: topo da figura corresponde ao maior valor de latitude
+    const lat = geoBounds.latMax - yRatio * (geoBounds.latMax - geoBounds.latMin);
+    return { lat, lon };
+};
 
 const regionOptions = [
+    { value: 'brasil', label: 'Brasil' },
     { value: 'centro-oeste', label: 'Centro-Oeste' },
     { value: 'nordeste', label: 'Nordeste' },
     { value: 'norte', label: 'Norte' },
@@ -203,10 +234,10 @@ const getRegionFromState = (stateUF: string = ''): string => {
 };
 
 export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
-    const { mapRegion = 'sul', clientAddress = '', location = '' } = data || {};
+    const { mapRegion = 'brasil', clientAddress = '', location = '' } = data || {};
     const [markerPoint, setMarkerPoint] = useState<{ x: number; y: number } | null>(null);
     const mapViewerRef = useRef<MapViewerHandles>(null);
-    const [coordinates, setCoordinates] = useState<string>('');
+    // Removido: estado de coordenadas e calibração OCR
     const [legendHighlightIndex, setLegendHighlightIndex] = useState<number | null>(null);
     const [palette, setPalette] = useState<string[]>(DEFAULT_NG_COLOR_BLOCKS);
     const [isLoading, setIsLoading] = useState(false);
@@ -220,11 +251,51 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const [cityInput, setCityInput] = useState<string>('');
     const lastAutoCommitRef = useRef<string>('');
     const lastLocationAppliedRef = useRef<string>('');
+    // Coordenadas da cidade (lat/lon). Tenta override local e, se não houver, geocodifica via OSM.
+    const [coordsForCity, setCoordsForCity] = useState<{ lat: number; lon: number } | null>(null);
+
+    // (Movido para baixo, após getDynamicPixelBounds, para evitar TDZ)
+    useEffect(() => {
+        const run = async () => {
+            try {
+                if (!selectedUf || !selectedCity) { setCoordsForCity(null); return; }
+                const uf = selectedUf.toUpperCase();
+                const byUf = CITY_COORDS_OVERRIDES[uf];
+                const override = byUf ? byUf[selectedCity] || null : null;
+                if (override) { setCoordsForCity(override); return; }
+                const fetched = await geocodeCityWithOSM(selectedCity, uf);
+                setCoordsForCity(fetched);
+            } catch (_) {
+                setCoordsForCity(null);
+            }
+        };
+        run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedUf, selectedCity]);
+
+    // Determina a cor do card NG com base no valor atual (2..32)
+    const ngPaletteIndex = React.useMemo(() => {
+        const ng = typeof data.ng === 'number' ? data.ng : null;
+        if (ng && ng >= 2 && ng <= 32) {
+            const idx = Math.round((ng - 2) / 2);
+            return Math.max(0, Math.min(palette.length - 1, idx));
+        }
+        return legendHighlightIndex ?? null;
+    }, [data.ng, legendHighlightIndex, palette.length]);
+
+    const ngColorHex = React.useMemo(() => {
+        return typeof ngPaletteIndex === 'number' && ngPaletteIndex >= 0 ? palette[ngPaletteIndex] : '#ff0000';
+    }, [ngPaletteIndex, palette]);
+
+    const ngBgRgba = React.useMemo(() => {
+        const rgb = hexToRgb(ngColorHex);
+        return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)` : ngColorHex;
+    }, [ngColorHex]);
     
     // Inicializar valores padrão se necessário
     useEffect(() => {
         if (!data.mapRegion) {
-            onUpdate({ ...data, mapRegion: 'sul' });
+            onUpdate({ ...data, mapRegion: 'brasil' });
         }
         (async () => {
             const ufs = await getUfs();
@@ -255,11 +326,17 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             try {
                 const raw = (data.location || '').toString().trim();
                 if (!raw) return;
-                // aceita "Cidade - UF" e "Cidade/UF"
-                const mHyphen = raw.match(/^(.*)\s-\s([A-Z]{2})$/i);
-                const mSlash = raw.match(/^(.*)\s\/\s([A-Z]{2})$/i);
-                const city = (mHyphen ? mHyphen[1] : mSlash ? mSlash[1] : '').trim();
-                const uf = ((mHyphen ? mHyphen[2] : mSlash ? mSlash[2] : '') || '').toUpperCase();
+                // aceita "Cidade - UF", "Cidade/UF", "Cidade, UF" e "Cidade UF"
+                const mHyphen = raw.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
+                const mSlash  = raw.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
+                const mComma  = raw.match(/^(.*),\s*([A-Za-z]{2})$/i);
+                const mSpace  = raw.match(/^(.*)\s([A-Za-z]{2})$/i);
+                let city = (mHyphen?.[1] || mSlash?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
+                let uf   = ((mHyphen?.[2] || mSlash?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
+                // Remove prefixos comuns do início
+                city = city.replace(/^(centro|bairro\s+\S+|distrito\s+\S+|zona\s+\S+)\s+/i, '').trim();
+                // Normaliza UF para código oficial
+                uf = toUfCode(uf) || uf;
                 if (!city || !uf) return;
 
                 const key = `${uf}|${city}`;
@@ -274,10 +351,19 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 setCityInput(city);
 
                 const ngPreset = await getNgByCity(uf, city);
-                const region = getRegionFromState(uf);
-                onUpdate({ location: `${city} - ${uf}`, ng: ngPreset, mapRegion: region });
-
-                // Removido: não posicionar marcador automaticamente
+                // Atualiza dados (sem posicionar marcador automaticamente)
+                onUpdate({ location: `${city} - ${uf}`, ng: ngPreset, mapRegion: 'brasil' });
+                // Atualiza lat/lon detectados para a cidade informada
+                try {
+                    const byUf = CITY_COORDS_OVERRIDES[uf.toUpperCase()] || {};
+                    const override = byUf[city] || null;
+                    if (override) {
+                        setCoordsForCity(override);
+                    } else {
+                        const fetched = await geocodeCityWithOSM(city, uf);
+                        setCoordsForCity(fetched || null);
+                    }
+                } catch (_) {}
             } catch (_) {
                 // silencioso: se falhar, o usuário pode selecionar manualmente
             }
@@ -315,10 +401,19 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 setCityInput(city);
 
                 const ngPreset = await getNgByCity(uf, city);
-                const region = getRegionFromState(uf);
-                onUpdate({ location: `${city} - ${uf}`, ng: ngPreset, mapRegion: region });
-
-                // Removido: não posicionar marcador automaticamente
+                // Atualiza dados (sem posicionar marcador automaticamente)
+                onUpdate({ location: `${city} - ${uf}`, ng: ngPreset, mapRegion: 'brasil' });
+                // Atualiza lat/lon detectados para a cidade informada
+                try {
+                    const byUf = CITY_COORDS_OVERRIDES[uf.toUpperCase()] || {};
+                    const override = byUf[city] || null;
+                    if (override) {
+                        setCoordsForCity(override);
+                    } else {
+                        const fetched = await geocodeCityWithOSM(city, uf);
+                        setCoordsForCity(fetched || null);
+                    }
+                } catch (_) {}
             } catch (_) {
                 // silencioso
             }
@@ -333,7 +428,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
 
     const handleMapClick = useCallback(async (clickData: { clickPoint: { x: number, y: number } }) => {
-        setCoordinates(''); // Clear geo-coordinates if clicking manually
         setMarkerPoint(clickData.clickPoint);
         try {
             const ref = mapViewerRef.current;
@@ -354,6 +448,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             setLegendHighlightIndex(null);
         }
     }, []);
+
+    // Removido: handler com geocodificação reversa e coordenadas
+
+    
 
     // Atualiza dimensões da imagem sempre que a região do mapa muda
     useEffect(() => {
@@ -397,14 +495,84 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         return null;
     }, [imageDims]);
 
+    // Posiciona o marcador para a cidade/UF informados (Brasil como mapa)
+    const positionMarkerForCityUf = useCallback(async (city: string, uf: string, attempt: number = 0) => {
+        const region = 'brasil';
+        const pixelBounds = getDynamicPixelBounds(region);
+        if (!city || !uf) return;
+        if (!pixelBounds) {
+            // Aguarda canvas/bounds ficarem prontos e tenta novamente algumas vezes
+            if (attempt < 8) {
+                setTimeout(() => positionMarkerForCityUf(city, uf, attempt + 1), 200);
+            }
+            return;
+        }
+
+        try {
+            // 1) Coordenadas locais (override) têm prioridade
+            const byUf = CITY_COORDS_OVERRIDES[uf.toUpperCase()] || {};
+            let coords = byUf[city] || null;
+            if (!coords) {
+                coords = await geocodeCityWithOSM(city, uf);
+            }
+            if (!coords) return;
+
+            const geoBounds = mapBounds[region];
+            const px = convertGeoToPixel(coords.lat, coords.lon, geoBounds, pixelBounds);
+            if (!px) return;
+
+            const bias = regionPixelBiasPercent[region] || {};
+            const width = (pixelBounds.x2 - pixelBounds.x1);
+            const height = (pixelBounds.y2 - pixelBounds.y1);
+            const bx = Math.round((bias.x || 0) * width);
+            const by = Math.round((bias.y || 0) * height);
+            const biased = { x: px.x + bx, y: px.y + by };
+
+            // Snap ao conteúdo colorido (terra) para evitar cair em bordas/legenda
+            const ref = mapViewerRef.current;
+            const snapped = ref?.findNearestContentPoint(biased, 14) || biased;
+            setMarkerPoint(snapped);
+            onUpdate({ mapRegion: region });
+        } catch (_) {
+            // silencioso
+        }
+    }, [getDynamicPixelBounds, mapViewerRef]);
+
+    // Removido: calibração OCR e conversões geo↔pixel
+
+    // Manipulador que usa calibração OCR dos eixos para converter pixel→geo fiel ao desenho
+    // Removido: handler de clique com OCR/geocodificação
+
+    // Atualiza apenas lat/lon quando Cidade/UF mudam (sem posicionar marcador)
+    useEffect(() => {
+        const fetchCoords = async () => {
+            if (!selectedUf || !selectedCity) return;
+            try {
+                const byUf = CITY_COORDS_OVERRIDES[selectedUf.toUpperCase()] || {};
+                const override = byUf[selectedCity] || null;
+                if (override) {
+                    setCoordsForCity(override);
+                    return;
+                }
+                const fetched = await geocodeCityWithOSM(selectedCity, selectedUf);
+                setCoordsForCity(fetched || null);
+            } catch (_) {}
+        };
+        fetchCoords();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedUf, selectedCity]);
+
+    // Removido: posicionamento quando a imagem fica pronta
+
     // Função removida - agora usamos apenas seleção manual no mapa
 
     const handleRegionChange = (value: string) => {
         onUpdate({ mapRegion: value });
         setMarkerPoint(null);
-        setCoordinates('');
-        // Removido: não reposicionar marcador automaticamente ao trocar de região
+        // Removido: limpeza de coordenadas
     };
+
+    // Removido: colagem de coordenadas do Google Maps
     
     const commitUf = async (input: string) => {
         const code = toUfCode(input) || input.toUpperCase();
@@ -415,8 +583,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         setAvailableCities(cities);
         setSelectedCity('');
         setCityInput('');
-        const region = getRegionFromState(code);
-        onUpdate({ mapRegion: region });
+        // Não troca automaticamente para regiões; mantém Brasil como padrão
+        onUpdate({ mapRegion: 'brasil' });
     };
 
     const handleUfInputUpdate = async (val: string) => {
@@ -434,16 +602,25 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         // pick best match from availableCities
         const normalized = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         const exact = availableCities.find(c => normalized(c) === normalized(text));
-        const starts = availableCities.find(c => normalized(c).startsWith(normalized(text)));
-        const city = exact || starts || text;
+        // Não forçar escolha por prefixo; mantém o que o usuário digitou
+        const city = exact || text;
         setSelectedCity(city);
         setCityInput(city);
         if (selectedUf) {
             const ngPreset = await getNgByCity(selectedUf, city);
             const loc = `${city} - ${selectedUf}`;
             onUpdate({ location: loc, ng: ngPreset });
-            
-            // Removido: não posicionar marcador automaticamente
+            // Atualiza lat/lon detectados (sem posicionar marcador)
+            try {
+                const byUf = CITY_COORDS_OVERRIDES[selectedUf.toUpperCase()] || {};
+                const override = byUf[city] || null;
+                if (override) {
+                    setCoordsForCity(override);
+                } else {
+                    const fetched = await geocodeCityWithOSM(city, selectedUf);
+                    setCoordsForCity(fetched || null);
+                }
+            } catch (_) {}
         }
     };
 
@@ -476,15 +653,15 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         }
 
         const { city, uf } = parsed;
-        // Atualiza região de visualização conforme UF
-        const region = getRegionFromState(uf);
-        onUpdate({ mapRegion: region });
+        // Mantém Brasil como região de visualização padrão
+        onUpdate({ mapRegion: 'brasil' });
 
         // Primeiro comitar UF para carregar cidades, depois cidade
         await commitUf(uf);
         // pequeno atraso para garantir que a lista de cidades foi atualizada
         await new Promise(r => setTimeout(r, 150));
         await commitCity(city);
+        // Removido: não tentar posicionar explicitamente
     };
 
     // Redundância segura: segundo auto-commit com normalização correta de acentos
@@ -536,22 +713,20 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     // Removido: posicionamento automático baseado em cidade/UF
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
             {/* Left Panel: Inputs */}
-            <div className="w-full lg:w-1/3 flex-shrink-0 space-y-6">
+            <div className="w-full lg:w-1/3 flex-shrink-0 space-y-4">
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="py-3 px-4">
                         <CardTitle>Descargas Atmosféricas (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="space-y-4 p-4">
                         {/* Controles de calibração removidos: a detecção agora é automática e robusta */}
                         <div>
                            <Label>Região para Visualização no Mapa</Label>
                             <Select value={mapRegion} onValueChange={handleRegionChange} placeholder="Selecione uma região..." options={regionOptions}>
                                 <SelectTrigger>
-                                    <span className="truncate text-left text-slate-100">
-                                        {regionOptions.find(o => o.value === mapRegion)?.label || 'Brasil (Padrão)'}
-                                    </span>
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {regionOptions.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
@@ -585,30 +760,68 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                    onUpdate={(val) => setCityInput(val)}
                                    suggestions={availableCities}
                                    placeholder="Digite a cidade"
-                                   onBlur={() => commitCity(cityInput)}
+                                   // Não comitar no blur para evitar completar antes de terminar a digitação
                                    onCommit={(val) => commitCity(val)}
                                />
                            </div>
                         </div>
 
-                        <DecimalInput
-                            id="ng"
-                            label="(Ng) Densidade de descargas (raios/km²/ano)"
-                            value={data.ng}
-                            onUpdate={val => onUpdate({ ng: val })}
-                            placeholder="Digite o valor Ng identificado no mapa"
-                        />
+                        {/* Contêiner comum: coordenadas e NG com a mesma largura */}
+                        <div className="mx-auto w-fit">
+                            {/* Coordenadas (w-full para igualar largura) */}
+                            <div
+                                className="w-full mt-2 px-4 py-3 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base md:text-lg font-bold shadow-sm"
+                                aria-label="Coordenadas da cidade selecionada"
+                            >
+                                <div className="grid grid-cols-[auto_1fr] gap-x-3">
+                                    <div className="row-span-2 flex items-center justify-center">
+                                        <MapPin className="h-6 w-6 text-slate-300" aria-hidden="true" />
+                                    </div>
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="font-mono whitespace-pre tracking-wide">Lat.  Y:</span>
+                                        <span className="font-mono tabular-nums text-right text-lg md:text-xl">{coordsForCity ? coordsForCity.lat.toFixed(2) : '--'}</span>
+                                    </div>
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="font-mono whitespace-pre tracking-wide">Long. X:</span>
+                                        <span className="font-mono tabular-nums text-right text-lg md:text-xl">{coordsForCity ? coordsForCity.lon.toFixed(2) : '--'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-2 text-xs text-slate-300/80">
+                                Posicione o marcador manualmente no mapa. A localização não é aplicada automaticamente.
+                            </div>
+
+                            {/* NG (w-full para igualar largura) */}
+                            <div
+                                className="w-full mt-2 px-4 py-3 rounded-xl text-white text-2xl md:text-3xl font-extrabold shadow-lg border-2"
+                                style={{ backgroundColor: ngBgRgba, borderColor: ngColorHex }}
+                                aria-label="Valor NG atual"
+                            >
+                                <div className="grid grid-cols-[auto_auto_auto] gap-x-3 items-center justify-center">
+                                    <div className="flex items-center justify-center">
+                                        <Zap className="h-8 w-8 text-white" aria-hidden="true" />
+                                    </div>
+                                    <span className="tracking-wide">NG</span>
+                                    <span className="font-mono tabular-nums">{typeof data.ng === 'number' && data.ng > 0 ? data.ng.toFixed(2) : '--'}</span>
+                                </div>
+                            </div>
+
+                            <Label className="mt-2 block w-full whitespace-nowrap text-center text-xs md:text-sm text-slate-200 font-semibold">(Ng) Dens. Desc. (raios/km²/ano)</Label>
+                        </div>
+
+                        {/* Campo redundante de NG removido para priorizar captura por clique */}
                     </CardContent>
                 </Card>
 
                 <Card className="hidden sm:block">
-                    <CardHeader>
+                    <CardHeader className="py-3 px-4">
                         <CardTitle>Legenda do Mapa (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
+                    <CardContent className="p-4">
+                        <div className="space-y-2">
                             {/* Linha superior (2..16) ocupando todo o card */}
-                            <div className="grid grid-cols-8 gap-x-4 justify-items-center">
+                            <div className="grid grid-cols-8 gap-x-2 justify-items-center">
                                 {palette.slice(0, 8).map((color, i) => {
                                     const index = i;
                                     const ngValue = (index * 2) + 2;
@@ -616,16 +829,16 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                     return (
                                         <div key={index} className="text-center">
                                             <div
-                                                className={`h-5 w-5 rounded ${isHighlighted ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900' : 'border border-slate-600/50'}`}
+                                                className={`h-4 w-4 rounded ${isHighlighted ? 'ring-1 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'border border-slate-600/50'}`}
                                                 style={{ backgroundColor: color }}
                                             />
-                                            <span className="text-xs font-medium text-slate-300 mt-1 block">{ngValue}</span>
+                                            <span className="text-xs font-medium text-slate-300 mt-0.5 block">{ngValue}</span>
                                         </div>
                                     );
                                 })}
                             </div>
                             {/* Linha inferior (18..32) ocupando todo o card */}
-                            <div className="grid grid-cols-8 gap-x-4 justify-items-center">
+                            <div className="grid grid-cols-8 gap-x-2 justify-items-center">
                                 {palette.slice(8, 16).map((color, i) => {
                                     const index = 8 + i;
                                     const ngValue = (index * 2) + 2;
@@ -633,10 +846,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                     return (
                                         <div key={index} className="text-center">
                                             <div
-                                                className={`h-5 w-5 rounded ${isHighlighted ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900' : 'border border-slate-600/50'}`}
+                                                className={`h-4 w-4 rounded ${isHighlighted ? 'ring-1 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'border border-slate-600/50'}`}
                                                 style={{ backgroundColor: color }}
                                             />
-                                            <span className="text-xs font-medium text-slate-300 mt-1 block">{ngValue}</span>
+                                            <span className="text-xs font-medium text-slate-300 mt-0.5 block">{ngValue}</span>
                                         </div>
                                     );
                                 })}
@@ -646,10 +859,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 </Card>
             </div>
 
-            {/* Right Panel: Map (oculto em mobile) */}
-            <div className="w-full lg:flex-1 hidden sm:block">
+            {/* Right Panel: Map (visível também em mobile para capturar NG por clique) */}
+            <div className="w-full lg:flex-1 block">
                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
                          <div className="flex items-center gap-4">
                             {/* Controles removidos para simplificar a UI */}
                          </div>
@@ -668,14 +881,21 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                             </Button>
                          </div>
                     </CardHeader>
-                    <CardContent className="relative">
+                    <CardContent className="relative p-4">
                         {isLoading && (
                             <div className="absolute inset-0 bg-slate-900/70 z-10 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm">
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
                                 <p className="mt-4 text-slate-300 font-semibold">Analisando e Mapeando...</p>
                             </div>
                         )}
-                        <MapViewer ref={mapViewerRef} imageUrl={mapUrls[mapRegion]} onMapClick={handleMapClick} markerPoint={markerPoint} />
+                        <React.Suspense fallback={<div className="h-[450px] w-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>
+                            <MapViewerLazy
+                                ref={mapViewerRef}
+                                imageUrl={mapUrls[mapRegion] || mapUrls['brasil']}
+                                onMapClick={handleMapClick}
+                                markerPoint={markerPoint}
+                            />
+                        </React.Suspense>
                     </CardContent>
                 </Card>
             </div>

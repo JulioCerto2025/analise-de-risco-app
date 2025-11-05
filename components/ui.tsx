@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { formatSmartNumber } from '../lib/format';
-import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
+import { ChevronDown, Check, Loader2 } from 'lucide-react';
 import { correctText } from '../lib/geminiService';
 
 // Button
@@ -8,7 +8,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'outline';
   size?: 'default' | 'sm' | 'icon';
 }
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = React.memo(React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', ...props }, ref) => {
     const baseClasses = "inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
     const variantClasses = {
@@ -22,19 +22,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
     return <button className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`} ref={ref} {...props} />;
   }
-);
+));
 Button.displayName = "Button";
 
 // Card
-export const Card = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+export const Card = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={`flex flex-col rounded-xl border bg-slate-900/60 text-slate-200 shadow-2xl border-slate-500/50 ${className}`} {...props} />
-);
-export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+));
+export const CardHeader = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={`flex flex-col space-y-1.5 p-6 bg-slate-900/80 text-white rounded-t-xl ${className}`} {...props} />
-);
-export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+));
+export const CardTitle = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h3 className={`text-lg font-semibold leading-none tracking-tight text-slate-100 ${className}`} {...props} />
-);
+));
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={`p-6 ${className}`} {...props} />
 );
@@ -51,10 +51,12 @@ export const Progress = ({ value, className }: { value: number, className?: stri
 
 // Input
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, spellCheck, lang, ...props }, ref) => (
     <input
       className={`flex h-10 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       ref={ref}
+      spellCheck={spellCheck ?? false}
+      lang={lang ?? 'pt-BR'}
       {...props}
     />
   )
@@ -63,10 +65,12 @@ Input.displayName = "Input";
 
 // Textarea
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, spellCheck, lang, ...props }, ref) => (
     <textarea
       className={`flex min-h-[80px] w-full rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       ref={ref}
+      spellCheck={spellCheck ?? false}
+      lang={lang ?? 'pt-BR'}
       {...props}
     />
   )
@@ -83,7 +87,6 @@ export const Checkbox = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { checked: boolean; onCheckedChange: (checked: boolean) => void }
 >(({ checked, onCheckedChange, className, ...props }, ref) => {
-  const isMobile = useIsMobile();
   return (
     <button
       ref={ref}
@@ -280,7 +283,7 @@ export const SelectValue = () => {
     return displayContent;
 };
 
-export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ children, className, ...props }, ref) => {
+export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ children, className }, ref) => {
   const context = useContext(SelectContext);
   if (!context || !context.open) return null;
   
@@ -396,6 +399,68 @@ export const AutoCorrectingInput = ({ id, label, value, onUpdate, placeholder, c
     );
 };
 
+// Auto-correcting Textarea
+export const AutoCorrectingTextarea = ({ id, label, value, onUpdate, placeholder, className, rows = 5, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string, onUpdate: (value: string) => void }) => {
+    const [isCorrecting, setIsCorrecting] = useState(false);
+    const wasCorrectedByApi = useRef(false);
+    const [isCorrectionDisabled, setIsCorrectionDisabled] = useState(false);
+
+    useEffect(() => {
+        if (value === '') {
+            wasCorrectedByApi.current = false;
+            setIsCorrectionDisabled(false);
+        }
+    }, [value]);
+
+    const handleBlur = async (e: React.FocusEvent<HTMLTextAreaElement>) => {
+        const currentValue = e.target.value;
+        if (isCorrectionDisabled || isCorrecting || !currentValue.trim()) {
+            return;
+        }
+
+        setIsCorrecting(true);
+        try {
+            const correctedText = await correctText(currentValue);
+            if (correctedText && correctedText !== currentValue) {
+                onUpdate(correctedText);
+                wasCorrectedByApi.current = true;
+            }
+        } finally {
+            setIsCorrecting(false);
+        }
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value;
+        if (wasCorrectedByApi.current) {
+            setIsCorrectionDisabled(true);
+            wasCorrectedByApi.current = false;
+        }
+        onUpdate(newValue);
+    };
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={id}>{label}</Label>
+            <div className="relative w-full">
+                <Textarea
+                    id={id}
+                    value={value}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder={placeholder}
+                    rows={rows}
+                    className={`${isCorrecting ? 'pr-8' : ''} ${className}`}
+                    {...props}
+                />
+                {isCorrecting && (
+                    <Loader2 className="absolute right-2.5 top-2 h-4 w-4 animate-spin text-slate-500" />
+                )}
+            </div>
+        </div>
+    );
+};
+
 // Autocomplete Input (typeahead)
 export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, suggestions, placeholder, className, maxSuggestions = 8, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void, onCommit?: (value: string) => void, suggestions: string[], maxSuggestions?: number }) => {
     const [open, setOpen] = useState(false);
@@ -445,19 +510,27 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, sugges
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!open) return;
         if (e.key === 'Enter') {
             e.preventDefault();
-            const choice = filtered[activeIndex >= 0 ? activeIndex : 0];
-            if (choice) handleSelect(String(choice));
+            // Se houver sugestões abertas, seleciona a ativa; senão, comita o valor atual
+            const choice = open ? filtered[activeIndex >= 0 ? activeIndex : 0] : undefined;
+            if (choice) {
+                handleSelect(String(choice));
+            } else if (onCommit) {
+                onCommit(String(value || ''));
+                setOpen(false);
+                setActiveIndex(-1);
+            }
         } else if (e.key === 'Escape') {
             e.preventDefault();
             setOpen(false);
             setActiveIndex(-1);
         } else if (e.key === 'ArrowDown') {
+            if (!open) return;
             e.preventDefault();
             setActiveIndex(prev => Math.min((prev < 0 ? 0 : prev) + 1, filtered.length - 1));
         } else if (e.key === 'ArrowUp') {
+            if (!open) return;
             e.preventDefault();
             setActiveIndex(prev => Math.max((prev < 0 ? filtered.length - 1 : prev) - 1, 0));
         }
@@ -633,14 +706,6 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
         return <span className="break-normal whitespace-normal">{nodes}</span>;
     };
 
-    const formatOperators = (expr: string) => (
-        expr
-            .replace(/\*/g, ' × ')
-            .replace(/×/g, ' × ')
-            .replace(/\+/g, ' + ')
-            .replace(/\)\(/g, ') × (')
-    );
-
     // Renderiza a fórmula crua em segmentos que só quebram entre '+'
     const renderPlainFormulaSegments = (formula: string): React.ReactNode => {
         const normalized = (
@@ -664,7 +729,7 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
     return (
         <span className="hidden sm:inline-block ml-1 align-middle w-full" ref={containerRef}>
             {children && (
-                <span ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onClick={handleToggle} className="cursor-help inline-block w-full">
+                <span ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onClick={handleToggle} className="cursor-default inline-block w-full">
                     {children}
                 </span>
             )}
