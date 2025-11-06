@@ -391,6 +391,8 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         return `${base} (${name})`;
     };
     const zoneHeading = makeZoneHeading(currentZone?.name, Math.max(0, currentZoneIndex));
+    const multipleZones = zones.length > 1;
+    const activeHeading = multipleZones ? zoneHeading : 'Global';
 
 
     // Removido conceito Global na etapa 7 — usamos apenas cálculos da zona ativa
@@ -401,24 +403,26 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             <div className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>{`Ajuste de Probabilidades — ${zoneHeading}`}</CardTitle>
+                        <CardTitle>{`Ajuste de Probabilidades — ${activeHeading}`}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                            {zones.map(zone => (
-                                <TabButton 
-                                    key={zone.id} 
-                                    isActive={activeZoneId === zone.id} 
-                                    onClick={() => {
-                                        setActiveZoneId(zone.id);
-                                        // Persistir última zona ativa
-                                        try { onChange({ last_active_zone_id: zone.id } as any); } catch { /* noop */ }
-                                    }}
-                                >
-                                    {zone.name}
-                                </TabButton>
-                            ))}
-                        </div>
+                        {multipleZones && (
+                            <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
+                                {zones.map(zone => (
+                                    <TabButton 
+                                        key={zone.id} 
+                                        isActive={activeZoneId === zone.id} 
+                                        onClick={() => {
+                                            setActiveZoneId(zone.id);
+                                            // Persistir última zona ativa
+                                            try { onChange({ last_active_zone_id: zone.id } as any); } catch { /* noop */ }
+                                        }}
+                                    >
+                                        {zone.name}
+                                    </TabButton>
+                                ))}
+                            </div>
+                        )}
 
                         <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg">
                             <TabButton isActive={activeTab === 'structure'} onClick={() => setActiveTab('structure')}>Estrutura</TabButton>

@@ -152,49 +152,39 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Seleção de Linhas Conectadas</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-3 p-3 bg-slate-800/50 rounded-lg border border-slate-600 hover:bg-slate-700/60 transition-colors">
-                        <Checkbox id="has_electric_line" checked={data.has_electric_line} onCheckedChange={(c) => onUpdate({ has_electric_line: !!c })} />
-                        <Label htmlFor="has_electric_line" className="cursor-pointer flex-1 text-slate-200">Analisar Linha Elétrica</Label>
-                    </div>
-                    <div className="flex items-center space-x-3 p-3 bg-slate-800/50 rounded-lg border border-slate-600 hover:bg-slate-700/60 transition-colors">
-                        <Checkbox id="has_data_line" checked={data.has_data_line} onCheckedChange={(c) => onUpdate({ has_data_line: !!c })} />
-                        <Label htmlFor="has_data_line" className="cursor-pointer flex-1 text-slate-200">Analisar Linha de Dados</Label>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div className="grid md:grid-cols-2 gap-6 items-start">
-                 <AnimatePresence>
-                    {data.has_electric_line && (
-                        <motion.div
-                            key="electric-line-card"
-                            variants={motionVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                        >
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5 text-slate-100"/>Linha Elétrica</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 flex-grow">
-                                    
+        <div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-3 items-start">
+                {/* Card: Linha Elétrica com toggle embutido */}
+                <Card>
+                    <CardHeader className="py-3 md:py-4">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5 text-slate-100"/>Linha Elétrica</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Checkbox id="has_electric_line" checked={data.has_electric_line} onCheckedChange={(c) => onUpdate({ has_electric_line: !!c })} />
+                                <Label htmlFor="has_electric_line" className="cursor-pointer text-slate-200 text-xs md:text-sm">Analisar</Label>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <AnimatePresence>
+                        {data.has_electric_line && (
+                            <motion.div
+                                key="electric-line-content"
+                                variants={motionVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                            >
+                                <CardContent className="space-y-2 md:space-y-3 flex-grow">
                                     {data.line_sections_1.map((section, index) => (
-                                        <div key={section.id} className="p-4 border border-slate-600 rounded-lg space-y-4 relative bg-slate-800/50">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
-                                                {data.line_sections_1.length > 1 && (
+                                        <div key={section.id} className="p-1 md:p-2 border border-slate-600 rounded-lg space-y-1 md:space-y-2 relative bg-slate-800/50">
+                                            {data.line_sections_1.length > 1 && (
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
                                                     <Button variant="outline" size="sm" onClick={() => removeSection('line_sections_1', section.id)} className="px-2 py-1 h-auto text-red-400 hover:bg-red-500/20">
                                                         <XCircle className="w-4 h-4" />
                                                     </Button>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                             <DecimalInput label="Comprimento (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_1', section.id, 'll', val)} />
                                             <SelectField label="CI - Instalação (Tabela A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ci', val)} />
                                             <SelectField label="CE - Ambiental (Tabela A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ce', val)} />
@@ -202,77 +192,82 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         </div>
                                     ))}
 
-                                    <Button variant="outline" onClick={() => addSection('line_sections_1')} className="w-full mt-4 flex items-center gap-2">
+                                    <Button variant="outline" onClick={() => addSection('line_sections_1')} className="w-full mt-1 flex items-center gap-2">
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    
-
-                                    <div className="hidden sm:block pt-4 border-t border-slate-600 mt-4">
+                                    <div className="hidden sm:block pt-1 md:pt-2 border-t border-slate-600 mt-1">
                                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados das Áreas Totais</span>
-                                        <div className="grid grid-cols-2 gap-3 mt-2 p-4 rounded-lg bg-slate-900/40 border border-slate-700">
+                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
                                             <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
                                             <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
                                         </div>
                                     </div>
 
-                                    <div className="pt-2">
+                                    <div className="pt-1 md:pt-2">
                                         <div className="flex items-center space-x-2">
                                             <Checkbox id="use_adj_1" checked={data.use_adj_structure_1} onCheckedChange={(c) => handleCheckboxChange('use_adj_structure_1', !!c)} />
                                             <Label htmlFor="use_adj_1" className="cursor-pointer font-semibold text-slate-200">Calcular área adjacente</Label>
                                         </div>
                                         <AnimatePresence>
-                                        {data.use_adj_structure_1 && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="mt-4 pl-2 border-l-2 border-slate-600 space-y-4"
-                                            >
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <DecimalInput label="L (adj)" value={data.l_adj_1} onUpdate={val => onUpdate({ l_adj_1: val })} />
-                                                    <DecimalInput label="W (adj)" value={data.w_adj_1} onUpdate={val => onUpdate({ w_adj_1: val })} />
-                                                    <DecimalInput label="H (adj)" value={data.h_adj_1} onUpdate={val => onUpdate({ h_adj_1: val })} />
-                                                    <DecimalInput label="Hp (adj)" value={data.hp_adj_1} onUpdate={val => onUpdate({ hp_adj_1: val })} />
-                                                </div>
-                                                <SelectField label="CD (adj) - Fator de Localização" value={data.cd_adj_1} options={CD_OPTIONS} onChange={(val) => handleSelectChange('cd_adj_1', val)} />
-                                                <div className="grid grid-cols-1 gap-3 pt-2">
-                                                    <ResultBox label={<>A<sub>d</sub> (adj)</>} value={ad_adj_1} unit="m²" color="blue" formula="L×W+2(3×H)(L+W)+π(3×H)²" formulaKey="Ad_adj" formulaValues={{ L: data.l_adj_1, W: data.w_adj_1, H: data.h_adj_1 }} />
-                                                </div>
-                                            </motion.div>
-                                        )}
+                                            {data.use_adj_structure_1 && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="mt-1 md:mt-2 pl-1 md:pl-2 border-l-2 border-slate-600 space-y-1 md:space-y-2"
+                                                >
+                                                    <div className="grid grid-cols-2 gap-1 md:gap-2">
+                                                        <DecimalInput label="L (adj)" value={data.l_adj_1} onUpdate={val => onUpdate({ l_adj_1: val })} />
+                                                        <DecimalInput label="W (adj)" value={data.w_adj_1} onUpdate={val => onUpdate({ w_adj_1: val })} />
+                                                        <DecimalInput label="H (adj)" value={data.h_adj_1} onUpdate={val => onUpdate({ h_adj_1: val })} />
+                                                        <DecimalInput label="Hp (adj)" value={data.hp_adj_1} onUpdate={val => onUpdate({ hp_adj_1: val })} />
+                                                    </div>
+                                                    <SelectField label="CD (adj) - Fator de Localização" value={data.cd_adj_1} options={CD_OPTIONS} onChange={(val) => handleSelectChange('cd_adj_1', val)} />
+                                                    <div className="grid grid-cols-1 gap-1 pt-0.5">
+                                                        <ResultBox label={<>A<sub>d</sub> (adj)</>} value={ad_adj_1} unit="m²" color="blue" formula="L×W+2(3×H)(L+W)+π(3×H)²" formulaKey="Ad_adj" formulaValues={{ L: data.l_adj_1, W: data.w_adj_1, H: data.h_adj_1 }} />
+                                                    </div>
+                                                </motion.div>
+                                            )}
                                         </AnimatePresence>
                                     </div>
                                 </CardContent>
-                            </Card>
-                        </motion.div>
-                     )}
-                 </AnimatePresence>
-                <AnimatePresence>
-                    {data.has_data_line && (
-                        <motion.div
-                            key="data-line-card"
-                            variants={motionVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                        >
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Server className="w-5 h-5 text-slate-100"/>Linha de Dados</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 flex-grow">
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </Card>
 
+                {/* Card: Linha de Dados com toggle embutido */}
+                <Card>
+                    <CardHeader className="py-3 md:py-4">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2"><Server className="w-5 h-5 text-slate-100"/>Linha de Dados</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Checkbox id="has_data_line" checked={data.has_data_line} onCheckedChange={(c) => onUpdate({ has_data_line: !!c })} />
+                                <Label htmlFor="has_data_line" className="cursor-pointer text-slate-200 text-xs md:text-sm">Analisar</Label>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <AnimatePresence>
+                        {data.has_data_line && (
+                            <motion.div
+                                key="data-line-content"
+                                variants={motionVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                            >
+                                <CardContent className="space-y-2 md:space-y-3 flex-grow">
                                     {data.line_sections_2.map((section, index) => (
-                                        <div key={section.id} className="p-4 border border-slate-600 rounded-lg space-y-4 relative bg-slate-800/50">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
-                                                {data.line_sections_2.length > 1 && (
+                                        <div key={section.id} className="p-1 md:p-2 border border-slate-600 rounded-lg space-y-1 md:space-y-2 relative bg-slate-800/50">
+                                            {data.line_sections_2.length > 1 && (
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
                                                     <Button variant="outline" size="sm" onClick={() => removeSection('line_sections_2', section.id)} className="px-2 py-1 h-auto text-red-400 hover:bg-red-500/20">
                                                         <XCircle className="w-4 h-4" />
                                                     </Button>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                             <DecimalInput label="Comprimento (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_2', section.id, 'll', val)} />
                                             <SelectField label="CI - Instalação (Tabela A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ci', val)} />
                                             <SelectField label="CE - Ambiental (Tabela A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ce', val)} />
@@ -280,51 +275,50 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         </div>
                                     ))}
 
-                                    <Button variant="outline" onClick={() => addSection('line_sections_2')} className="w-full mt-4 flex items-center gap-2">
+                                    <Button variant="outline" onClick={() => addSection('line_sections_2')} className="w-full mt-1 flex items-center gap-2">
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
-                                    
-                                    
-                                    <div className="hidden sm:block pt-4 border-t border-slate-600 mt-4">
+
+                                    <div className="hidden sm:block pt-1 md:pt-2 border-t border-slate-600 mt-1">
                                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados das Áreas Totais</span>
-                                        <div className="grid grid-cols-2 gap-3 mt-2 p-4 rounded-lg bg-slate-900/40 border border-slate-700">
+                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
                                             <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
                                             <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
                                         </div>
                                     </div>
-                                    
-                                    <div className="pt-2">
+
+                                    <div className="pt-1 md:pt-2">
                                         <div className="flex items-center space-x-2">
                                             <Checkbox id="use_adj_2" checked={data.use_adj_structure_2} onCheckedChange={(c) => handleCheckboxChange('use_adj_structure_2', !!c)} />
                                             <Label htmlFor="use_adj_2" className="cursor-pointer font-semibold text-slate-200">Calcular área adjacente</Label>
                                         </div>
                                         <AnimatePresence>
-                                        {data.use_adj_structure_2 && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                className="mt-4 pl-2 border-l-2 border-slate-600 space-y-4"
-                                            >
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <DecimalInput label="L (adj)" value={data.l_adj_2} onUpdate={val => onUpdate({ l_adj_2: val })} />
-                                                    <DecimalInput label="W (adj)" value={data.w_adj_2} onUpdate={val => onUpdate({ w_adj_2: val })} />
-                                                    <DecimalInput label="H (adj)" value={data.h_adj_2} onUpdate={val => onUpdate({ h_adj_2: val })} />
-                                                    <DecimalInput label="Hp (adj)" value={data.hp_adj_2} onUpdate={val => onUpdate({ hp_adj_2: val })} />
-                                                </div>
-                                                <SelectField label="CD (adj) - Fator de Localização" value={data.cd_adj_2} options={CD_OPTIONS} onChange={(val) => handleSelectChange('cd_adj_2', val)} />
-                                                <div className="grid grid-cols-1 gap-3 pt-2">
-                                                    <ResultBox label={<>A<sub>d</sub> (adj)</>} value={ad_adj_2} unit="m²" color="blue" formula="L×W+2(3×H)(L+W)+π(3×H)²" formulaKey="Ad_adj" formulaValues={{ L: data.l_adj_2, W: data.w_adj_2, H: data.h_adj_2 }}/>
-                                                </div>
-                                            </motion.div>
-                                        )}
+                                            {data.use_adj_structure_2 && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="mt-1 md:mt-2 pl-1 md:pl-2 border-l-2 border-slate-600 space-y-1 md:space-y-2"
+                                                >
+                                                    <div className="grid grid-cols-2 gap-1 md:gap-2">
+                                                        <DecimalInput label="L (adj)" value={data.l_adj_2} onUpdate={val => onUpdate({ l_adj_2: val })} />
+                                                        <DecimalInput label="W (adj)" value={data.w_adj_2} onUpdate={val => onUpdate({ w_adj_2: val })} />
+                                                        <DecimalInput label="H (adj)" value={data.h_adj_2} onUpdate={val => onUpdate({ h_adj_2: val })} />
+                                                        <DecimalInput label="Hp (adj)" value={data.hp_adj_2} onUpdate={val => onUpdate({ hp_adj_2: val })} />
+                                                    </div>
+                                                    <SelectField label="CD (adj) - Fator de Localização" value={data.cd_adj_2} options={CD_OPTIONS} onChange={(val) => handleSelectChange('cd_adj_2', val)} />
+                                                    <div className="grid grid-cols-1 gap-1 pt-0.5">
+                                                        <ResultBox label={<>A<sub>d</sub> (adj)</>} value={ad_adj_2} unit="m²" color="blue" formula="L×W+2(3×H)(L+W)+π(3×H)²" formulaKey="Ad_adj" formulaValues={{ L: data.l_adj_2, W: data.w_adj_2, H: data.h_adj_2 }}/>
+                                                    </div>
+                                                </motion.div>
+                                            )}
                                         </AnimatePresence>
                                     </div>
                                 </CardContent>
-                            </Card>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </Card>
             </div>
         </div>
     );

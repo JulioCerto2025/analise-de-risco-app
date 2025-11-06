@@ -108,7 +108,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <div className="flex flex-col gap-6">
             <Card>
-                <CardHeader>
+                <CardHeader className="py-3">
                     <CardTitle className="flex items-start gap-3">
                         <Building className="w-5 h-5 text-slate-100" />
                         <div className="leading-tight">
@@ -118,19 +118,19 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                         </div>
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-2">
+                <CardContent className="space-y-4">
+                    <div className="space-y-1">
                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Dimensões da Estrutura</span>
-                        <div className="grid grid-cols-2 gap-4 mt-2 p-4 rounded-lg bg-blue-950/30 border border-slate-700">
+                        <div className="grid grid-cols-2 gap-3 mt-1 p-3 rounded-lg bg-blue-950/30 border border-slate-700">
                             <DimensionInput icon="L" label="Comprimento" id="l" value={data.l} onUpdate={val => onUpdate({ l: val })} color="blue" />
                             <DimensionInput icon="W" label="Largura" id="w" value={data.w} onUpdate={val => onUpdate({ w: val })} color="green" />
                             <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
                             <DimensionInput icon="Hp" label="Altura de Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" />
                         </div>
                     </div>
-                    <div className="hidden sm:block space-y-2">
+                    <div className="hidden sm:block space-y-1">
                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados da Área de Exposição</span>
-                        <div className="grid grid-cols-2 gap-3 mt-2 p-4 rounded-lg bg-slate-900/40 border border-slate-700">
+                        <div className="grid grid-cols-2 gap-2 mt-1 p-3 rounded-lg bg-slate-900/40 border border-slate-700">
                             <ResultBox 
                                 label={<span>A<sub>df</sub></span>} 
                                 value={adf} unit="m² (max)" color="blue" 

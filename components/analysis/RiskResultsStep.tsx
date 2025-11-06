@@ -244,6 +244,14 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         .filter(key => risks_to_analyze[key]);
     
     const displayedToleranceValue = TOLERABLE_RISKS[selectedRisks[0] || 'R1'];
+    const hasR3 = selectedRisks.includes('R3');
+    const hasR4 = selectedRisks.includes('R4');
+    const compact = hasR3 || hasR4; // aplicar ajustes se houver R3 ou R4
+    const totalCards = 1 + selectedRisks.length; // Ajustar Proteções + riscos selecionados
+    // Layout responsivo baseado no total de cards: 2 cols para 2 cards, 3 cols para 3 cards, 4 cols para 4+
+    const gridColsClass = totalCards >= 4
+        ? 'lg:grid-cols-3 xl:grid-cols-4'
+        : (totalCards === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2');
 
     let chartData: { name: string; value: number }[] = ALL_RISK_COMPONENTS.map(key => ({
         name: key,
@@ -326,9 +334,21 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
     };
 
+    // Em caso de zona única, sempre usar visão Global
+    React.useEffect(() => {
+        if (!multipleZones && activeViewId !== 'GLOBAL') {
+            setActiveViewId('GLOBAL');
+        }
+    }, [multipleZones]);
+
     const activeZoneIndex = activeViewId === 'GLOBAL' ? -1 : zoneIds.indexOf(activeViewId);
     const activeZone = activeZoneIndex >= 0 ? data.zones[activeZoneIndex] : undefined;
     const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, Math.max(0, activeZoneIndex));
+
+    // Título ajustado deve ser calculado após activeHeading existir
+    const adjustTitle = compact
+        ? `Aj. Prot. - ${activeHeading === 'Global' ? 'Glob.' : activeHeading}`
+        : `Ajustar Proteções — ${activeHeading}`;
 
     // Dados por visão ativa
     let activeZoneRisk: { [key: string]: number } | null = null;
@@ -355,24 +375,26 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
 
     return (
         <div className="space-y-6">
-            {/* Resumo Global e ajustes quando há múltiplas zonas, ou UI padrão quando única zona */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            {/* Cards lado a lado quando R3 e R4 presentes (e R1, se ativo) */}
+            <div className={`grid grid-cols-1 ${gridColsClass} gap-6 items-stretch`}>
 
                 <Card className="h-full">
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between text-base">
                             <span className="flex items-center gap-2">
                                 <SlidersHorizontal className="w-5 h-5 text-blue-400" />
-                                {`Ajustar Proteções — ${activeHeading}`}
+                                {adjustTitle}
                             </span>
-                            <div className="flex items-center gap-1">
-                                <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
-                                    <ChevronLeft className="w-5 h-5 text-slate-300" />
-                                </button>
-                                <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
-                                    <ChevronRight className="w-5 h-5 text-slate-300" />
-                                </button>
-                            </div>
+                            {multipleZones && (
+                                <div className="flex items-center gap-1">
+                                    <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
+                                        <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                    </button>
+                                    <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
+                                        <ChevronRight className="w-5 h-5 text-slate-300" />
+                                    </button>
+                                </div>
+                            )}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -385,14 +407,14 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
                                 wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-2' : 'relative mt-2'}
                             >
-                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {PB_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-base font-semibold text-slate-200">Proteção vs. Incêndio (rp)</Label>
+                            <Label className="text-base font-semibold text-slate-200">Proteção Incêndio (rp)</Label>
                             <Select
                                 value={String(activeZone ? (activeZone.loss_data.rp ?? (data.zones[0]?.loss_data.rp ?? 1)) : (data.zones[0]?.loss_data.rp ?? 1))}
                                 onValueChange={(val) => activeZone ? handleZoneLossUpdate(activeZone.id, 'rp', parseFloat(val)) : handleSimulatorUpdate('rp', parseFloat(val))}
@@ -400,7 +422,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
                                 wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-2' : 'relative mt-2'}
                             >
-                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
@@ -409,9 +431,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                     </CardContent>
                 </Card>
 
-                <div className="space-y-6">
-                    {selectedRisks.length > 0 ? (
-                        selectedRisks.map(riskKey => {
+                {selectedRisks.length > 0 ? (
+                    selectedRisks.map(riskKey => {
                             const riskTolerance = TOLERABLE_RISKS[riskKey];
                             const currentTotalRiskValue = activeZone ? (activeZoneRisk?.[riskKey] || 0) : (risk_results[riskKey] || 0);
                             const isAcceptable = currentTotalRiskValue <= riskTolerance;
@@ -431,11 +452,11 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="text-center p-6">
-                                        <div className={`text-4xl font-bold mb-2 whitespace-nowrap ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
+                                        <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-bold mb-2 whitespace-nowrap ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
                                             <ScientificNotation value={currentTotalRiskValue} />
                                         </div>
-                                        <div className="text-sm text-slate-400 mb-3">Limite: <ScientificNotation value={riskTolerance} precision={2} /></div>
-                                        <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
+                                        <div className={`${compact ? 'text-xs' : 'text-sm'} text-slate-400 mb-3`}>Limite: <ScientificNotation value={riskTolerance} precision={2} /></div>
+                                        <div className={`rounded-md ${compact ? 'py-2 px-3 text-sm' : 'py-3 px-4 text-base'} font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
                                             {isAcceptable ? 'Risco Aceitável' : 'Risco Não Aceitável'}
                                         </div>
                                     </CardContent>
@@ -449,7 +470,6 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         </Alert>
                     )}
                 </div>
-            </div>
 
             <Card>
                 <CardHeader><CardTitle>{`Componentes de Risco — ${activeHeading}`}</CardTitle></CardHeader>
@@ -462,7 +482,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
-                            <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#F59E0B" strokeDasharray="4 4" />
+                            <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#ef4444" strokeDasharray="3 3" />
                             <Bar dataKey="value">
                                 {(activeZone ? activeZoneChart : chartData).map((entry, index) => {
                                     const isTotalRiskBar = selectedRisks.includes(entry.name as any);

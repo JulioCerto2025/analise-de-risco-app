@@ -79,37 +79,157 @@
       html {
         overflow-y: auto;
       }
+      /* Base editorial para conteúdo gerado */
+      .prose-styles {
+          max-width: none; /* ocupa toda a largura disponível do card */
+          width: 100%;
+          margin: 0 auto; /* mantém centrado quando houver limites */
+          letter-spacing: 0.015em; /* microtipografia suave */
+          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+      }
+
+      /* Espaçamento vertical entre blocos, itens e subitens */
+      .prose-styles h2 { margin-top: 2.75rem; margin-bottom: 0.90rem; }
+      .prose-styles h3 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+      .prose-styles h4 { margin-top: 1.75rem; margin-bottom: 0.60rem; }
+
+      .prose-styles p + p { margin-top: 0.75rem; }
+      .prose-styles p + ul,
+      .prose-styles p + ol,
+      .prose-styles ul + p,
+      .prose-styles ol + p { margin-top: 0.75rem; }
+
+      .prose-styles ul, .prose-styles ol { margin-top: 1.25rem; margin-bottom: 1.25rem; }
+      .prose-styles li + li { margin-top: 0.9rem; }
+      .prose-styles ul ul,
+      .prose-styles ol ol { margin-top: 1.1rem; margin-bottom: 1.1rem; }
+      .prose-styles li > ul,
+      .prose-styles li > ol { margin-top: 0.6rem; }
+
+      /* Figuras: imagem com legenda centralizada abaixo e espaçamento entre figuras */
+      .prose-styles figure { margin: 1.25rem 0; text-align: center; }
+      .prose-styles figure img { display: inline-block; max-width: 100%; height: auto; border-radius: 4px; }
+      .prose-styles figure + figure { margin-top: 1.5rem; }
+      .prose-styles figcaption { margin-top: 0.5rem; font-size: 0.95rem; color: #cbd5e1; text-align: center; line-height: 1.3; }
+      /* Overrides para reforçar separação visual entre itens/subitens e novos títulos */
+      .prose-styles ul, .prose-styles ol { margin-bottom: 1.6rem; }
+      .prose-styles li + li { margin-top: 1.25rem; }
+      .prose-styles ul ul,
+      .prose-styles ol ol { margin-top: 1.35rem; margin-bottom: 1.35rem; }
+      .prose-styles li > ul,
+      .prose-styles li > ol { margin-top: 0.95rem; }
+      .prose-styles ul + h2,
+      .prose-styles ol + h2,
+      .prose-styles figure + h2 { margin-top: 2.9rem !important; }
+      .prose-styles ul + h3,
+      .prose-styles ol + h3,
+      .prose-styles figure + h3 { margin-top: 2.35rem !important; }
+      .prose-styles p + ul,
+      .prose-styles p + ol,
+      .prose-styles ul + p,
+      .prose-styles ol + p { margin-top: 1rem; }
       .prose-styles h2 {
-          font-size: 1.25rem; /* 20px */
-          font-weight: 600;
-          color: #e2e8f0; /* slate-200 */
-          margin-top: 1.5rem;
-          margin-bottom: 0.75rem;
-          padding-bottom: 0.5rem;
-          border-bottom: 1px solid #475569; /* slate-600 */
+          font-size: 1.375rem; /* ~22px, escala editorial */
+          font-weight: 700;
+          color: #f8fafc; /* máximo contraste, alto destaque */
+          margin-top: 1.75rem;
+          margin-bottom: 0.85rem;
+          padding-bottom: 0.35rem;
+          border-bottom: 1px solid rgba(148,163,184,0.35); /* slate-400 com transparência */
+          letter-spacing: 0.01em;
+          position: relative;
+      }
+      .prose-styles h2::before {
+          content: "";
+          display: inline-block;
+          width: 0.55rem; height: 0.55rem;
+          margin-right: 0.5rem;
+          border-radius: 9999px;
+          background: linear-gradient(135deg, #60a5fa 0%, #93c5fd 100%);
+          box-shadow: 0 0 0 1px rgba(147,197,253,0.35);
+          vertical-align: middle;
       }
       .prose-styles h3 {
-          font-size: 1.1rem; /* 18px */
+          font-size: 1.15rem; /* ~18.4px */
+          font-weight: 700;
+          color: #e5e7eb; /* slate-200/300 */
+          margin-top: 1.2rem;
+          margin-bottom: 0.5rem;
+          position: relative;
+      }
+      .prose-styles h3::before {
+          content: "";
+          display: inline-block;
+          width: 0.45rem; height: 0.45rem;
+          margin-right: 0.45rem;
+          border-radius: 9999px;
+          background: rgba(147,197,253,0.6);
+          vertical-align: middle;
+      }
+      /* Remover ícones/dots dos títulos */
+      .prose-styles h2::before,
+      .prose-styles h3::before {
+          content: none !important;
+          display: none !important;
+      }
+      .prose-styles h4 {
+          font-size: 1.05rem; /* ~16.8px */
           font-weight: 600;
           color: #cbd5e1; /* slate-300 */
-          margin-top: 1.25rem;
-          margin-bottom: 0.5rem;
+          margin-top: 0.9rem;
+          margin-bottom: 0.4rem;
       }
       .prose-styles p {
-          line-height: 1.6;
+          line-height: 1.4; /* ainda mais compacto dentro do bloco */
           margin-bottom: 1rem;
       }
       .prose-styles ul {
-          list-style-type: disc;
-          padding-left: 1.5rem;
-          margin-bottom: 1rem;
+          list-style-type: none; /* remove bolinhas */
+          padding-left: 0; /* texto alinhado à esquerda */
+          margin: 0.95rem 0 1.1rem;
       }
       .prose-styles li {
-          margin-bottom: 0.5rem;
+          margin-bottom: 0; /* sem espaçamento interno extra */
+          line-height: 1.35; /* ainda mais compacto dentro do item */
+      }
+      .prose-styles li::marker { content: none; } /* garante remoção do marcador */
+      /* recuo sutil apenas para sublistas, para indicar hierarquia sem bolinhas */
+      .prose-styles ul ul { padding-left: 1rem; }
+      /* Separação diferenciada por nível: itens principais vs subitens */
+      .prose-styles > ul > li + li { margin-top: 1.5rem; } /* mudança de item principal (mais espaço) */
+      .prose-styles ul ul > li + li { margin-top: 0.9rem; } /* mudança de subitem (menos espaço) */
+      .prose-styles li > ul { margin-top: 0.65rem; } /* início de bloco de subitens dentro de um item */
+      .prose-styles hr {
+          border: 0;
+          border-top: 1px solid rgba(226,232,240,0.40); /* linha sutil e elegante */
+          margin: 18px 0; /* ritmo vertical coeso */
       }
       .prose-styles strong {
+          color: #f8fafc; /* branco - máximo contraste no app */
+          font-weight: 700;
+      }
+      .prose-styles em {
+          color: #f1f5f9; /* slate-50/100 para ênfase em itálico */
+          font-style: italic;
+      }
+      /* Blockquote editorial neutro (sem caixa) */
+      .prose-styles blockquote {
+          margin: 12px 0;
+          padding-left: 12px;
+          border-left: 2px solid rgba(148,163,184,0.50); /* leve destaque */
+          color: #e5e7eb; /* texto claro neutro */
+          background: transparent; /* sem caixas */
+          font-style: normal; /* texto corrido, sem itálico forçado */
+      }
+      .prose-styles a {
           color: #93c5fd; /* blue-300 */
-          font-weight: 600;
+          text-decoration: none;
+          border-bottom: 1px solid rgba(147,197,253,0.35);
+      }
+      .prose-styles a:hover {
+          color: #bfdbfe; /* blue-200 */
+          border-bottom-color: rgba(147,197,253,0.6);
       }
     </style>
     

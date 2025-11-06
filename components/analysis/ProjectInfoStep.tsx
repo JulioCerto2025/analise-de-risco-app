@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, AutoCorrectingInput, AutoCorrectingTextarea, Textarea, Label } from '../ui';
 import { Briefcase } from 'lucide-react';
 import { AnalysisData } from '../../types';
@@ -91,6 +91,44 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
 
     // Removidos handlers e estados relacionados à Análise Preliminar da IA.
 
+    // Contador de visitas local (discreto, sem backend)
+    const [visitorCount, setVisitorCount] = useState<number>(() => {
+        try {
+            const v = parseInt(localStorage.getItem('visitor_count') || '0', 10);
+            return isNaN(v) ? 0 : v;
+        } catch {
+            return 0;
+        }
+    });
+    const [globalVisitorCount, setGlobalVisitorCount] = useState<number | null>(null);
+    useEffect(() => {
+        try {
+            const v = parseInt(localStorage.getItem('visitor_count') || '0', 10) || 0;
+            const next = v + 1;
+            localStorage.setItem('visitor_count', String(next));
+            setVisitorCount(next);
+        } catch {
+            // noop
+        }
+    }, []);
+    // Contador global simples via CountAPI (https://countapi.xyz)
+    useEffect(() => {
+        let canceled = false;
+        const namespace = 'spda-app';
+        const key = 'global-visitors';
+        fetch(`https://api.countapi.xyz/hit/${namespace}/${key}`)
+            .then(r => r.json())
+            .then((json) => {
+                if (canceled) return;
+                const value = Number(json?.value);
+                if (!isNaN(value)) setGlobalVisitorCount(value);
+            })
+            .catch(() => {
+                // Falha silenciosa: mantém contador local
+            });
+        return () => { canceled = true; };
+    }, []);
+
 
     return (
         <div className="space-y-6 h-full">
@@ -156,6 +194,11 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
                                 />
                             </div>
                         </div>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                        <span className="text-xs text-slate-300 bg-slate-700/40 px-2 py-0.5 rounded">
+                            {`Seja bem-vindo! Você é o visitante nº ${globalVisitorCount ?? visitorCount}`}
+                        </span>
                     </div>
                 </CardContent>
             </Card>

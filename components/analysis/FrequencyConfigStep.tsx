@@ -401,6 +401,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         }
     }, [activeViewId]);
     const zoneIds = (data.zones || []).map((z, idx) => z.id || z.name || String(idx));
+    const multipleZones = zoneIds.length > 1;
     const viewOrder = ['GLOBAL', ...zoneIds];
     const currentViewIndex = Math.max(0, viewOrder.indexOf(activeViewId));
     const goPrevView = () => {
@@ -413,6 +414,13 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         setActiveViewId(nextView);
         if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
     };
+
+    // Em caso de zona única, sempre manter visão Global
+    React.useEffect(() => {
+        if (!multipleZones && activeViewId !== 'GLOBAL') {
+            setActiveViewId('GLOBAL');
+        }
+    }, [multipleZones]);
     const makeZoneHeading = (zoneName: string | undefined, i: number) => {
         const base = `Zona ${i + 1}`;
         const name = (zoneName || '').trim();
@@ -464,14 +472,16 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                                         <SlidersHorizontal className="w-5 h-5 text-blue-400" />
                                         {`Ajustar Freq. Dano — ${activeHeading}`}
                                     </span>
-                                    <div className="flex items-center gap-1">
-                                        <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
-                                            <ChevronLeft className="w-5 h-5 text-slate-300" />
-                                        </button>
-                                        <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
-                                            <ChevronRight className="w-5 h-5 text-slate-300" />
-                                        </button>
-                                    </div>
+                                    {multipleZones && (
+                                        <div className="flex items-center gap-1">
+                                            <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
+                                                <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                            </button>
+                                            <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
+                                                <ChevronRight className="w-5 h-5 text-slate-300" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4 pt-4">
@@ -601,6 +611,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             </CardContent>
                         </Card>
 
+                        {multipleZones && (
                         <Card className={`border-2 ${zoneAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base">
@@ -644,6 +655,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                                 </div>
                             </CardContent>
                         </Card>
+                        )}
                     </>
                 )}
             </div>
@@ -659,7 +671,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
-                            <ReferenceLine y={toleranceLimit} stroke="red" strokeDasharray="3 3" />
+                            <ReferenceLine y={toleranceLimit} strokeWidth={2} stroke="#ef4444" strokeDasharray="3 3" />
                             <Bar dataKey="value">
                                 {(activeViewId === 'GLOBAL' ? chartData : zoneChart).map((entry) => {
                                     const color = entry.name === 'F Total'

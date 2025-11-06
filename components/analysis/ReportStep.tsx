@@ -2,8 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../ui';
 import { FileText, Copy, Loader2, Sparkles, X, AlertTriangle, CheckCircle } from "lucide-react";
 import { AnalysisData, ZoneCalculations } from '../../types';
-import { generateFullReportText } from '../../lib/geminiService';
-const PdfOcrViewerLazy = React.lazy(() => import('../tools/PdfOcrViewer').then(m => ({ default: m.PdfOcrViewer })));
+import { generateFullReportText } from '../../lib/reportBuilder';
 import { motion, AnimatePresence } from "framer-motion";
 import { 
     calculateEvents,
@@ -37,14 +36,65 @@ const markdownToHtml = (markdown: string): string => {
 
         const processInline = (str: string) => escapeHtml(str).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
+        // Horizontal rule ---
+        if (line.trim() === '---') {
+            if (inList) { html += '</ul>\n'; inList = false; }
+            html += '<hr style="border:0;border-top:1px solid #cbd5e1;margin:12px 0"/>\n';
+            continue;
+        }
+
+        // Image markdown with optional caption handling
+        const imgMatch = line.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
+        if (imgMatch) {
+            const [, alt, src] = imgMatch;
+            if (inList) { html += '</ul>\n'; inList = false; }
+
+            // Check if next or previous textual line is a caption (e.g., "Figura 3.1: Nome")
+            const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+            const prevLine = i - 1 >= 0 ? lines[i - 1].trim() : '';
+            const captionRegex = /^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/;
+            let captionText: string | null = null;
+
+            // Prefer caption on the next line (below image), else previous line, else use alt
+            const nextCap = nextLine.match(captionRegex);
+            const prevCap = prevLine.match(captionRegex);
+            if (nextCap) {
+                captionText = `Figura ${nextCap[2]} — ${nextCap[3]}`.trim();
+                // Skip the next line as it's consumed as caption
+                i += 1;
+            } else if (prevCap) {
+                // Remove previously added paragraph if it was just appended
+                // A simple approach: do not append previous caption paragraph earlier.
+                // Since we can't remove, we avoid adding it by detecting in its branch below.
+                captionText = `Figura ${prevCap[2]} — ${prevCap[3]}`.trim();
+            } else if (alt && alt.trim().length > 0) {
+                captionText = alt.trim();
+            }
+
+            const figCaptionHtml = captionText ? `<figcaption>${processInline(captionText)}</figcaption>` : '';
+            html += `<figure>` +
+                    `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="max-width:100%;height:auto;border-radius:4px;border:none;display:inline-block;page-break-inside:avoid"/>` +
+                    `${figCaptionHtml}` +
+                    `</figure>\n`;
+            continue;
+        }
+
+        // Callouts iniciados por "> " viram parágrafos simples (sem caixa)
+        if (line.startsWith('> ')) {
+            if (inList) { html += '</ul>\n'; inList = false; }
+            const content = processInline(line.substring(2));
+            html += `<p>${content}</p>\n`;
+            continue;
+        }
+
         if (line.startsWith('## ')) {
             if (inList) { html += '</ul>\n'; inList = false; }
-            html += `<h2>${processInline(line.substring(3))}</h2>\n`;
+            html += `<h2 style="font-size:1.25rem;line-height:1.6;font-weight:700;">${processInline(line.substring(3))}</h2>\n`;
             continue;
         }
         if (line.startsWith('### ')) {
             if (inList) { html += '</ul>\n'; inList = false; }
-            html += `<h3>${processInline(line.substring(4))}</h3>\n`;
+            html += `<h3 style="font-size:1.1rem;line-height:1.5;font-weight:700;">${processInline(line.substring(4))}</h3>\n`;
             continue;
         }
 
@@ -55,7 +105,7 @@ const markdownToHtml = (markdown: string): string => {
             }
             let itemContent = line.trim().substring(2);
             while (i + 1 < lines.length && lines[i + 1].startsWith('  ')) {
-                itemContent += '<br/>' + lines[i + 1].trim();
+                itemContent += ' ' + lines[i + 1].trim();
                 i++;
             }
             html += `<li>${processInline(itemContent)}</li>\n`;
@@ -68,7 +118,12 @@ const markdownToHtml = (markdown: string): string => {
         }
 
         if (line.trim()) {
-            html += `<p>${processInline(line)}</p>\n`;
+            // Avoid emitting caption lines as paragraphs when followed by an image
+            const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+            const isCaptionAhead = /^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/.test(line.trim()) && /^!\[(.*?)\]\((.*?)\)$/.test(nextLine);
+            if (!isCaptionAhead) {
+                html += `<p>${processInline(line)}</p>\n`;
+            }
         }
     }
 
@@ -84,7 +139,15 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [reportText, setReportText] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
-    const [showOcr, setShowOcr] = useState(false);
+    // Configurações ergonômicas e comuns para impressão
+    // Preset "Amplo" como padrão
+    const [pageMarginTB, setPageMarginTB] = useState<number>(22); // mm (topo/base)
+    const [pageMarginLR, setPageMarginLR] = useState<number>(15); // mm (laterais)
+    // Usamos estes dois pares como "zona segura topo/base" (altura + padding)
+    const [headerHeight, setHeaderHeight] = useState<number>(22); // mm (zona segura topo – altura)
+    const [headerPadding, setHeaderPadding] = useState<number>(6); // mm (zona segura topo – padding)
+    const [footerHeight, setFooterHeight] = useState<number>(22); // mm (zona segura base – altura)
+    const [footerPadding, setFooterPadding] = useState<number>(6); // mm (zona segura base – padding)
 
     const handleGenerateReport = async () => {
         setIsGenerating(true);
@@ -97,11 +160,35 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
         }
     };
 
-    const copyToClipboard = () => {
-        if (reportText) {
-            // Remove HTML tags for plain text copy
-            const plainText = reportText.replace(/<[^>]*>/g, '\n').replace(/\n\n+/g, '\n\n');
-            navigator.clipboard.writeText(plainText);
+    const copyToClipboard = async () => {
+        if (!reportText) return;
+
+        // Convert Markdown to HTML to copy with formatting
+        const html = markdownToHtml(reportText);
+
+        // Generate readable plain text as fallback
+        const plainText = reportText
+            .replace(/\!\[[^\]]*\]\([^\)]*\)/g, '') // remove image markdown
+            .replace(/^###\s+/gm, '')
+            .replace(/^##\s+/gm, '')
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .replace(/^>\s+/gm, '')
+            .replace(/\n\n+/g, '\n\n');
+
+        try {
+            if (typeof (window as any).ClipboardItem !== 'undefined') {
+                const item = new (window as any).ClipboardItem({
+                    'text/html': new Blob([html], { type: 'text/html' }),
+                    'text/plain': new Blob([plainText], { type: 'text/plain' }),
+                });
+                await navigator.clipboard.write([item]);
+            } else {
+                await navigator.clipboard.writeText(plainText);
+            }
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        } catch (err) {
+            try { await navigator.clipboard.writeText(plainText); } catch {}
             setCopySuccess(true);
             setTimeout(() => setCopySuccess(false), 2000);
         }
@@ -156,12 +243,70 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                         )}
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center p-3">
-                    <div className="flex flex-wrap gap-2 mb-3 justify-start">
-                        <Button variant="secondary" onClick={() => setShowOcr(s => !s)}>
-                            {showOcr ? 'Ocultar OCR do PDF' : 'Extrair texto do PDF (OCR)'}
+                {/* Barra de ações abaixo do título, alinhada à direita */}
+                {reportText && !isGenerating && (
+                    <div className="flex justify-end gap-2 px-2 pb-0">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                                const html = markdownToHtml(reportText);
+                                const win = window.open('', '_blank');
+                                if (!win) return;
+                                const padTop = Math.max(4, headerPadding);
+                                const padBottom = Math.max(4, footerPadding);
+                                win.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title></title><style>
+@page{margin:${pageMarginTB}mm ${pageMarginLR}mm;}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:#ffffff; color:#111827; margin:0; line-height:1.6;}
+main{padding:${padTop}mm ${pageMarginLR}mm ${padBottom}mm; overflow:visible;}
+h2{font-size:20px; line-height:1.6; color:#0f172a; font-weight:700; margin:16px 0 10px; break-inside:avoid; break-after:avoid-page;}
+h3{font-size:18px; line-height:1.5; color:#1f2937; font-weight:700; margin:12px 0 8px; break-inside:avoid; break-after:avoid-page;}
+ul{margin:8px 0 12px; padding-left:18px; break-inside:avoid;}
+li{break-inside:avoid;}
+p{margin:8px 0; break-inside:avoid;}
+img{max-width:100%; height:auto; display:block; page-break-inside:avoid; break-inside:avoid;}
+blockquote{margin:8px 0; padding:10px 12px; border-left:3px solid #3b82f6; background:transparent; color:#0f172a; border-radius:6px; break-inside:avoid;}
+hr{border:0; border-top:1px solid #cbd5e1; margin:12px 0; break-inside:avoid;}
+</style></head><body><main>${html}</main>
+<script>
+(function(){
+  const mmPerPx = 25.4/96;
+  const pxPerMm = 1/mmPerPx;
+  const main = document.querySelector('main');
+  if(!main) return;
+  const first = main.querySelector('img, table, canvas');
+  if(!first) return;
+  const rect = first.getBoundingClientRect();
+  const hPx = rect.height;
+  const extraTopMm = Math.min(Math.max((hPx*mmPerPx)*0.06, 4), 18);
+  const extraBottomMm = Math.min(Math.max((hPx*mmPerPx)*0.04, 4), 14);
+  const computed = getComputedStyle(main);
+  const curTopPx = parseFloat(computed.paddingTop)||0;
+  const curBottomPx = parseFloat(computed.paddingBottom)||0;
+  main.style.paddingTop = (curTopPx + extraTopMm*pxPerMm) + 'px';
+  main.style.paddingBottom = (curBottomPx + extraBottomMm*pxPerMm) + 'px';
+  try { document.title = ''; } catch {}
+})();
+</script></body></html>`);
+                                win.document.close();
+                                win.focus();
+                                setTimeout(() => { try { win.print(); } catch {} }, 300);
+                            }}
+                        >
+                            Gerar PDF
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={copyToClipboard}
+                        >
+                            <Copy className="w-4 h-4 mr-2" />
+                            {copySuccess ? 'Texto copiado!' : 'Copiar para Word (formatado)'}
                         </Button>
                     </div>
+                )}
+                <CardContent className="text-center px-3 pt-0 pb-3">
                     <AnimatePresence mode="wait">
                         {isGenerating ? (
                             <motion.div
@@ -183,18 +328,11 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                                 className="text-left pt-4 relative"
                             >
                                 <div
-                                    className="w-full h-[30rem] overflow-y-auto p-4 rounded-lg border border-slate-600 bg-slate-900/80 text-sm text-slate-200 focus:outline-none prose-styles"
+                                    className="w-full h-[30rem] overflow-y-auto p-5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-[17px] leading-loose tracking-[0.02em] text-slate-100 focus:outline-none prose-styles"
                                     dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText) }}
                                 />
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={copyToClipboard}
-                                    className="absolute top-6 right-2"
-                                >
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    {copySuccess ? 'Copiado!' : 'Copiar'}
-                                </Button>
+                                {/* Configurações removidas: impressão agora usa valores ergonômicos automáticos */}
+                                {/* Barra de ações movida para fora da caixa */}
                             </motion.div>
                         ) : (
                             <motion.div
@@ -206,21 +344,17 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                                 <Button
                                     onClick={handleGenerateReport}
                                     disabled={isGenerating}
-                                    className="w-full max-w-sm mx-auto"
+                                    className="w-full max-w-sm mx-auto my-3"
                                 >
-                                    <Sparkles className="w-4 h-4 mr-2" />
-                                    Gerar Relatório com IA
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Gerar Relatório Técnico da Análise de Risco
                                 </Button>
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </CardContent>
             </Card>
-            {showOcr && (
-                <React.Suspense fallback={<div className="text-slate-300 flex items-center gap-2"><Loader2 className="animate-spin" /> Carregando OCR…</div>}>
-                    <PdfOcrViewerLazy />
-                </React.Suspense>
-            )}
+            {/* Barra externa removida: ações agora ficam abaixo do título dentro do Card */}
             {/* Card de comparação removido conforme solicitado */}
             {/* Responsabilidade Técnica e Suporte */}
             <Card className="mt-4 bg-slate-900/80 border-slate-600/60">

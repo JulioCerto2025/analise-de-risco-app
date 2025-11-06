@@ -137,7 +137,7 @@ const FireRiskAnalysisPanel: React.FC<FireRiskAnalysisPanelProps> = ({ isPanelOp
                             <Alert className="bg-slate-900/60 border-slate-500/50">
                                 <AlertTitle>Análise de Risco de Incêndio da IA:</AlertTitle>
                                 <AlertDescription>
-                                    <div className="prose-styles text-sm text-slate-300 bg-slate-950/50 p-3 rounded-md border border-slate-700" dangerouslySetInnerHTML={{ __html: markdownToHtml(result.explanation) }} />
+          <div className="prose-styles text-[17px] leading-loose tracking-[0.02em] text-slate-100" dangerouslySetInnerHTML={{ __html: markdownToHtml(result.explanation) }} />
                                     <p className="text-xs text-slate-500 mt-3 italic">
                                         O fator 'rf' sugerido de <strong className="text-blue-300">{result.rf}</strong> já foi aplicado. Você pode ajustá-lo se necessário.
                                     </p>
@@ -529,7 +529,8 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         return `${base} (${name})`;
     };
     const zoneHeading = makeZoneHeading(currentZone?.name, currentZoneIndex);
-    const activeHeading = zoneHeading;
+    const multipleZones = zones.length > 1;
+    const activeHeading = multipleZones ? zoneHeading : 'Global';
 
     const editorCard = (
         <Card>
@@ -539,21 +540,23 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                    {zones.map(zone => (
-                        <TabButton 
-                            key={zone.id} 
-                            isActive={activeZoneId === zone.id} 
-                            onClick={() => {
-                                setActiveZoneId(zone.id);
-                                // Persistir última zona ativa
-                                try { onChange({ last_active_zone_id: zone.id } as any); } catch { /* noop */ }
-                            }}
-                        >
-                            {zone.name}
-                        </TabButton>
-                    ))}
-                </div>
+                {multipleZones && (
+                    <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
+                        {zones.map(zone => (
+                            <TabButton 
+                                key={zone.id} 
+                                isActive={activeZoneId === zone.id} 
+                                onClick={() => {
+                                    setActiveZoneId(zone.id);
+                                    // Persistir última zona ativa
+                                    try { onChange({ last_active_zone_id: zone.id } as any); } catch { /* noop */ }
+                                }}
+                            >
+                                {zone.name}
+                            </TabButton>
+                        ))}
+                    </div>
+                )}
 
 
                 {effectiveHomogeneousType === 'L' && availableTabs.length > 0 && (
