@@ -2,8 +2,9 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, useIsMobile } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
-import { AlertTriangle, CheckCircle, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, CheckCircle, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnalysisData, ProbabilityData, LossData } from '../../types';
+import { calculateProbabilities, mergeZoneProbabilities, calculateFrequencies } from '../../utils/calculations';
 import { PSPD_OPTIONS } from '../../constants';
 
 interface FrequencyConfigStepProps {
@@ -242,10 +243,10 @@ const CustomTooltip = ({ active, payload, label, data, formulas }: any) => {
 
 // A reusable Select component for the simulator card
 const SimulatorSelect = ({ label, value, options, onUpdate, isOpen, onOpenChange }: { label: string, value: number, options: {value: number, label: string}[], onUpdate: (val: number) => void, isOpen: boolean, onOpenChange: (open: boolean) => void }) => {
-    const wrapperClassName = isOpen ? 'relative z-20' : 'relative';
+    const wrapperClassName = isOpen ? 'relative z-20 mt-2' : 'relative mt-2';
     return (
         <div className="space-y-2">
-            <Label>{label}</Label>
+            <Label className="text-base font-semibold text-slate-200">{label}</Label>
             <Select
                 value={String(value)}
                 onValueChange={(v) => onUpdate(parseFloat(v))}
@@ -325,15 +326,18 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
             // Atualiza dados globais
             const nextUpdate: Partial<AnalysisData> = { probability_data: { ...data.probability_data, ...updatedProbData } };
 
-            // Propaga alterações relevantes para overrides por zona, garantindo que F reflita o simulador
+            // Propaga alterações relevantes para TODAS as zonas
             if (field === 'PSPD_electric' || field === 'PEB_electric') {
                 const newZones = (data.zones || []).map(zone => {
                     const overrides = { ...(zone.probability_overrides || {}) };
-                    // Atualiza o valor principal
+                    const probData = { ...(zone.probability_data || data.probability_data) } as any;
+
+                    // Atualiza o valor principal nos overrides (garante precedência) e nos dados da zona
                     overrides[field as keyof typeof overrides] = Number(value);
+                    probData[field] = Number(value);
                     // Sincroniza com variantes de dados
-                    if (field === 'PSPD_electric') overrides.PSPD_data = Number(value);
-                    if (field === 'PEB_electric') overrides.PEB_data = Number(value);
+                    if (field === 'PSPD_electric') { overrides.PSPD_data = Number(value); probData.PSPD_data = Number(value); }
+                    if (field === 'PEB_electric') { overrides.PEB_data = Number(value); probData.PEB_data = Number(value); }
 
                     // Remove chaves derivadas para forçar recálculo com novos valores
                     if (field === 'PSPD_electric') {
@@ -344,7 +348,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                         delete overrides.PV; delete overrides.PVT; delete overrides.PU; delete overrides.PUT;
                     }
 
-                    return { ...zone, probability_overrides: overrides };
+                    return { ...zone, probability_overrides: overrides, probability_data: probData };
                 });
                 nextUpdate.zones = newZones;
             }
@@ -383,112 +387,283 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         return components.join(' + ');
     }
 
+    // Navegação entre Global e Zonas
+    const [activeViewId, setActiveViewId] = React.useState<string>(data.last_active_zone_id || 'GLOBAL');
+    React.useEffect(() => {
+        // Se houver última zona ativa persistida, usar como visão inicial
+        const desired = data.last_active_zone_id || 'GLOBAL';
+        if (desired !== activeViewId) setActiveViewId(desired);
+    }, [data.last_active_zone_id]);
+    // Sempre que a visão ativa mudar para uma zona, persistir essa zona
+    React.useEffect(() => {
+        if (activeViewId && activeViewId !== 'GLOBAL') {
+            try { onUpdate({ last_active_zone_id: activeViewId } as any); } catch { /* noop */ }
+        }
+    }, [activeViewId]);
+    const zoneIds = (data.zones || []).map((z, idx) => z.id || z.name || String(idx));
+    const viewOrder = ['GLOBAL', ...zoneIds];
+    const currentViewIndex = Math.max(0, viewOrder.indexOf(activeViewId));
+    const goPrevView = () => {
+        const nextView = viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length];
+        setActiveViewId(nextView);
+        if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
+    };
+    const goNextView = () => {
+        const nextView = viewOrder[(currentViewIndex + 1) % viewOrder.length];
+        setActiveViewId(nextView);
+        if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
+    };
+    const makeZoneHeading = (zoneName: string | undefined, i: number) => {
+        const base = `Zona ${i + 1}`;
+        const name = (zoneName || '').trim();
+        if (!name) return base;
+        const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (norm(name) === norm(base)) return base;
+        return `${base} (${name})`;
+    };
+    const activeZoneIndex = activeViewId === 'GLOBAL' ? -1 : zoneIds.indexOf(activeViewId);
+    const activeZone = activeZoneIndex >= 0 ? (data.zones || [])[activeZoneIndex] : undefined;
+    const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, activeZoneIndex);
+    let zoneFr: any = null;
+    let zoneChart: { name: string; value: number }[] = [];
+    let zoneMaxDomain = 0;
+    let zoneAcceptable = false;
+    if (activeZone) {
+        const zoneBaseCalcs = calculateProbabilities(
+            activeZone.probability_data || data.probability_data,
+            data.analyze_data_line_probabilities,
+            data.has_data_line
+        );
+        const pZone = mergeZoneProbabilities(zoneBaseCalcs, activeZone);
+        zoneFr = calculateFrequencies(
+            data.calculations,
+            pZone,
+            data.frequency_config,
+            data.has_electric_line,
+            data.has_data_line
+        );
+        zoneAcceptable = (zoneFr.F || 0) <= toleranceLimit;
+        const zoneComponents = Object.entries(zoneFr)
+            .filter(([key]) => key !== 'F')
+            .map(([name, value]) => ({ name, value }));
+        zoneChart = [...zoneComponents, { name: 'F Total', value: zoneFr.F || 0 }];
+        zoneMaxDomain = Math.max(...zoneChart.map(d => d.value), toleranceLimit) * 1.2;
+    }
+
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                <Card className="h-full">
-                    <CardHeader><CardTitle>Configuração de Freq.  (F)</CardTitle></CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => handleConfigChange('is_critical_system', true)}
-                                    className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
-                                        config.is_critical_system 
-                                        ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                        : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
-                                    }`}
-                                >
-                                    <span className="truncate whitespace-nowrap leading-tight">Sist. Crít. ≤ 0,1</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleConfigChange('is_critical_system', false)}
-                                    className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
-                                        !config.is_critical_system 
-                                        ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                        : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
-                                    }`}
-                                >
-                                    <span className="truncate whitespace-nowrap leading-tight">Sist. N Crít. ≤ 1</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label className="text-base font-semibold text-slate-200">Exposição de Equipamentos</Label>
-                            <div className="flex items-center space-x-2 mt-2">
-                                <Checkbox id="equipment_outside" checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} />
-                                <Label htmlFor="equipment_outside" className="cursor-pointer">Exposição de Equip. ZPR0A</Label>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 
-                 <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base">
-                            <SlidersHorizontal className="w-5 h-5 text-blue-400" />
-                            Ajustar Freq. Dano
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-4">
-                        <SimulatorSelect
-                            label="PEB - Prot. Surto Cond. D1/D2"
-                            value={data.probability_data.PEB_electric}
-                            options={PSPD_OPTIONS} // PEB and PSPD share the same options
-                            onUpdate={(val) => handleSimulatorUpdate('PEB_electric', val)}
-                            isOpen={openSelect === 'peb'}
-                            onOpenChange={(open) => setOpenSelect(open ? 'peb' : null)}
-                        />
-                        <SimulatorSelect
-                            label="PSPD - Surto Ind. - D3"
-                            value={data.probability_data.PSPD_electric}
-                            options={PSPD_OPTIONS}
-                            onUpdate={(val) => handleSimulatorUpdate('PSPD_electric', val)}
-                            isOpen={openSelect === 'pspd'}
-                            onOpenChange={(open) => setOpenSelect(open ? 'pspd' : null)}
-                        />
-                    </CardContent>
-                </Card>
+                {activeViewId === 'GLOBAL' ? (
+                    <>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center justify-between text-base">
+                                    <span className="flex items-center gap-2">
+                                        <SlidersHorizontal className="w-5 h-5 text-blue-400" />
+                                        {`Ajustar Freq. Dano — ${activeHeading}`}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
+                                            <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                        </button>
+                                        <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
+                                            <ChevronRight className="w-5 h-5 text-slate-300" />
+                                        </button>
+                                    </div>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 pt-4">
+                                <SimulatorSelect
+                                    label="PEB - Prot. Surto Cond. D1/D2"
+                                    value={data.probability_data.PEB_electric}
+                                    options={PSPD_OPTIONS}
+                                    onUpdate={(val) => handleSimulatorUpdate('PEB_electric', val)}
+                                    isOpen={openSelect === 'peb'}
+                                    onOpenChange={(open) => setOpenSelect(open ? 'peb' : null)}
+                                />
+                                <SimulatorSelect
+                                    label="PSPD - Surto Ind. - D3"
+                                    value={data.probability_data.PSPD_electric}
+                                    options={PSPD_OPTIONS}
+                                    onUpdate={(val) => handleSimulatorUpdate('PSPD_electric', val)}
+                                    isOpen={openSelect === 'pspd'}
+                                    onOpenChange={(open) => setOpenSelect(open ? 'pspd' : null)}
+                                />
+                            </CardContent>
+                        </Card>
 
-                <Card className={`border-2 ${isAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
-                    <CardHeader>
-                        <CardTitle className="flex items-center justify-between text-base">
-                            <FormulaTooltip formulas={{ F: getFFormulaString() }} values={calculations}>
-                                <span className="flex items-center gap-2">Frequência Total (F)</span>
-                            </FormulaTooltip>
-                            {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-center p-6">
-                    <div className={`text-4xl font-bold mb-2 ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(F, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
-                        <div className="text-sm text-slate-400 mb-3">Limite: {toleranceLimit} ({is_critical_system ? 'Crítico' : 'Não Crítico'})</div>
-                        <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
-                             {isAcceptable ? "Frequência Aceitável." : "Frequência Não Aceitável."}
-                        </div>
-                    </CardContent>
-                </Card>
+                        <Card className={`border-2 ${isAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
+                            <CardHeader>
+                                <CardTitle className="flex items-center justify-between text-base">
+                                    <FormulaTooltip formulas={{ F: getFFormulaString() }} values={calculations}>
+                                        <span className="flex items-center gap-2">{`Frequência Total (F) — ${activeHeading}`}</span>
+                                    </FormulaTooltip>
+                                    {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-center p-6">
+                                <div className={`text-4xl font-bold mb-2 ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(F, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
+                                <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
+                                    {isAcceptable ? "Frequência Aceitável." : "Frequência Não Aceitável."}
+                                </div>
+                                {/* Controles movidos para a base do card de F (Global) */}
+                                <div className="mt-5">
+                                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleConfigChange('is_critical_system', true)}
+                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                                config.is_critical_system 
+                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
+                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                            }`}
+                                        >
+                                            <span className="truncate whitespace-nowrap leading-tight">Sist. Crít. ≤ 0,1</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleConfigChange('is_critical_system', false)}
+                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                                !config.is_critical_system 
+                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
+                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                            }`}
+                                        >
+                                            <span className="truncate whitespace-nowrap leading-tight">Sist. N Crít. ≤ 1</span>
+                                        </button>
+                                    </div>
+                                    <div className="mt-4 text-left">
+                                        <div className="flex items-center space-x-2 mt-2">
+                                            <Checkbox id="equipment_outside" checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} />
+                                            <Label htmlFor="equipment_outside" className="cursor-pointer">Exposição de Equip. ZPR0A</Label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </>
+                ) : (
+                    <>
+                        <Card className="h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center justify-between text-base">
+                                    <span className="flex items-center gap-2">
+                                        <SlidersHorizontal className="w-5 h-5 text-blue-400" />
+                                        {`Ajustar Freq. Dano — ${activeHeading}`}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
+                                            <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                        </button>
+                                        <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
+                                            <ChevronRight className="w-5 h-5 text-slate-300" />
+                                        </button>
+                                    </div>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {activeZone && (
+                                    <>
+                                        <SimulatorSelect
+                                            label="PEB - Prot. Surto Cond. D1/D2"
+                                            value={(activeZone.probability_data?.PEB_electric) ?? data.probability_data.PEB_electric}
+                                            options={PSPD_OPTIONS}
+                                            onUpdate={(val) => {
+                                                const newZones = (data.zones || []).map(z => (
+                                                    (z.id || z.name) === (activeZone.id || activeZone.name)
+                                                    ? { ...z, probability_data: { ...(z.probability_data || data.probability_data), PEB_electric: val, PEB_data: val } }
+                                                    : z
+                                                ));
+                                                onUpdate({ zones: newZones });
+                                            }}
+                                            isOpen={openSelect === `peb-${activeZone.id || activeZoneIndex}`}
+                                            onOpenChange={(open) => setOpenSelect(open ? `peb-${activeZone.id || activeZoneIndex}` : null)}
+                                        />
+                                        <SimulatorSelect
+                                            label="PSPD - Surto Ind. - D3"
+                                            value={(activeZone.probability_data?.PSPD_electric) ?? data.probability_data.PSPD_electric}
+                                            options={PSPD_OPTIONS}
+                                            onUpdate={(val) => {
+                                                const newZones = (data.zones || []).map(z => (
+                                                    (z.id || z.name) === (activeZone.id || activeZone.name)
+                                                    ? { ...z, probability_data: { ...(z.probability_data || data.probability_data), PSPD_electric: val, PSPD_data: val } }
+                                                    : z
+                                                ));
+                                                onUpdate({ zones: newZones });
+                                            }}
+                                            isOpen={openSelect === `pspd-${activeZone.id || activeZoneIndex}`}
+                                            onOpenChange={(open) => setOpenSelect(open ? `pspd-${activeZone.id || activeZoneIndex}` : null)}
+                                        />
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card className={`border-2 ${zoneAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    {`Frequência Total (F) — ${activeHeading}`}
+                                    {zoneAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-center p-6">
+                                <div className={`text-4xl font-bold mb-2 ${zoneAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(zoneFr?.F || 0, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
+                                <div className={`py-3 px-4 rounded-md text-base font-semibold ${zoneAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>{zoneAcceptable ? 'Frequência Aceitável.' : 'Frequência Não Aceitável.'}</div>
+                                {/* Controles movidos para a parte de baixo deste card */}
+                                <div className="mt-4 text-left">
+                                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleConfigChange('is_critical_system', true)}
+                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                                config.is_critical_system 
+                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
+                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                            }`}
+                                        >
+                                            <span className="truncate whitespace-nowrap leading-tight">Sist. Crít. ≤ 0,1</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleConfigChange('is_critical_system', false)}
+                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                                !config.is_critical_system 
+                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
+                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                            }`}
+                                        >
+                                            <span className="truncate whitespace-nowrap leading-tight">Sist. N Crít. ≤ 1</span>
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center space-x-2 mt-2">
+                                        <Checkbox id="equipment_outside_zone_bottom" checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} />
+                                        <Label htmlFor="equipment_outside_zone_bottom" className="cursor-pointer">Exposição de Equip. ZPR0A</Label>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
             </div>
 
             <Card>
-                <CardHeader><CardTitle>Componentes de Frequência</CardTitle></CardHeader>
+                <CardHeader><CardTitle>{`Componentes de Frequência — ${activeHeading}`}</CardTitle></CardHeader>
                 <CardContent className="h-[16.25rem]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
+                        <BarChart data={activeViewId === 'GLOBAL' ? chartData : zoneChart}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
-                            <YAxis tick={{ fill: '#94a3b8' }} domain={[0, yMaxDomain]} />
+                            <YAxis tick={{ fill: '#94a3b8' }} domain={[0, activeViewId === 'GLOBAL' ? yMaxDomain : zoneMaxDomain]} />
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
                             <ReferenceLine y={toleranceLimit} stroke="red" strokeDasharray="3 3" />
                             <Bar dataKey="value">
-                                {chartData.map((entry) => {
+                                {(activeViewId === 'GLOBAL' ? chartData : zoneChart).map((entry) => {
                                     const color = entry.name === 'F Total'
-                                        ? (isAcceptable ? '#22c55e' : '#ef4444') // green-500 / red-500
+                                        ? ((activeViewId === 'GLOBAL' ? isAcceptable : zoneAcceptable) ? '#22c55e' : '#ef4444')
                                         : '#818cf8';
                                     return <Cell key={`cell-${entry.name}`} fill={color} />;
                                 })}
@@ -497,6 +672,9 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
+
+            {/* Lista por zonas removida: navegação por setas controla a visão */}
+            
         </div>
     );
 }

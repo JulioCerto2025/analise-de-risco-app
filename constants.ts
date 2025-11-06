@@ -144,9 +144,16 @@ export const RT_OPTIONS = [
     { value: 0.0001, label: "Brita, tapete, carpete 0,0001" }, 
     { value: 0.00001, label: "Asfalto, linóleo, madeira 0,00001" }
 ];
-export const RF_OPTIONS = [{ value: 0.001, label: "Baixo 0,001" }, { value: 0.01, label: "Médio 0,01" }, { value: 0.1, label: "Alto 0,1" }, { value: 1, label: "Explosivo 1" }];
+export const RF_OPTIONS = [
+    { value: 0, label: "Sem risco 0" },
+    { value: 0.001, label: "Baixo 0,001" },
+    { value: 0.01, label: "Médio 0,01" },
+    { value: 0.1, label: "Alto 0,1" },
+    { value: 1, label: "Explosivo 1" }
+];
 export const HZ_OPTIONS = [{ value: 1, label: "Nenhum 1" }, { value: 2, label: "Baixo 2" }, { value: 5, label: "Médio 5" }, { value: 10, label: "Alto 10" }];
 export const LF_OPTIONS = [
+    { value: 0, label: 'Sem risco 0' },
     { value: 0.1, label: 'Hospital, hotel, escola, edifício cívico 0,1' },
     { value: 0.1, label: 'Risco de explosão 0,1' },
     { value: 0.05, label: 'Entretenimento público, igreja, museu 0,05' },
@@ -154,6 +161,7 @@ export const LF_OPTIONS = [
     { value: 0.01, label: 'Outros 0,01' }
 ];
 export const LO_OPTIONS = [
+  { value: 0, label: 'Sem risco 0' },
   { value: 0.1, label: 'Risco de explosão 0,1' },
   { value: 0.01, label: 'UTI/Centro Cirúrgico D3 0,01' },
   { value: 0.001, label: 'Outras partes de hospital D3 0,001' }
@@ -161,3 +169,9 @@ export const LO_OPTIONS = [
 export const LF3_OPTIONS = [{ value: 0.1, label: 'Museus, galerias 0,1' }];
 export const LF4_OPTIONS = [{ value: 0.5, label: 'Hospital, industrial, museu 0,5' }, { value: 0.2, label: 'Hotel, escola, escritório 0,2' }];
 export const LO4_OPTIONS = [{ value: 0.01, label: 'Hospital, Industrial 0,01' }];
+
+// LT para Choque Elétrico (LA)
+export const LT_OPTIONS = [
+    { value: 0.01, label: 'LT 0,01 (Norma)' },
+    { value: 0, label: 'Sem risco 0' }
+];

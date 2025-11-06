@@ -7,13 +7,14 @@ import { AnalysisData, LineSection } from '../../types';
 import { CD_OPTIONS, CI_OPTIONS, CE_OPTIONS, CT_OPTIONS_ELECTRIC, CT_OPTIONS_DATA, COMBINED_CLD_CLI_OPTIONS, UW_OPTIONS } from '../../constants';
 import { ShieldingSlider } from '../ShieldingSlider';
 import { calculatePld, calculatePli } from '../../utils/calculations';
+import { formatSmartNumber } from '../../lib/format';
 
 interface ConnectedLinesStepProps {
     data: AnalysisData;
     onUpdate: (newData: Partial<AnalysisData>) => void;
 }
 
-const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValues }: { label: React.ReactNode; value: number; unit: string; color: string; formula?: string; formulaKey?: string, formulaValues?: { [key: string]: any } }) => {
+const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValues, hideInfo }: { label: React.ReactNode; value: number; unit: string; color: string; formula?: string; formulaKey?: string, formulaValues?: { [key: string]: any }, hideInfo?: boolean }) => {
     const colorClasses: { [key: string]: { bg: string, text: string } } = {
         blue: { bg: "bg-blue-950/80", text: "text-white" },
         green: { bg: "bg-green-950/80", text: "text-white" },
@@ -21,18 +22,18 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const { bg, text } = colorClasses[color] || colorClasses.blue;
     const formulas = formula && formulaKey ? { [formulaKey]: formula } : {};
     
-    // Format value: use toLocaleString for large numbers, toExponential for small decimals
-    const displayValue = value >= 1 
-        ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) 
-        : value.toExponential(2).replace('.', ',');
+    // Formatação consistente: sempre decimal, sem notação científica
+    const displayValue = formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 });
 
     const content = (
-        <div className={`p-4 rounded-lg flex flex-col items-center justify-center text-center ${bg}`}>
+        <div className={`p-4 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
             <div className={`font-bold text-2xl ${text}`}>{displayValue}</div>
-            <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
-                {label}
-                <span>({unit})</span>
-            </div>
+            {!hideInfo && (
+                <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
+                    {label}
+                    <span>({unit})</span>
+                </div>
+            )}
         </div>
     );
 
@@ -207,12 +208,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
                                     
 
-                                    <div className="hidden sm:grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
-                                        <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
-                                        <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
-                                        <ResultBox label={<>N<sub>l</sub> (Elétrico)</>} value={nl_electric} unit="eventos/ano" color="blue" formula="Nl_linha + Nl_adj" formulaKey="Nl" formulaValues={{ Nl_linha: nl_electric_base, Nl_adj: nadj_electric }} />
-                                        {/* FIX: Set 'Ni_adj' to 0 in formulaValues as 'nim_adj_electric' no longer exists. */}
-                                        <ResultBox label={<>N<sub>i</sub> (Elétrico)</>} value={ni_electric} unit="eventos/ano" color="green" formula="Ni_linha + Ni_adj" formulaKey="Ni" formulaValues={{ Ni_linha: ni_electric_base, Ni_adj: 0 }} />
+                                    <div className="hidden sm:block pt-4 border-t border-slate-600 mt-4">
+                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados das Áreas Totais</span>
+                                        <div className="grid grid-cols-2 gap-3 mt-2 p-4 rounded-lg bg-slate-900/40 border border-slate-700">
+                                            <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
+                                            <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
+                                        </div>
                                     </div>
 
                                     <div className="pt-2">
@@ -284,12 +285,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     </Button>
                                     
                                     
-                                    <div className="hidden sm:grid grid-cols-2 gap-3 pt-4 border-t border-slate-600 mt-4">
-                                        <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
-                                        <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
-                                        <ResultBox label={<>N<sub>l</sub> (Dados)</>} value={nl_data} unit="eventos/ano" color="blue" formula="Nl_linha + Nl_adj" formulaKey="Nl" formulaValues={{ Nl_linha: nl_data_base, Nl_adj: nadj_data }} />
-                                        {/* FIX: Set 'Ni_adj' to 0 in formulaValues as 'nim_adj_data' no longer exists. */}
-                                        <ResultBox label={<>N<sub>i</sub> (Dados)</>} value={ni_data} unit="eventos/ano" color="green" formula="Ni_linha + Ni_adj" formulaKey="Ni" formulaValues={{ Ni_linha: ni_data_base, Ni_adj: 0 }} />
+                                    <div className="hidden sm:block pt-4 border-t border-slate-600 mt-4">
+                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados das Áreas Totais</span>
+                                        <div className="grid grid-cols-2 gap-3 mt-2 p-4 rounded-lg bg-slate-900/40 border border-slate-700">
+                                            <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
+                                            <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
+                                        </div>
                                     </div>
                                     
                                     <div className="pt-2">

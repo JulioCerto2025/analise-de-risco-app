@@ -89,8 +89,7 @@ const getRegionFromState = (stateUF: string = ''): string => {
 
 export default function App() {
     const [currentStep, setCurrentStep] = useState(1);
-    // Índice da zona atualmente em edição no loop de etapas 7 e 8
-    const [currentZoneIndex, setCurrentZoneIndex] = useState(0);
+    // Removido: controle de loop por zona entre etapas 7 e 8
     const { data, updateData } = useAnalysisData();
     const [errors, setErrors] = useState<string[]>([]);
 
@@ -152,8 +151,9 @@ export default function App() {
                         }
                     } catch (_) { /* ignora erro e usa fallback */ }
 
+                    // Não altera automaticamente a região do mapa.
+                    // O mapa deve permanecer em 'Brasil' até o usuário escolher outra região.
                     updateData({
-                        mapRegion: region,
                         location: `${city} - ${uf}`,
                         clientAddress: sanitizedAddress,
                         ng: nextNg
@@ -163,40 +163,16 @@ export default function App() {
 
             // Garantir que dados necessários estejam inicializados para a etapa 3 (NgInputStep)
             if (currentStep === 2) {
+                // Mantém visualização padrão como 'Brasil' se região não estiver definida
                 if (!data.mapRegion) {
-                    updateData({ mapRegion: 'sul' }); // Valor padrão
+                    updateData({ mapRegion: 'brasil' });
                 }
                 if (!data.ng) {
                     updateData({ ng: 5 }); // Valor padrão
                 }
             }
 
-            // Lógica de loop por zona entre Etapas 7 (Probabilidades) e 8 (Perdas)
-            if (currentStep === 7) {
-                // Ao sair da etapa de Probabilidades, persistir P calculado como overrides da zona atual
-                const zones = (data as AnalysisInputData).zones || [];
-                const zone = zones[currentZoneIndex];
-                if (zone) {
-                    const mergedOverrides = { ...(zone.probability_overrides || {}), ...(data.probability_calculations || {}) };
-                    const nextZones = zones.map((z, idx) => idx === currentZoneIndex ? { ...z, probability_overrides: mergedOverrides } : z);
-                    updateData({ zones: nextZones });
-                }
-                setErrors([]);
-                setCurrentStep(8);
-                return;
-            }
-
-            if (currentStep === 8) {
-                // Ao finalizar Perdas da zona atual, avançar para próxima zona (se houver), retornando à etapa 7
-                const zonesCount = (data.zones || []).length;
-                const isLastZone = currentZoneIndex >= zonesCount - 1;
-                if (!isLastZone) {
-                    setCurrentZoneIndex(prev => prev + 1);
-                    setErrors([]);
-                    setCurrentStep(7);
-                    return;
-                }
-            }
+            // Removido: lógica de loop automático de zonas entre etapas 7 e 8.
 
             setErrors([]);
             if (currentStep < STEPS.length) setCurrentStep(prev => prev + 1);
@@ -208,14 +184,8 @@ export default function App() {
 
     const handlePrev = useCallback(() => {
         setErrors([]);
-        // Navegação reversa no loop de zonas: se estamos na Etapa 7 e não é a primeira zona, voltar para Etapa 8 da zona anterior
-        if (currentStep === 7 && currentZoneIndex > 0) {
-            setCurrentZoneIndex(prev => Math.max(0, prev - 1));
-            setCurrentStep(8);
-            return;
-        }
         if (currentStep > 1) setCurrentStep(prev => prev - 1);
-    }, [currentStep, currentZoneIndex]);
+    }, [currentStep]);
     
     const setStep = useCallback((step: number) => {
         if (step > 0 && step <= STEPS.length) {
@@ -246,10 +216,7 @@ export default function App() {
                         <ProbabilityStepLazy data={data} onChange={updateData} />
                     </React.Suspense>
                 );
-                case 8: {
-                    const activeZoneId = data.zones?.[currentZoneIndex]?.id || data.zones?.[0]?.id || '';
-                    return <LossStep data={data} onChange={updateData} forceActiveZoneId={activeZoneId} hideProbabilityEditor />;
-                }
+                case 8: return <LossStep data={data} onChange={updateData} />;
                 case 9: return (
                     <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
                         <RiskResultsStepLazy data={data} onUpdate={updateData} />

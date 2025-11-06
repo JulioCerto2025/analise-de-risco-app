@@ -5,8 +5,9 @@ import { Sparkles, Loader2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData, LossData, FireRiskInfo } from '../../types';
-import { RP_OPTIONS, RT_OPTIONS, RF_OPTIONS, HZ_OPTIONS, LF_OPTIONS, LO_OPTIONS, LF3_OPTIONS, LF4_OPTIONS, LO4_OPTIONS } from '../../constants';
+import { RP_OPTIONS, RT_OPTIONS, RF_OPTIONS, HZ_OPTIONS, LF_OPTIONS, LO_OPTIONS, LF3_OPTIONS, LF4_OPTIONS, LO4_OPTIONS, LT_OPTIONS } from '../../constants';
 import { getFireRiskFactor } from '../../lib/geminiService';
+import { calculateLossesForZone } from '../../utils/calculations';
 import { formatSmartNumber } from '../../lib/format';
 
 const escapeHtml = (str: string) => str
@@ -197,7 +198,7 @@ const RS_OPTIONS = [
 ];
 
 const LOSS_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
-    LA: { formula: "rt * 0.01 * rs * (nz / nt) * (tz / 8760)", vars: ["rt", "rs", "nz", "nt", "tz"] },
+    LA: { formula: "rt * LT * rs * (nz / nt) * (tz / 8760)", vars: ["rt", "LT", "rs", "nz", "nt", "tz"] },
     LB: { formula: "rs * rp * rf * hz * LF * (nz / nt) * (tz / 8760)", vars: ["rs", "rp", "rf", "hz", "LF", "nz", "nt", "tz"] },
     LC: { formula: "LO * rs * (nz / nt) * (tz / 8760)", vars: ["LO", "rs", "nz", "nt", "tz"] },
 };
@@ -236,6 +237,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
             const vm: Record<string, number> = { ...(lossData || {}) };
             if (lossKey === 'LA') {
                 const rt = vm['rt'] || 0;
+                const LT = vm['LT'] || vm['lt'] || 0.01;
                 const rs = vm['rs'] || 0;
                 const nz = vm['nz'] || 0;
                 const nt = vm['nt'] || 0;
@@ -244,7 +246,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
                     <span className="font-mono">
                         <span className="inline-flex items-baseline"><ScientificNotation value={rt} precision={2} /></span>
                         <span className="mx-0.5">×</span>
-                        <span>0,01</span>
+                        <span className="inline-flex items-baseline"><ScientificNotation value={LT} precision={2} /></span>
                         <span className="mx-0.5">×</span>
                         <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
                         <span className="mx-0.5">×</span>
@@ -347,12 +349,15 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
 
 export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEditor }: LossStepProps) {
     const { zones, risks_to_analyze } = data;
-    const [activeZoneId, setActiveZoneId] = useState(zones[0]?.id || '');
+    const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
     useEffect(() => {
-        if (forceActiveZoneId && forceActiveZoneId !== activeZoneId) {
-            setActiveZoneId(forceActiveZoneId);
+        const desired = forceActiveZoneId || data.last_active_zone_id || zones[0]?.id || '';
+        if (desired && desired !== activeZoneId) {
+            setActiveZoneId(desired);
+        } else if (!zones.find(z => z.id === activeZoneId)) {
+            setActiveZoneId(zones[0]?.id || '');
         }
-    }, [forceActiveZoneId]);
+    }, [forceActiveZoneId, data.last_active_zone_id, zones, activeZoneId]);
     const isMobile = useIsMobile();
 
     const [isFireRiskPanelOpen, setIsFireRiskPanelOpen] = useState(false);
@@ -394,39 +399,56 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     }, [availableTabs, activeLossTypeTab]);
 
 
-    const currentZone = zones.find(z => z.id === activeZoneId) || zones[0];
+    const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
     const lossData = currentZone?.loss_data || {};
-    const homogeneousType = currentZone?.homogeneous_type || 'L';
-    const effectiveHomogeneousType: 'P' | 'L' = hideProbabilityEditor ? 'L' : homogeneousType;
+    // Fixar modo em Perdas (L) e remover alternância obsoleta
+    const effectiveHomogeneousType: 'P' | 'L' = 'L';
 
-    const handleUpdate = useCallback((field: keyof LossData, value: number) => {
-        const updatedZones = zones.map(z => {
-            let newLossData = { ...z.loss_data };
+    const handleUpdate = useCallback((field: keyof LossData, rawValue: number) => {
+        const value = Number.isFinite(rawValue) ? rawValue : 0;
 
-            if (field === 'nt') {
-                // 'nt' is global, apply to all zones.
-                newLossData.nt = value;
-                if (zones.length === 1) {
-                    // For single zone, also sync nz.
-                    newLossData.nz = value;
-                }
-            } else if (z.id === activeZoneId) {
-                // Other fields only apply to the active zone.
-                newLossData[field] = value;
+        // Helper to clamp between 0 and nt
+        const clampNz = (nz: number, nt: number) => Math.max(0, Math.min(nz, Math.max(0, nt)));
+
+        // Read current global nt (from first zone)
+        const currentNt = Math.max(0, Number(zones[0]?.loss_data?.nt) || 0);
+
+        let nextZones = zones.map(z => ({ ...z, loss_data: { ...z.loss_data } }));
+
+        if (field === 'nt') {
+            // nt é global: aplicar em todas as zonas, sem redistribuir nz automaticamente.
+            const newNt = Math.max(0, value);
+            nextZones.forEach((z) => { z.loss_data.nt = newNt; });
+            // Não alterar nz; o usuário ajusta manualmente.
+        } else if (field === 'nz') {
+            // Atualização de nz apenas na zona ativa, sem ajustar outras zonas.
+            const nt = currentNt; // usa nt atual
+            const activeIndex = nextZones.findIndex(z => z.id === activeZoneId);
+            if (activeIndex < 0) {
+                // fallback: aplica direto na primeira zona
+                const othersSum = nextZones.slice(1).reduce((acc, z) => acc + (Number(z.loss_data.nz) || 0), 0);
+                const maxAllowed = Math.max(0, nt - othersSum);
+                nextZones[0].loss_data.nz = Math.max(0, Math.min(value, maxAllowed));
+            } else {
+                // 1) Calcular quanto cabe sem exceder soma total nt
+                const sumOthers = nextZones.reduce((acc, z, i) => i === activeIndex ? acc : acc + (Number(z.loss_data.nz) || 0), 0);
+                const maxAllowed = Math.max(0, nt - sumOthers);
+                const newActiveNz = Math.max(0, Math.min(value, maxAllowed));
+                nextZones[activeIndex].loss_data.nz = newActiveNz;
+                // Não ajustar outras zonas automaticamente; usuário controla manualmente.
             }
+        } else {
+            // Outros campos: aplicar somente na zona ativa
+            nextZones = nextZones.map(z => {
+                if (z.id !== activeZoneId) return z;
+                return { ...z, loss_data: { ...z.loss_data, [field]: value } };
+            });
+        }
 
-            return { ...z, loss_data: newLossData };
-        });
-
-        const updates: Partial<AnalysisData> = { zones: updatedZones };
-        
-        onChange(updates);
+        onChange({ zones: nextZones });
     }, [zones, activeZoneId, onChange]);
 
-    const handleHomogeneousTypeChange = useCallback((type: 'P' | 'L') => {
-        const updatedZones = zones.map(z => z.id === activeZoneId ? { ...z, homogeneous_type: type } : z);
-        onChange({ zones: updatedZones });
-    }, [zones, activeZoneId, onChange]);
+    // Alternância de modo homogêneo removida (obsoleta)
 
     const PROB_KEYS: string[] = ['PA','PB','PC','PCT','PM','PMT','PU','PUT','PV','PVT','PW','PWT','PZ','PZT'];
 
@@ -474,8 +496,8 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         }
     }, [data.projectName, data.clientAddress, data.zones, activeZoneId, lossData, onChange]);
     
-    const { loss_calculations } = data;
-    const l = loss_calculations;
+    // Calcular perdas da zona ativa para o gráfico
+    const l = calculateLossesForZone(currentZone);
 
     // Group identical loss components for a cleaner chart visualization
     const groupedLossComponents = [
@@ -488,7 +510,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         .map(item => ({ name: item.name, description: item.description, value: item.value || 0, fill: item.color }))
         .filter(item => item.value > 1e-9); // Filter out zero/negligible values
 
-    if (!currentZone) {
+    if (zones.length === 0) {
         return (
              <Card>
                 <CardHeader><CardTitle>Perda Consequente (L)</CardTitle></CardHeader>
@@ -497,234 +519,244 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         )
     }
 
+    const currentZoneIndex = zones.findIndex(z => z.id === currentZone?.id);
+    const makeZoneHeading = (zoneName: string | undefined, idx: number) => {
+        const base = `Zona ${idx + 1}`;
+        const name = (zoneName || '').trim();
+        if (!name) return base;
+        const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (norm(name) === norm(base)) return base;
+        return `${base} (${name})`;
+    };
+    const zoneHeading = makeZoneHeading(currentZone?.name, currentZoneIndex);
+    const activeHeading = zoneHeading;
+
+    const editorCard = (
+        <Card>
+            <CardHeader>
+                <CardTitle>
+                    {`Fatores de Perda Consequente (L) — ${activeHeading}`}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
+                    {zones.map(zone => (
+                        <TabButton 
+                            key={zone.id} 
+                            isActive={activeZoneId === zone.id} 
+                            onClick={() => {
+                                setActiveZoneId(zone.id);
+                                // Persistir última zona ativa
+                                try { onChange({ last_active_zone_id: zone.id } as any); } catch { /* noop */ }
+                            }}
+                        >
+                            {zone.name}
+                        </TabButton>
+                    ))}
+                </div>
+
+
+                {effectiveHomogeneousType === 'L' && availableTabs.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-1 bg-slate-800/70 rounded-lg">
+                        {availableTabs.map(tab => (
+                            <TabButton
+                                key={tab.id}
+                                isActive={activeLossTypeTab === tab.id}
+                                onClick={() => setActiveLossTypeTab(tab.id)}
+                            >
+                                {tab.label}
+                            </TabButton>
+                        ))}
+                    </div>
+                )}
+
+                {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'populacao' && (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 items-start">
+                            <DecimalInput
+                                label="Nº Pessoas na Zona (nz)"
+                                value={lossData.nz ?? 0}
+                                onUpdate={val => handleUpdate('nz', val)}
+                                readOnly={zones.length === 1}
+                                title={zones.length === 1 ? "O número de pessoas na zona é igual ao total da estrutura." : ""}
+                                className={`space-y-2 ${zones.length === 1 ? 'opacity-70' : ''}`}
+                            />
+                            <DecimalInput
+                                label="Nº Pessoas Total (nt)"
+                                value={lossData.nt ?? 1}
+                                onUpdate={val => handleUpdate('nt', val)}
+                                isAiSuggested={false}
+                                className="space-y-2"
+                            />
+                            <DecimalInput
+                                label="Tempo na Zona (tz) h/ano"
+                                value={lossData.tz ?? 8760}
+                                onUpdate={val => handleUpdate('tz', val)}
+                                isAiSuggested={false}
+                                className="space-y-2"
+                            />
+                            <SelectInput
+                                label="rs - Robustez da Estrutura"
+                                value={lossData.rs ?? 1}
+                                options={RS_OPTIONS}
+                                onUpdate={val => handleUpdate('rs', val)}
+                            />
+                        </div>
+                        {isPopulationMismatch && (
+                            <Alert variant="destructive" className="mt-4">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Atenção: Inconsistência na População</AlertTitle>
+                                <AlertDescription>
+                                    A soma das pessoas em todas as zonas ({sumOfNz}) não é igual ao número total de pessoas na estrutura ({totalNt}). Por favor, ajuste os valores.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                        {isWeightedTimeExceeded && (
+                            <Alert variant="destructive" className="mt-4">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Atenção: Tempo ponderado excede 8760 h</AlertTitle>
+                                <AlertDescription>
+                                    A soma ponderada do tempo por zona (∑(nz/nt × tz) = {formatSmartNumber(weightedTimeHours, { maxDecimals: 1, useScientificBelow: 0 })} h) excede 8760 h/ano. Ajuste os tempos de permanência.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </>
+                )}
+
+                {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'incendio' && (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <SelectInput label="LF - Danos Físicos" value={lossData.LF ?? 0.1} options={LF_OPTIONS} onUpdate={val => handleUpdate('LF', val)} />
+                            <SelectInput label="rp - Medidas de Proteção" value={lossData.rp ?? 1} options={RP_OPTIONS} onUpdate={val => handleUpdate('rp', val)} />
+                            <SelectInput label="rf - Risco de Incêndio" value={lossData.rf ?? 0.001} options={RF_OPTIONS} onUpdate={val => handleUpdate('rf', val)} />
+                            <SelectInput label="hz - Risco de Pânico" value={lossData.hz ?? 1} options={HZ_OPTIONS} onUpdate={val => handleUpdate('hz', val)} />
+                        </div>
+                    </>
+                )}
+
+                {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'choque' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <SelectInput label="rt - Resist. do Piso" value={lossData.rt ?? 0.01} options={RT_OPTIONS} onUpdate={val => handleUpdate('rt', val)} />
+                        <SelectInput label="LT - Choque" value={(lossData as any).lt ?? 0.01} options={LT_OPTIONS} onUpdate={val => handleUpdate('lt', val)} />
+                    </div>
+                )}
+
+                {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'equipamentos' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <SelectInput label="LO - Falha de Sist." value={lossData.LO ?? 0.001} options={LO_OPTIONS} onUpdate={val => handleUpdate('LO', val)} />
+                    </div>
+                )}
+
+                {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'cultural' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                        <SelectInput label="Lf3 - Tipo de Dano" value={lossData.lf3 ?? 0.1} options={LF3_OPTIONS} onUpdate={val => handleUpdate('lf3', val)} />
+                        <DecimalInput label="Valor do Patrimônio (cz)" value={lossData.cz ?? 0} onUpdate={val => handleUpdate('cz', val)} />
+                        <DecimalInput label="Valor Total (ct)" value={lossData.ct_cultural ?? 1} onUpdate={val => handleUpdate('ct_cultural', val)} />
+                    </div>
+                )}
+
+                {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'economica' && (
+                    <div>
+                        <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4 pt-2">
+                            <SelectInput label="Lf4 - Dano Físico" value={lossData.lf4 ?? 0.2} options={LF4_OPTIONS} onUpdate={val => handleUpdate('lf4', val)} />
+                            <SelectInput label="Lo4 - Falha de Sist." value={lossData.lo4 ?? 0.01} options={LO4_OPTIONS} onUpdate={val => handleUpdate('lo4', val)} />
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <DecimalInput label="Animais (ca)" value={lossData.ca ?? 0} onUpdate={val => handleUpdate('ca', val)} />
+                            <DecimalInput label="Edificação (cb)" value={lossData.cb ?? 0} onUpdate={val => handleUpdate('cb', val)} />
+                            <DecimalInput label="Conteúdo (cc)" value={lossData.cc ?? 0} onUpdate={val => handleUpdate('cc', val)} />
+                            <DecimalInput label="Sistemas (cs)" value={lossData.cs ?? 0} onUpdate={val => handleUpdate('cs', val)} />
+                            <DecimalInput label="Atividades (ce)" value={lossData.ce ?? 0} onUpdate={val => handleUpdate('ce', val)} />
+                            <DecimalInput label="Valor Total (ct)" value={lossData.ct_economic ?? 1} onUpdate={val => handleUpdate('ct_economic', val)} />
+                        </div>
+                    </div>
+                )}
+
+                {effectiveHomogeneousType === 'P' && !hideProbabilityEditor && (
+                    <div className="space-y-4 pt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label>Probabilidade (P) da zona</Label>
+                                <Select 
+                                    value={''}
+                                    onValueChange={() => {}}
+                                    options={PROB_KEYS.map(k => ({ value: k, label: k }))}
+                                >
+                                    <SelectTrigger><SelectValue placeholder="Selecione uma probabilidade" /></SelectTrigger>
+                                    <SelectContent>
+                                        {PROB_KEYS.map(k => (
+                                            <SelectItem key={k} value={k} label={k} />
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {/* Campo manual simples para inserir/ajustar overrides */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    {PROB_KEYS.slice(0,6).map(k => (
+                                        <div key={k}>
+                                            <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {PROB_KEYS.slice(6).map(k => (
+                                        <div key={k}>
+                                            <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        {currentZone?.probability_overrides && Object.keys(currentZone.probability_overrides).length > 0 && (
+                            <div className="mt-2">
+                                <Label>Overrides definidos</Label>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {Object.entries(currentZone.probability_overrides).map(([k,v]) => (
+                                        <div key={k} className="px-3 py-1 bg-slate-800/70 rounded-lg border border-slate-600 text-sm flex items-center gap-2">
+                                            <span className="text-slate-200">{k}: {String(v).replace('.', ',')}</span>
+                                            <button className="text-red-400 hover:text-red-300" onClick={() => handleRemoveProbOverride(k)}>remover</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+
+    const chartCard = (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Resultados das Perdas — {zoneHeading}</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[16rem]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                        <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
+                        <YAxis tick={{ fill: '#94a3b8' }} />
+                        {!isMobile && (
+                            <Tooltip 
+                                content={<CustomTooltip lossData={lossData} />}
+                                cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                            />
+                        )}
+                        <Bar dataKey="value">
+                            {chartData.map((entry) => (
+                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <div className="grid grid-cols-1 gap-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Zona: {currentZone.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    
-                    {zones.length > 1 && (
-                        <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                            {zones.map(zone => (
-                                <TabButton 
-                                    key={zone.id} 
-                                    isActive={activeZoneId === zone.id} 
-                                    onClick={() => setActiveZoneId(zone.id)}
-                                >
-                                    {zone.name}
-                                </TabButton>
-                            ))}
-                        </div>
-                    )}
-
-                    {!hideProbabilityEditor && (
-                        <div className="flex items-center gap-2">
-                            <Label>Modo homogêneo da zona:</Label>
-                            <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                                <TabButton isActive={homogeneousType === 'P'} onClick={() => handleHomogeneousTypeChange('P')}>Probabilidade (P)</TabButton>
-                                <TabButton isActive={homogeneousType === 'L'} onClick={() => handleHomogeneousTypeChange('L')}>Perdas (L)</TabButton>
-                            </div>
-                        </div>
-                    )}
-
-                    {effectiveHomogeneousType === 'L' && availableTabs.length > 0 && (
-                        <div className="flex flex-wrap gap-2 p-1 bg-slate-800/70 rounded-lg">
-                            {availableTabs.map(tab => (
-                                <TabButton
-                                    key={tab.id}
-                                    isActive={activeLossTypeTab === tab.id}
-                                    onClick={() => setActiveLossTypeTab(tab.id)}
-                                >
-                                    {tab.label}
-                                </TabButton>
-                            ))}
-                        </div>
-                    )}
-
-                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'populacao' && (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 items-start">
-                                <DecimalInput
-                                    label="Nº Pessoas na Zona (nz)"
-                                    value={lossData.nz ?? 0}
-                                    onUpdate={val => handleUpdate('nz', val)}
-                                    readOnly={zones.length === 1}
-                                    title={zones.length === 1 ? "O número de pessoas na zona é igual ao total da estrutura." : ""}
-                                    className={`space-y-2 ${zones.length === 1 ? 'opacity-70' : ''}`}
-                                />
-                                <DecimalInput
-                                    label="Nº Pessoas Total (nt)"
-                                    value={lossData.nt ?? 1}
-                                    onUpdate={val => handleUpdate('nt', val)}
-                                    isAiSuggested={data.preliminaryAiStatus === 'success'}
-                                    className="space-y-2"
-                                />
-                                <DecimalInput
-                                    label="Tempo na Zona (tz) h/ano"
-                                    value={lossData.tz ?? 8760}
-                                    onUpdate={val => handleUpdate('tz', val)}
-                                    isAiSuggested={data.preliminaryAiStatus === 'success'}
-                                    className="space-y-2"
-                                />
-                                <SelectInput
-                                    label="rs - Robustez da Estrutura"
-                                    value={lossData.rs ?? 1}
-                                    options={RS_OPTIONS}
-                                    onUpdate={val => handleUpdate('rs', val)}
-                                />
-                            </div>
-                             {isPopulationMismatch && (
-                                <Alert variant="destructive" className="mt-4">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Atenção: Inconsistência na População</AlertTitle>
-                                    <AlertDescription>
-                                        A soma das pessoas em todas as zonas ({sumOfNz}) não é igual ao número total de pessoas na estrutura ({totalNt}). Por favor, ajuste os valores.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                            {isWeightedTimeExceeded && (
-                                <Alert variant="destructive" className="mt-4">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Atenção: Tempo ponderado excede 8760 h</AlertTitle>
-                                    <AlertDescription>
-            A soma ponderada do tempo por zona (∑(nz/nt × tz) = {formatSmartNumber(weightedTimeHours, { maxDecimals: 1, useScientificBelow: 0 })} h) excede 8760 h/ano. Ajuste os tempos de permanência.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                        </>
-                    )}
-                    
-                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'incendio' && (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                <SelectInput label="LF - Danos Físicos" value={lossData.LF ?? 0.1} options={LF_OPTIONS} onUpdate={val => handleUpdate('LF', val)} />
-                                <SelectInput label="rp - Medidas de Proteção" value={lossData.rp ?? 1} options={RP_OPTIONS} onUpdate={val => handleUpdate('rp', val)} />
-                                <SelectInput label="rf - Risco de Incêndio" value={lossData.rf ?? 0.001} options={RF_OPTIONS} onUpdate={val => handleUpdate('rf', val)} />
-                                <SelectInput label="hz - Risco de Pânico" value={lossData.hz ?? 1} options={HZ_OPTIONS} onUpdate={val => handleUpdate('hz', val)} />
-                            </div>
-                            
-                        </>
-                    )}
-
-                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'choque' && (
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                            <SelectInput label="rt - Resist. do Piso" value={lossData.rt ?? 0.01} options={RT_OPTIONS} onUpdate={val => handleUpdate('rt', val)} />
-                        </div>
-                    )}
-
-                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'equipamentos' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                             <SelectInput label="LO - Falha de Sist." value={lossData.LO ?? 0.001} options={LO_OPTIONS} onUpdate={val => handleUpdate('LO', val)} />
-                        </div>
-                    )}
-
-                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'cultural' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                            <SelectInput label="Lf3 - Tipo de Dano" value={lossData.lf3 ?? 0.1} options={LF3_OPTIONS} onUpdate={val => handleUpdate('lf3', val)} />
-                            <DecimalInput label="Valor do Patrimônio (cz)" value={lossData.cz ?? 0} onUpdate={val => handleUpdate('cz', val)} />
-                            <DecimalInput label="Valor Total (ct)" value={lossData.ct_cultural ?? 1} onUpdate={val => handleUpdate('ct_cultural', val)} />
-                        </div>
-                    )}
-
-                    {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'economica' && (
-                         <div>
-                            <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4 pt-2">
-                                <SelectInput label="Lf4 - Dano Físico" value={lossData.lf4 ?? 0.2} options={LF4_OPTIONS} onUpdate={val => handleUpdate('lf4', val)} />
-                                <SelectInput label="Lo4 - Falha de Sist." value={lossData.lo4 ?? 0.01} options={LO4_OPTIONS} onUpdate={val => handleUpdate('lo4', val)} />
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <DecimalInput label="Animais (ca)" value={lossData.ca ?? 0} onUpdate={val => handleUpdate('ca', val)} />
-                                <DecimalInput label="Edificação (cb)" value={lossData.cb ?? 0} onUpdate={val => handleUpdate('cb', val)} />
-                                <DecimalInput label="Conteúdo (cc)" value={lossData.cc ?? 0} onUpdate={val => handleUpdate('cc', val)} />
-                                <DecimalInput label="Sistemas (cs)" value={lossData.cs ?? 0} onUpdate={val => handleUpdate('cs', val)} />
-                                <DecimalInput label="Atividades (ce)" value={lossData.ce ?? 0} onUpdate={val => handleUpdate('ce', val)} />
-                                <DecimalInput label="Valor Total (ct)" value={lossData.ct_economic ?? 1} onUpdate={val => handleUpdate('ct_economic', val)} />
-                            </div>
-                        </div>
-                    )}
-
-                    {effectiveHomogeneousType === 'P' && !hideProbabilityEditor && (
-                        <div className="space-y-4 pt-2">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Probabilidade (P) da zona</Label>
-                                    <Select 
-                                        value={''}
-                                        onValueChange={() => {}}
-                                        options={PROB_KEYS.map(k => ({ value: k, label: k }))}
-                                    >
-                                        <SelectTrigger><SelectValue placeholder="Selecione uma probabilidade" /></SelectTrigger>
-                                        <SelectContent>
-                                            {PROB_KEYS.map(k => (
-                                                <SelectItem key={k} value={k} label={k} />
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {/* Campo manual simples para inserir/ajustar overrides */}
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {PROB_KEYS.slice(0,6).map(k => (
-                                            <div key={k}>
-                                                <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {PROB_KEYS.slice(6).map(k => (
-                                            <div key={k}>
-                                                <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            {currentZone?.probability_overrides && Object.keys(currentZone.probability_overrides).length > 0 && (
-                                <div className="mt-2">
-                                    <Label>Overrides definidos</Label>
-                                    <div className="flex flex-wrap gap-2 mt-1">
-                                        {Object.entries(currentZone.probability_overrides).map(([k,v]) => (
-                                            <div key={k} className="px-3 py-1 bg-slate-800/70 rounded-lg border border-slate-600 text-sm flex items-center gap-2">
-                                                <span className="text-slate-200">{k}: {String(v).replace('.', ',')}</span>
-                                                <button className="text-red-400 hover:text-red-300" onClick={() => handleRemoveProbOverride(k)}>remover</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center">
-                        Resultados das Perdas
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="h-[16rem]">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                            <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
-                            <YAxis tick={{ fill: '#94a3b8' }} />
-                            {!isMobile && (
-                                <Tooltip 
-                                    content={<CustomTooltip lossData={lossData} />}
-                                    cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                                />
-                            )}
-                            <Bar dataKey="value">
-                                 {chartData.map((entry) => (
-                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+            {editorCard}
+            {chartCard}
         </div>
     );
 }

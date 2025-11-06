@@ -269,8 +269,18 @@ export function Step3Events({ data }: { data: AnalysisData }) {
     return (
         <div className="space-y-6">
             <Card>
-                <CardHeader><CardTitle>Frequência Média Anual de Eventos Danosos</CardTitle></CardHeader>
+                <CardHeader>
+                    <CardTitle>Frequência Média Anual de Eventos Danosos</CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Contexto simples trazido da Etapa 1 (NgInputStep) */}
+                    <div className="text-xs sm:text-sm text-slate-300">
+                        <span className="mr-2">Localização:</span>
+                        <span className="font-semibold">{data.location || '—'}</span>
+                        <span className="mx-2">•</span>
+                        <span className="mr-2">Ng:</span>
+                        <span className="font-mono">{typeof data.ng === 'number' && data.ng > 0 ? data.ng.toFixed(2) : '--'}</span>
+                    </div>
                     {isNgMissing && (
                         <Alert variant="destructive" className="border-2">
                             <AlertTitle>Dados insuficientes para cálculo</AlertTitle>

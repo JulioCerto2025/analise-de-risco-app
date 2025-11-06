@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../ui';
 import { FileText, Copy, Loader2, Sparkles, X, AlertTriangle, CheckCircle } from "lucide-react";
-import { AnalysisData } from '../../types';
+import { AnalysisData, ZoneCalculations } from '../../types';
 import { generateFullReportText } from '../../lib/geminiService';
+const PdfOcrViewerLazy = React.lazy(() => import('../tools/PdfOcrViewer').then(m => ({ default: m.PdfOcrViewer })));
 import { motion, AnimatePresence } from "framer-motion";
+import { 
+    calculateEvents,
+    calculateProbabilities,
+    calculateLossesForZone,
+    calculateRisksForZone,
+    aggregateRiskResults,
+    mergeZoneProbabilities
+} from '../../utils/calculations';
 
 interface ReportStepProps {
     data: AnalysisData;
@@ -75,6 +84,7 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [reportText, setReportText] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
+    const [showOcr, setShowOcr] = useState(false);
 
     const handleGenerateReport = async () => {
         setIsGenerating(true);
@@ -96,6 +106,39 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
             setTimeout(() => setCopySuccess(false), 2000);
         }
     };
+
+    // Calcular resultados atuais do app para comparação (espelhando hooks)
+    const eventCalculations = useMemo(() => calculateEvents(data), [
+        data.h, data.l, data.w, data.hp, data.ng, data.cd, 
+        data.has_electric_line, data.line_sections_1, data.use_adj_structure_1, data.l_adj_1, data.w_adj_1, data.h_adj_1, data.hp_adj_1, data.cd_adj_1,
+        data.has_data_line, data.line_sections_2, data.use_adj_structure_2, data.l_adj_2, data.w_adj_2, data.h_adj_2, data.hp_adj_2, data.cd_adj_2
+    ]);
+    const probabilityCalculations = useMemo(() => calculateProbabilities(
+        data.probability_data,
+        data.analyze_data_line_probabilities,
+        data.has_data_line
+    ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line]);
+    const zoneCalculations: ZoneCalculations[] = useMemo(() => {
+        return data.zones.map(zone => {
+            const lossCalculations = calculateLossesForZone(zone);
+            const zoneBaseProbCalcs = calculateProbabilities(
+                (zone.probability_data || data.probability_data),
+                data.analyze_data_line_probabilities,
+                data.has_data_line
+            );
+            const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
+            const riskCalculations = calculateRisksForZone(
+                eventCalculations,
+                zoneProbCalcs,
+                lossCalculations,
+                data.selected_risk_components
+            );
+            return { zone, lossCalculations, riskCalculations };
+        });
+    }, [data.zones, eventCalculations, data.selected_risk_components, data.analyze_data_line_probabilities, data.has_data_line, data.probability_data]);
+    const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
+
+    // Removido: lógica de comparação com exemplo NBR 5419-2:2015
     
     return (
         <div>
@@ -114,6 +157,11 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="text-center p-3">
+                    <div className="flex flex-wrap gap-2 mb-3 justify-start">
+                        <Button variant="secondary" onClick={() => setShowOcr(s => !s)}>
+                            {showOcr ? 'Ocultar OCR do PDF' : 'Extrair texto do PDF (OCR)'}
+                        </Button>
+                    </div>
                     <AnimatePresence mode="wait">
                         {isGenerating ? (
                             <motion.div
@@ -168,6 +216,12 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                     </AnimatePresence>
                 </CardContent>
             </Card>
+            {showOcr && (
+                <React.Suspense fallback={<div className="text-slate-300 flex items-center gap-2"><Loader2 className="animate-spin" /> Carregando OCR…</div>}>
+                    <PdfOcrViewerLazy />
+                </React.Suspense>
+            )}
+            {/* Card de comparação removido conforme solicitado */}
             {/* Responsabilidade Técnica e Suporte */}
             <Card className="mt-4 bg-slate-900/80 border-slate-600/60">
                 <CardHeader className="p-3">

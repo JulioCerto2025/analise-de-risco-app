@@ -1,5 +1,5 @@
 import { NG_DOCUMENT_CONTENT } from '../data/ng-document-content';
-import { AnalysisData, FireRiskInfo, PreliminaryAiResult } from '../types';
+import { AnalysisData, FireRiskInfo } from '../types';
 import {
     PB_OPTIONS,
     PSPD_OPTIONS,
@@ -127,67 +127,7 @@ export async function pingGemini(): Promise<{ ok: boolean; ms?: number; error?: 
     }
 }
 
-// Heurística reutilizável para análise preliminar (exportada)
-export function getPreliminaryHeuristic(projectName: string, address: string): PreliminaryAiResult {
-    const desc = (projectName || '').toString();
-    const norm = desc.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    // Ocupação: reconhecer A-2 e A-1
-    const isResidential = /(residencial|apartamento|condominio|condomino|moradia|habitacao|habitac\w+|edificio\s*residencial|residencia|residência|casa|sobrado|unifamiliar)/i.test(norm);
-    const isMultiFamily = /(multifamiliar|a-2|a2|grupo\s*a-2|grupo\s*a2)/i.test(norm);
-    const isSingleFamily = /(unifamiliar|casa(\s*de\s*campo)?|sobrado|residencia|residência|chacara|chácara|sitio|sítio)/i.test(norm);
-    const isCommercial = /(comercial|loja|shopping|escritorio|escritório|escritorio)/i.test(desc);
-    const isIndustrial = /(industrial|galpao|galpão|fabrica|fábrica|warehouse)/i.test(desc);
-    const isHospital = /(hospitalar|hospital|clínica|clinica|upa)/i.test(desc);
-
-    // rf por ocupação
-    let rf = 0.001; // padrão residencial baixo
-    if (isIndustrial) rf = 0.1;
-    else if (isCommercial) rf = 0.01;
-    else if (isHospital) rf = 0.01;
-
-    // altura e tipo de escada -> hz
-    const heightMatch = desc.match(/(altura|h\s*=)?\s*(\d{1,3})\s*m(?!2)/i);
-    const height = heightMatch ? Number(heightMatch[2]) : undefined;
-    const isGround = /(terreo|térreo|terrea|térrea|\b0\s*pavimentos?\b|andares?\s*0|pavimento\s*unico|andar\s*unico)/i.test(desc);
-    const mentionsProtectedStair = /(escada\s*(enclausurada|protegida)|epf|apf|escada\s*pressurizada|\ba\s*prova\s*de\s*fuma(c|ç)a)/i.test(norm);
-    let hz = 5; // médio por padrão
-    if (isGround) hz = 1;
-    else if (mentionsProtectedStair || (typeof height === 'number' && height >= 23)) hz = 2;
-
-    // rp: automático vs não automático
-    const mentionsAutomatic = /(detec(c|ç)ao\s*automatica|detetor(es)?\s*de\s*fuma(c|ç)a|sprinkler|sistema\s*automatico)/i.test(norm);
-    const rp = mentionsAutomatic ? 0.2 : 0.5;
-
-    // tz por ocupação
-    let tz = 6903; // residencial ~78% do ano
-    if (isCommercial || isIndustrial) tz = 2080; // ~8h/dia útil
-    if (isHospital) tz = 8760; // 24/7
-
-    // nz: estimativa por unidades
-    let nz = isSingleFamily ? 5 : 40; // menor para unifamiliar
-    const floorsMatch = desc.match(/(\b|\s)(\d{1,2})\s*(andares?|pavimentos?)/i);
-    const unitsPerFloorMatch = desc.match(/(\d{1,3})\s*(unidades?|apartamentos?)\s*(por\s*andar)?/i);
-    const totalUnitsMatch = desc.match(/totalizando\s*(\d{1,4})\s*(unidades?|apartamentos?)/i);
-    const occupantsMatch = desc.match(/(\d{1,3})\s*(moradores?|pessoas?|habitantes?)/i);
-    if (totalUnitsMatch) {
-        nz = Number(totalUnitsMatch[1]) * 4; // 4 pessoas por unidade
-    } else if (floorsMatch && unitsPerFloorMatch) {
-        nz = Number(floorsMatch[2]) * Number(unitsPerFloorMatch[1]) * 4;
-    } else if (occupantsMatch) {
-        nz = Math.max(1, Number(occupantsMatch[1]));
-    } else {
-        const areaMatch = desc.match(/(\d{2,5})\s*(m²|m2)/i);
-        if (areaMatch) {
-            const area = Number(areaMatch[1]);
-            const density = isResidential ? 30 : (isCommercial ? 15 : 20);
-            nz = Math.max(10, Math.round(area / density));
-        }
-    }
-
-    const explanation = `## Análise Preliminar (Heurística)\n\nA IA está indisponível; parâmetros estimados por regras práticas com base na descrição e normas usuais do CB.\n\n* **Ocupação:** ${isResidential ? (isMultiFamily ? 'Residencial Multifamiliar (A-2)' : (isSingleFamily ? 'Residencial Unifamiliar (A-1)' : 'Residencial')) : isCommercial ? 'Comercial' : isIndustrial ? 'Industrial' : isHospital ? 'Hospitalar' : 'Indefinida'}\n* **Altura:** ${typeof height === 'number' ? height + ' m' : (isGround ? 'Térrea' : 'não informada')}\n* **Saída de Emergência:** ${isGround ? 'Térrea (sem escada exigida)' : (mentionsProtectedStair || (typeof height==='number' && height>=23) ? 'Escada protegida/EPF presumida' : 'Escada simples')}\n\n**Fatores adotados:** rf=${rf}, hz=${hz}, rp=${rp}, tz=${tz}, nz=${nz}`;
-
-    return { rf, hz, rp, tz, nz, explanation };
-}
+ 
 
 
 /**
@@ -345,132 +285,7 @@ export async function getFireRiskFactor(projectName: string, address: string): P
     }
 }
 
-export async function getPreliminaryAnalysis(projectName: string, address: string): Promise<PreliminaryAiResult | null> {
-    if (!projectName || !address) return null;
-    
-    // Fallback heurístico caso a IA esteja indisponível ou retorne inválido
-    const heuristic = (): PreliminaryAiResult => {
-        const desc = (projectName || '').toString();
-        const norm = desc.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        // Ocupação: ampliar reconhecimento para residencial multifamiliar (A-2) e unifamiliar (A-1)
-        const isResidential = /(residencial|apartamento|condominio|condomino|moradia|habitacao|habitac\w+|edificio\s*residencial|residencia|residência|casa|sobrado|unifamiliar)/i.test(norm);
-        const isMultiFamily = /(multifamiliar|a-2|a2|grupo\s*a-2|grupo\s*a2)/i.test(norm);
-        const isSingleFamily = /(unifamiliar|casa(\s*de\s*campo)?|sobrado|residencia|residência|chacara|chácara|sitio|sítio)/i.test(norm);
-        const isCommercial = /(comercial|loja|shopping|escritorio|escritório|escritorio)/i.test(desc);
-        const isIndustrial = /(industrial|galpao|galpão|fabrica|fábrica|warehouse)/i.test(desc);
-        const isHospital = /(hospitalar|hospital|clínica|clinica|upa)/i.test(desc);
-
-        // rf por ocupação
-        let rf = 0.001; // padrão residencial baixo
-        if (isIndustrial) rf = 0.1;
-        else if (isCommercial) rf = 0.01;
-        else if (isHospital) rf = 0.01;
-
-        // altura e tipo de escada -> hz
-        const heightMatch = desc.match(/(altura|h\s*=)?\s*(\d{1,3})\s*m(?!2)/i);
-        const height = heightMatch ? Number(heightMatch[2]) : undefined;
-        const isGround = /(terreo|térreo|terrea|térrea|\b0\s*pavimentos?\b|andares?\s*0|pavimento\s*unico|andar\s*unico)/i.test(desc);
-        // Escada protegida/EPF: incluir sinônimos usuais
-        const mentionsProtectedStair = /(escada\s*(enclausurada|protegida)|epf|apf|escada\s*pressurizada|\ba\s*prova\s*de\s*fuma(c|ç)a)/i.test(norm);
-        let hz = 5; // médio por padrão
-        if (isGround) hz = 1;
-        else if (mentionsProtectedStair || (typeof height === 'number' && height >= 23)) hz = 2; // EPF comum >=23m
-
-        // rp: automático vs não automático
-        const mentionsAutomatic = /(detec(c|ç)ao\s*automatica|detetor(es)?\s*de\s*fuma(c|ç)a|sprinkler|sistema\s*automatico)/i.test(norm);
-        const rp = mentionsAutomatic ? 0.2 : 0.5;
-
-        // tz por ocupação
-        let tz = 6903; // residencial ~78% do ano
-        if (isCommercial || isIndustrial) tz = 2080; // ~8h/dia útil
-        if (isHospital) tz = 8760; // 24/7
-
-        // nz: estimativa por unidades
-        let nz = isSingleFamily ? 5 : 40; // padrão inicial: menor para unifamiliar
-        const floorsMatch = desc.match(/(\b|\s)(\d{1,2})\s*(andares?|pavimentos?)/i);
-        const unitsPerFloorMatch = desc.match(/(\d{1,3})\s*(unidades?|apartamentos?)\s*(por\s*andar)?/i);
-        const totalUnitsMatch = desc.match(/totalizando\s*(\d{1,4})\s*(unidades?|apartamentos?)/i);
-        const occupantsMatch = desc.match(/(\d{1,3})\s*(moradores?|pessoas?|habitantes?)/i);
-        if (totalUnitsMatch) {
-            nz = Number(totalUnitsMatch[1]) * 4; // 4 pessoas por unidade
-        } else if (floorsMatch && unitsPerFloorMatch) {
-            nz = Number(floorsMatch[2]) * Number(unitsPerFloorMatch[1]) * 4;
-        } else if (occupantsMatch) {
-            nz = Math.max(1, Number(occupantsMatch[1]));
-        } else {
-            // fallback por área se disponível
-            const areaMatch = desc.match(/(\d{2,5})\s*(m²|m2)/i);
-            if (areaMatch) {
-                const area = Number(areaMatch[1]);
-                const density = isResidential ? 30 : (isCommercial ? 15 : 20); // m²/pessoa aprox.
-                nz = Math.max(10, Math.round(area / density));
-            }
-        }
-
-        const explanation = `## Análise Preliminar (Heurística)\n\nA IA está indisponível; parâmetros estimados por regras práticas com base na descrição e normas usuais do CB.\n\n* **Ocupação:** ${isResidential ? (isMultiFamily ? 'Residencial Multifamiliar (A-2)' : (isSingleFamily ? 'Residencial Unifamiliar (A-1)' : 'Residencial')) : isCommercial ? 'Comercial' : isIndustrial ? 'Industrial' : isHospital ? 'Hospitalar' : 'Indefinida'}\n* **Altura:** ${typeof height === 'number' ? height + ' m' : (isGround ? 'Térrea' : 'não informada')}\n* **Saída de Emergência:** ${isGround ? 'Térrea (sem escada exigida)' : (mentionsProtectedStair || (typeof height==='number' && height>=23) ? 'Escada protegida/EPF presumida' : 'Escada simples')}\n\n**Fatores adotados:** rf=${rf}, hz=${hz}, rp=${rp}, tz=${tz}, nz=${nz}`;
-
-        return { rf, hz, rp, tz, nz, explanation };
-    };
-    
-    const prompt = `
-        Aja como um engenheiro sênior especialista em segurança contra incêndio e pânico, com profundo conhecimento das Instruções Técnicas (ITs) do Corpo de Bombeiros (CB) brasileiro.
-        Sua tarefa é realizar uma análise preliminar completa, consultando as normas do CB para a localidade especificada.
-
-        **Dados de Entrada:**
-        - **Descrição do Projeto:** "${projectName}"
-        - **Endereço do Projeto:** "${address}"
-
-        **Sua Tarefa (Análise e Resposta JSON):**
-        1.  **Consulta às Normas:** Com base no endereço e na descrição (principalmente altura e uso), determine as exigências prováveis do Corpo de Bombeiros local. Foque em:
-            *   Tipo de saída de emergência (escada) exigida. (Ex: Edifícios > 23m de altura geralmente exigem Escada Enclausurada à Prova de Fumaça - EPF).
-            *   Sistemas de alarme, iluminação, sinalização e extintores/hidrantes.
-            *   Necessidade de detecção automática de fumaça.
-        2.  **Análise de Risco de Incêndio (rf):** Classifique o risco (Baixo, Médio, Alto) e atribua o 'rf' (0.001, 0.01, 0.1). **REGRA CRÍTICA:** Edificações residenciais multifamiliares (Grupo A, divisão A-2) possuem carga de incêndio de 300 MJ/m², o que é classificado como **RISCO BAIXO**. Para projetos A-2, o fator 'rf' deve ser **0.001**.
-        3.  **Análise de Pânico (hz):** Avalie o nível de pânico com base na robustez das rotas de fuga. **Quanto mais protegida a rota de fuga, menor o pânico.** Uma escada enclausurada e à prova de fumaça (EPF) indica **Pânico Baixo (hz=2)**. Uma escada protegida simples também indica Pânico Baixo (hz=2). A presença de iluminação e sinalização de emergência também reduz o pânico. Atribua 'hz' (1, 2, 5, 10).
-        4.  **Estimativa de População (nz):** **REGRA CRÍTICA:** Para edificações residenciais, use uma média de moradores por unidade (ex: 4 pessoas por apartamento), conforme padrões do IBGE e práticas do CB, em vez de densidade por m². Calcule 'nz' com base no número de unidades.
-        5.  **Tempo de Permanência (tz):** Com base no perfil de uso (residencial, comercial 8h/dia, hospital 24h), estime o tempo médio que uma pessoa permanece na edificação em horas por ano (tz). Para um residencial, um valor comum é 70% a 80% de 8760 horas (ex: 6903h).
-        6.  **Medidas de Proteção (rp):** **SEJA CUIDADOSO AQUI.** Diferencie sistemas **automáticos** (que incluem detectores de fumaça, acionadores de sprinklers) de sistemas **não-automáticos** (acionamento humano, como hidrantes e alarmes por botoeira manual). A menos que a presença de detectores automáticos seja explícita, presuma que o sistema é **Não Automático (rp = 0.5)**.
-        7.  **Justificativa Detalhada (explanation):** Crie um parecer técnico em Markdown BEM ESTRUTURADO. Use títulos (##), listas (*) e negrito (**). Garanta espaçamento. Conecte as exigências do CB (especialmente o tipo de escada) diretamente às suas decisões sobre 'hz', 'rp' e 'tz'.
-        8.  **Formato da Resposta:** Responda em um formato JSON ESTRITO, sem markdown ao redor, com as chaves "rf", "hz", "nz", "rp", "tz", e "explanation".
-
-        **Exemplo de Resposta para um Edifício Residencial de 8 andares (FORMATO MELHORADO):**
-        {
-          "rf": 0.001,
-          "hz": 2,
-          "nz": 128,
-          "rp": 0.5,
-          "tz": 6903,
-          "explanation": "## Análise Preliminar de Segurança (Corpo de Bombeiros)\\n\\nCom base na descrição do projeto e na localização, esta é uma avaliação preliminar das exigências de segurança e dos fatores de risco correspondentes.\\n\\n### Exigências Prováveis do CB\\nPara um edifício residencial multifamiliar com altura de 24m, as Instruções Técnicas (ITs) locais geralmente exigem:\\n*   **Saídas de Emergência:** Escada Enclausurada à Prova de Fumaça (EPF), por se tratar de edificação com altura superior a 23m.\\n*   **Sistemas de Apoio:** Iluminação de Emergência, Sinalização de Rota de Fuga, Extintores e Hidrantes.\\n*   **Alarme:** Alarme de Incêndio (acionado por botoeiras manuais).\\n\\nNão costuma ser exigido um Sistema de Detecção Automática (com detectores de fumaça) para este perfil residencial.\\n\\n### Fatores de Risco Derivados\\n\\n*   **Risco de Incêndio (rf):** A ocupação A-2 (Residencial Multifamiliar) possui carga de incêndio de 300 MJ/m², classificada como **Risco Baixo**. \\n  **Fator rf = 0.001**.\\n\\n*   **Medidas de Proteção (rp):** A principal medida ativa exigida (hidrantes e alarme por botoeira) é de acionamento manual, classificando-se como **Não Automática**. A ausência de detectores automáticos é o fator preponderante. \\n  **Fator rp = 0.5**.\\n\\n*   **Pânico (hz):** A exigência de uma **Escada Enclausurada à Prova de Fumaça (EPF)**, somada à iluminação e sinalização de emergência, garante uma rota de fuga altamente segura e protegida contra fumaça, resultando em um cenário de **Pânico Baixo**. \\n  **Fator hz = 2**.\\n\\n*   **População (nz):** Considerando 32 apartamentos com uma média de 4 moradores por unidade (padrão IBGE/CB), a população estimada é de **nz = 128**.\\n\\n*   **Tempo de Permanência (tz):** Para uso residencial, considera-se uma permanência de aproximadamente 78% do ano (incluindo sono, lazer, etc.).\\n  **Fator tz = 6903 horas/ano**."
-        }
-    `;
-
-    const model = await getModel(DEFAULT_MODEL);
-    if (!model) return heuristic();
-    try {
-        // Garante que a UI não ficará "analisando" por tempo indefinido
-        const aiRes = await withTimeout(model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: prompt }]}],
-            generationConfig: {
-                responseMimeType: 'application/json',
-                temperature: 0.3,
-            }
-        }));
-        const jsonString = extractResponseText(aiRes);
-        const parsed = tryParseJson(jsonString);
-
-        if (parsed && typeof parsed.rf === 'number' && typeof parsed.hz === 'number' && typeof parsed.nz === 'number' && typeof parsed.rp === 'number' && typeof parsed.tz === 'number' && typeof parsed.explanation === 'string') {
-            return parsed as PreliminaryAiResult;
-        }
-        // Resposta inválida -> aplicar heurística
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('AI_LAST_RAW', String(jsonString).slice(0, 2000)); } catch {}
-        return heuristic();
-    } catch (error) {
-        console.error("Error in preliminary analysis with Gemini API:", error);
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('AI_LAST_ERROR', String((error as any)?.message || error)); } catch {}
-        // Erro na IA -> aplicar heurística
-        return heuristic();
-    }
-}
+ 
 
 
 function getOptionLabel(options: {value: any, label: string}[], value: any): string {
@@ -523,6 +338,8 @@ function buildDetailedCalculations(data: AnalysisData): string {
     if (data.frequency_config.has_equipment_in_ZPR0A) fFormulaParts.push('FB');
     fFormulaParts.push('FC', 'FM', 'FV', 'FW', 'FZ');
 
+    const zonesCount = (data.zones?.length || 0);
+    const hasZoneOverrides = (data.zones || []).some(z => (z.probability_overrides && Object.keys(z.probability_overrides).length > 0));
     details += `**F - Frequência Total de Danos**\n* *Fórmula:* F = ${fFormulaParts.join(' + ')}\n* *Cálculo:* F = ${fFormulaParts.map(key => f[key as keyof typeof f]?.toExponential(3) || 0).join(' + ')}\n* *Resultado:* **F = ${f.F?.toExponential(3)}**\n\n`;
 
     return details;
@@ -537,19 +354,12 @@ export async function generateFullReportText(data: AnalysisData): Promise<string
     
     const { calculations: c, risk_results: r, frequency_results: f } = data;
 
-    const preliminaryAnalysisSection = data.preliminaryAiResult?.explanation ? `
-## 1. Análise Preliminar (Assistida por IA)
-A análise foi iniciada com o auxílio de Inteligência Artificial para estabelecer parâmetros iniciais com base na descrição do projeto e nas normas aplicáveis do Corpo de Bombeiros. O parecer gerado foi o seguinte:
-
-${data.preliminaryAiResult.explanation}
-` : '';
-
     const sectionNumbering = {
-        dados: preliminaryAnalysisSection ? 2 : 1,
-        parametros: preliminaryAnalysisSection ? 3 : 2,
-        calculos: preliminaryAnalysisSection ? 4 : 3,
-        resultados: preliminaryAnalysisSection ? 5 : 4,
-        parecer: preliminaryAnalysisSection ? 6 : 5,
+        dados: 1,
+        parametros: 2,
+        calculos: 3,
+        resultados: 4,
+        parecer: 5,
     }
 
     const detailedCalculations = buildDetailedCalculations(data);
@@ -566,8 +376,6 @@ ${data.preliminaryAiResult.explanation}
 6.  Na seção de resultados, use emojis para indicar o resultado: ✅ para ACEITÁVEL, ❌ para NÃO ACEITÁVEL.
 
 ---
-
-${preliminaryAnalysisSection}
 
 ## ${sectionNumbering.dados}. DADOS DO PROJETO
 * **Projeto/Cliente:** ${data.clientName}

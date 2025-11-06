@@ -249,6 +249,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const [selectedCity, setSelectedCity] = useState<string>('');
     const [ufInput, setUfInput] = useState<string>('');
     const [cityInput, setCityInput] = useState<string>('');
+    const [ufError, setUfError] = useState<string | null>(null);
     const lastAutoCommitRef = useRef<string>('');
     const lastLocationAppliedRef = useRef<string>('');
     // Coordenadas da cidade (lat/lon). Tenta override local e, se não houver, geocodifica via OSM.
@@ -292,134 +293,148 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)` : ngColorHex;
     }, [ngColorHex]);
     
-    // Inicializar valores padrão se necessário
+    // Inicialização: fixa região em 'brasil' e carrega UFs (sem autofill)
     useEffect(() => {
-        if (!data.mapRegion) {
-            onUpdate({ ...data, mapRegion: 'brasil' });
-        }
+        onUpdate({ mapRegion: 'brasil' });
         (async () => {
             const ufs = await getUfs();
             setAvailableUfs(ufs);
-            const match = (data.location || '').match(/^(.*)\s-\s([A-Z]{2})$/i);
-            if (match) {
-                const city = match[1].trim();
-                const uf = match[2].toUpperCase();
-                setSelectedUf(uf);
-                setUfInput(uf);
-                const cities = await getCitiesByUf(uf);
-                setAvailableCities(cities);
-                setSelectedCity(city);
-                setCityInput(city);
-                const ngPreset = await getNgByCity(uf, city);
-                if (ngPreset !== undefined) {
-                    onUpdate({ ng: ngPreset });
-                }
-                
-                // Removido: não posicionar marcador automaticamente
-            }
         })();
     }, []);
 
-    // Aplica automaticamente a cidade/UF vindos da Etapa 1 quando "location" muda
+    // Autofill robusto: quando "location" ou "clientAddress" mudarem, tenta extrair Cidade/UF
     useEffect(() => {
-        const applyFromLocation = async () => {
-            try {
-                const raw = (data.location || '').toString().trim();
-                if (!raw) return;
-                // aceita "Cidade - UF", "Cidade/UF", "Cidade, UF" e "Cidade UF"
-                const mHyphen = raw.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
-                const mSlash  = raw.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
-                const mComma  = raw.match(/^(.*),\s*([A-Za-z]{2})$/i);
-                const mSpace  = raw.match(/^(.*)\s([A-Za-z]{2})$/i);
-                let city = (mHyphen?.[1] || mSlash?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
-                let uf   = ((mHyphen?.[2] || mSlash?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
-                // Remove prefixos comuns do início
-                city = city.replace(/^(centro|bairro\s+\S+|distrito\s+\S+|zona\s+\S+)\s+/i, '').trim();
-                // Normaliza UF para código oficial
-                uf = toUfCode(uf) || uf;
-                if (!city || !uf) return;
+        // Auto-preenchimento desativado conforme solicitação
+        return;
+        const shouldAutofill = (!selectedUf || !selectedCity);
+        if (!shouldAutofill) return;
+        const rawLoc = (data.location || '').toString().trim();
+        const rawAddr = (data.clientAddress || '').toString().trim();
+        if (!rawLoc && !rawAddr) return;
 
-                const key = `${uf}|${city}`;
-                if (lastLocationAppliedRef.current === key) return; // evita reaplicar
-                lastLocationAppliedRef.current = key;
+        const text = rawLoc || rawAddr;
 
-                setSelectedUf(uf);
-                setUfInput(uf);
-                const cities = await getCitiesByUf(uf);
-                setAvailableCities(cities);
-                setSelectedCity(city);
-                setCityInput(city);
-
-                const ngPreset = await getNgByCity(uf, city);
-                // Atualiza dados (sem posicionar marcador automaticamente)
-                onUpdate({ location: `${city} - ${uf}`, ng: ngPreset, mapRegion: 'brasil' });
-                // Atualiza lat/lon detectados para a cidade informada
-                try {
-                    const byUf = CITY_COORDS_OVERRIDES[uf.toUpperCase()] || {};
-                    const override = byUf[city] || null;
-                    if (override) {
-                        setCoordsForCity(override);
-                    } else {
-                        const fetched = await geocodeCityWithOSM(city, uf);
-                        setCoordsForCity(fetched || null);
-                    }
-                } catch (_) {}
-            } catch (_) {
-                // silencioso: se falhar, o usuário pode selecionar manualmente
-            }
+        const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const cleanSegment = (s: string) => {
+            return (s || '')
+                .replace(/\b(rua|av\.?|avenida|rodovia|estrada|logradouro|praça|praca|alameda|quadra|qd\.|lote|lt\.|bairro|setor|centro|cep|cidade|municipio|município)\b/gi, '')
+                .replace(/\b(bairro\s+[a-zà-ú0-9\- ]+)\b/gi, '')
+                .replace(/\b(distrito\s+[a-zà-ú0-9\- ]+)\b/gi, '')
+                .replace(/\b(zona\s+[a-zà-ú0-9\- ]+)\b/gi, '')
+                .replace(/[0-9#.,]/g, ' ')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
         };
-        applyFromLocation();
+
+        const extractCityUf = (raw: string): { city: string; uf: string } | null => {
+            if (!raw) return null;
+            // Casos comuns no final da string
+            const mSlash = raw.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
+            const mHyphen = raw.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
+            const mComma = raw.match(/^(.*),\s*([A-Za-z]{2})$/i);
+            const mSpace = raw.match(/^(.*)\s([A-Za-z]{2})$/i);
+            let city = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
+            let uf = ((mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
+            if (city && uf) {
+                city = cleanSegment(city);
+                uf = toUfCode(uf) || uf;
+                return { city, uf };
+            }
+            // Fallback: encontra qualquer UF válido presente e tenta segmento anterior como cidade
+            const ufList = getUfSuggestions();
+            const foundUf = ufList.find(code => new RegExp(`(^|\b)${code}(\b|$)`, 'i').test(raw));
+            if (!foundUf) return null;
+            uf = foundUf.toUpperCase();
+            // divide por vírgulas/hífens e espaços controlados
+            const parts = raw.split(/[,\-]/).map(p => p.trim()).filter(Boolean);
+            // escolhe o último segmento antes da UF quando possível
+            let cityCandidate = '';
+            for (let i = parts.length - 1; i >= 0; i--) {
+                const seg = parts[i];
+                if (new RegExp(`(^|\b)${uf}(\b|$)`, 'i').test(seg)) {
+                    // próximo anterior será cidade
+                    if (i > 0) {
+                        cityCandidate = parts[i - 1];
+                    }
+                    break;
+                }
+            }
+            if (!cityCandidate) {
+                // se não encontrou próximo anterior, pega o maior segmento textual
+                cityCandidate = parts.sort((a, b) => b.length - a.length)[0] || '';
+            }
+            cityCandidate = cleanSegment(cityCandidate);
+            if (!cityCandidate) return null;
+            return { city: cityCandidate, uf };
+        };
+
+        (async () => {
+            const parsed = extractCityUf(text);
+            if (!parsed) return;
+            const { city, uf } = parsed;
+            await commitUf(uf);
+            // após carregar cidades oficiais, tenta casar por normalização
+            const cities = await getCitiesByUf(uf);
+            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const exact = cities.find(c => norm(c) === norm(city));
+            const contains = cities.find(c => norm(c).includes(norm(city)) || norm(city).includes(norm(c)));
+            const best = exact || contains || city;
+            await commitCity(best);
+        })();
+    }, [data.location, data.clientAddress, selectedUf, selectedCity]);
+
+    // Reidratação: ao retornar para a etapa, restaura UF/Cidade apenas para o estado local
+    useEffect(() => {
+        const loc = (data.location || '').toString().trim();
+        if (!loc) return;
+        // Suporta formatos: "Cidade / UF", "Cidade - UF", "Cidade, UF", "Cidade UF"
+        const mSlash = loc.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
+        const mHyphen = loc.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
+        const mComma = loc.match(/^(.*),\s*([A-Za-z]{2})$/i);
+        const mSpace = loc.match(/^(.*)\s([A-Za-z]{2})$/i);
+        const city = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
+        const ufRaw = (mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '').trim();
+        const uf = (toUfCode(ufRaw.toUpperCase()) || ufRaw.toUpperCase());
+        if (!city || !uf) return;
+        // Evita reidratar redundante se já estiver em memória local
+        const alreadyUf = (selectedUf || '').toUpperCase() === uf.toUpperCase();
+        const alreadyCity = (selectedCity || '').trim().toLowerCase() === city.trim().toLowerCase();
+        if (alreadyUf && alreadyCity && !!ufInput && !!cityInput) return;
+        (async () => {
+            // Primeiro comitar a UF para carregar lista oficial de cidades
+            await commitUf(uf);
+            // pequeno atraso para garantir atualização da lista de cidades
+            await new Promise(r => setTimeout(r, 120));
+            await commitCity(city);
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.location]);
 
-    // Fallback: se "location" não estiver preenchido, tenta extrair Cidade/UF do endereço da Etapa 1
+    // Reidratação de rascunhos: se houver ufDraft/cityDraft salvos, restaura nos inputs sem comitar
     useEffect(() => {
-        const applyFromAddress = async () => {
-            try {
-                const loc = (data.location || '').toString().trim();
-                if (loc) return; // já aplicado via location
-                const address = (data.clientAddress || '').toString().trim();
-                if (!address) return;
-
-                // Suporta: "Cidade/UF", "Cidade - UF", "Cidade, UF" e "Cidade UF" (UF no final)
-                const mSlash = address.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
-                const mHyphen = address.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
-                const mComma = address.match(/^(.*),\s*([A-Za-z]{2})$/i);
-                const mSpace = address.match(/^(.*)\s([A-Za-z]{2})$/i);
-                const city = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
-                const uf = ((mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
-                if (!city || !uf) return;
-
-                const key = `${uf}|${city}`;
-                if (lastLocationAppliedRef.current === key) return;
-                lastLocationAppliedRef.current = key;
-
-                setSelectedUf(uf);
-                setUfInput(uf);
-                const cities = await getCitiesByUf(uf);
-                setAvailableCities(cities);
-                setSelectedCity(city);
-                setCityInput(city);
-
-                const ngPreset = await getNgByCity(uf, city);
-                // Atualiza dados (sem posicionar marcador automaticamente)
-                onUpdate({ location: `${city} - ${uf}`, ng: ngPreset, mapRegion: 'brasil' });
-                // Atualiza lat/lon detectados para a cidade informada
-                try {
-                    const byUf = CITY_COORDS_OVERRIDES[uf.toUpperCase()] || {};
-                    const override = byUf[city] || null;
-                    if (override) {
-                        setCoordsForCity(override);
-                    } else {
-                        const fetched = await geocodeCityWithOSM(city, uf);
-                        setCoordsForCity(fetched || null);
-                    }
-                } catch (_) {}
-            } catch (_) {
-                // silencioso
-            }
-        };
-        applyFromAddress();
-    }, [data.clientAddress]);
+        const ufDraftRaw = ((data.ufDraft || '') as any).toString().trim().toUpperCase();
+        const cityDraftRaw = ((data.cityDraft || '') as any).toString().trim();
+        // Restaura UF digitada se não houver UF selecionada
+        if (ufDraftRaw && !ufInput && !selectedUf) {
+            setUfInput(ufDraftRaw);
+            // Carrega sugestões de cidades para facilitar autocompletar, sem comitar UF
+            (async () => {
+                const code = toUfCode(ufDraftRaw) || ufDraftRaw;
+                const validUfs = getUfSuggestions();
+                if (code && validUfs.includes(code) && availableCities.length === 0) {
+                    try {
+                        const cities = await getCitiesByUf(code);
+                        setAvailableCities(cities);
+                    } catch (_) { /* ignora erro */ }
+                }
+            })();
+        }
+        // Restaura cidade digitada se não houver cidade selecionada
+        if (cityDraftRaw && !cityInput && !selectedCity) {
+            setCityInput(cityDraftRaw);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.ufDraft, data.cityDraft]);
     
     useEffect(() => {
         // Removido: não associar ponto do cursor à legenda ou valor Ng.
@@ -575,8 +590,20 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     // Removido: colagem de coordenadas do Google Maps
     
     const commitUf = async (input: string) => {
-        const code = toUfCode(input) || input.toUpperCase();
-        if (!code) return;
+        const raw = (input || '').toUpperCase().trim();
+        const code = toUfCode(raw) || raw;
+        const validUfs = getUfSuggestions();
+        if (!code || !validUfs.includes(code)) {
+            // Bloqueia commits inválidos e informa o usuário
+            setUfError('UF inválida. Use códigos como PB, SP, RJ, etc.');
+            setSelectedUf('');
+            setUfInput(raw);
+            setAvailableCities([]);
+            setSelectedCity('');
+            setCityInput('');
+            return;
+        }
+        setUfError(null);
         setSelectedUf(code);
         setUfInput(code);
         const cities = await getCitiesByUf(code);
@@ -588,12 +615,12 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     };
 
     const handleUfInputUpdate = async (val: string) => {
+        // Sem commit automático; aguarda blur ou confirmação.
         setUfInput(val);
-        const maybeCode = toUfCode(val);
-        // Se digitou nome completo ou já é sigla, comite automaticamente
-        if (maybeCode && (val.length >= 3 || maybeCode === val.toUpperCase() || val.length === 2)) {
-            await commitUf(maybeCode);
-        }
+        // Persistir rascunho no estado global para manter ao navegar
+        try {
+            onUpdate({ ufDraft: val.toUpperCase() } as any);
+        } catch (_) { /* silencioso */ }
     };
 
     const commitCity = async (input: string) => {
@@ -606,6 +633,16 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         const city = exact || text;
         setSelectedCity(city);
         setCityInput(city);
+        // Atualiza rascunho global também após commit
+        try { onUpdate({ cityDraft: city } as any); } catch (_) { /* silencioso */ }
+        // Se UF ainda não foi oficialmente selecionada, mas há rascunho válido, comitar antes
+        if (!selectedUf && ufInput) {
+            const code = toUfCode((ufInput || '').toUpperCase()) || (ufInput || '').toUpperCase();
+            const validUfs = getUfSuggestions();
+            if (code && validUfs.includes(code)) {
+                await commitUf(code);
+            }
+        }
         if (selectedUf) {
             const ngPreset = await getNgByCity(selectedUf, city);
             const loc = `${city} - ${selectedUf}`;
@@ -664,8 +701,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         // Removido: não tentar posicionar explicitamente
     };
 
-    // Redundância segura: segundo auto-commit com normalização correta de acentos
+// Redundância segura: segundo auto-commit com normalização correta de acentos
     useEffect(() => {
+        // Auto-commit desativado
+        return;
         const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         const city = (cityInput || '').trim();
         if (!selectedUf || !city) return;
@@ -678,8 +717,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         }
     }, [cityInput, selectedUf, availableCities]);
 
-    // Auto-commit: quando a digitação coincidir com uma cidade conhecida, posiciona automaticamente
+// Auto-commit: quando a digitação coincidir com uma cidade conhecida, posiciona automaticamente
     useEffect(() => {
+        // Auto-commit desativado
+        return;
         const norm = (s: string) => s.normalize('NFD').replace(/[ -\u036f]/g, '').toLowerCase();
         const city = (cityInput || '').trim();
         if (!selectedUf || !city) return;
@@ -697,18 +738,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     
     // Removido: não destacar por cor do ponto clicado.
 
-    // Aplica automaticamente o endereço da Etapa 1 ao montar se houver dados
-    useEffect(() => {
-        const run = async () => {
-            if (markerPoint) return;
-            const hasLoc = (data.location || '').toString().trim().length > 0;
-            const hasAddr = (data.clientAddress || '').toString().trim().length > 0;
-            if (!hasLoc && !hasAddr) return;
-            await applyAddressFromStep1();
-        };
-        run();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // Removido: aplicação automática do endereço da Etapa 1 ao montar
 
     // Removido: posicionamento automático baseado em cidade/UF
 
@@ -739,27 +769,32 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
                         <div className="grid grid-cols-[4.5rem,1fr] gap-3 items-end">
                            <div className="w-[4.5rem] justify-self-start">
-                               <AutocompleteInput
+                                <AutocompleteInput
                                     id="ufInput"
                                     label="Estado (UF)"
                                     value={ufInput}
                                     onUpdate={handleUfInputUpdate}
                                     suggestions={getUfSuggestions()}
-                                    placeholder="AM"
+                                    placeholder="PB"
                                     className="uppercase text-left w-16"
                                     maxLength={2}
+                                    autoComplete="off"
                                     onBlur={() => commitUf(ufInput)}
                                     onCommit={(val) => commitUf(val)}
                                 />
+                                {ufError && (
+                                    <p className="text-red-400 text-[10px] mt-1">{ufError}</p>
+                                )}
                            </div>
                            <div className="min-w-0">
                                <AutocompleteInput
                                    id="cityInput"
                                    label="Cidade"
                                    value={cityInput}
-                                   onUpdate={(val) => setCityInput(val)}
+                                   onUpdate={(val) => { setCityInput(val); try { onUpdate({ cityDraft: val } as any); } catch (_) {} }}
                                    suggestions={availableCities}
                                    placeholder="Digite a cidade"
+                                   autoComplete="off"
                                    // Não comitar no blur para evitar completar antes de terminar a digitação
                                    onCommit={(val) => commitCity(val)}
                                />

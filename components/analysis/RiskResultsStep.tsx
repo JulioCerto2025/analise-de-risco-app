@@ -2,9 +2,10 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Alert, AlertDescription, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, FormulaTooltip, useIsMobile } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
-import { AlertTriangle, CheckCircle, SlidersHorizontal } from "lucide-react";
-import { AnalysisData, ProbabilityData, LossData } from '../../types';
+import { AlertTriangle, CheckCircle, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { AnalysisData, ProbabilityData, LossData, Zone } from '../../types';
 import { RISK_COMPONENTS_DEFS, TOLERABLE_RISKS, PB_OPTIONS, RP_OPTIONS } from '../../constants';
+import { calculateLossesForZone, calculateProbabilities, mergeZoneProbabilities, calculateRisksForZone } from '../../utils/calculations';
 
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
 const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
@@ -215,14 +216,16 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
             // Atualiza dados globais de probabilidade
             const nextUpdate: Partial<AnalysisData> = { probability_data: { ...data.probability_data, ...updatedProbData } };
 
-            // Se houver overrides por zona, propaga PB/PTA etc. para cada zona como override derivado
+            // Propaga PB GLOBAL para todas as zonas
             if (field === 'PB') {
                 const newZones = (data.zones || []).map(zone => {
                     const overrides = { ...(zone.probability_overrides || {}) };
+                    const probData = { ...(zone.probability_data || data.probability_data) } as any;
                     overrides.PB = Number(value);
+                    probData.PB = Number(value);
                     // Limpa derivados para que recalculados globais entrem em vigor
                     delete overrides.PA;
-                    return { ...zone, probability_overrides: overrides };
+                    return { ...zone, probability_overrides: overrides, probability_data: probData };
                 });
                 nextUpdate.zones = newZones;
             }
@@ -261,62 +264,123 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         R4: ALL_RISK_COMPONENTS.filter(c => selected_risk_components[c]).map(c => c + '4').join(' + '),
     };
 
+    // Helpers for per-zone updates
+    const handleZoneLossUpdate = (zoneId: string, field: keyof LossData, value: number) => {
+        const newZones = data.zones.map(z => z.id === zoneId ? { ...z, loss_data: { ...z.loss_data, [field]: value } } : z);
+        onUpdate({ zones: newZones });
+    };
+    const handleZoneProbOverrideUpdate = (zoneId: string, field: string, value: number) => {
+        const newZones = data.zones.map(z => {
+            if (z.id !== zoneId) return z;
+            const overrides = { ...(z.probability_overrides || {}) };
+            overrides[field] = Number(value);
+            return { ...z, probability_overrides: overrides };
+        });
+        onUpdate({ zones: newZones });
+    };
+
+    const multipleZones = (data.zones?.length || 0) > 1;
+
+    // Helper to build a clean zone heading without duplicated text (e.g. "Zona 1 (Zona 1)")
+    const makeZoneHeading = (zoneName: string | undefined, idx: number) => {
+        const base = `Zona ${idx + 1}`;
+        const name = (zoneName || '').trim();
+        if (!name) return base;
+        const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (norm(name) === norm(base)) return base;
+        return `${base} (${name})`;
+    };
+
+    // Pre-compute per-zone risk calculations when needed
+    const perZoneRisk: { zone: Zone; risk: { [key: string]: number } }[] = multipleZones ? data.zones.map(zone => {
+        const lossCalcs = calculateLossesForZone(zone);
+        const zoneBaseProbCalcs = calculateProbabilities(zone.probability_data || data.probability_data, data.analyze_data_line_probabilities, data.has_data_line);
+        const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
+        const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
+        return { zone, risk: r };
+    }) : [];
+
+    // Navegação entre Global e Zonas
+    const [activeViewId, setActiveViewId] = React.useState<string>(data.last_active_zone_id || 'GLOBAL');
+    React.useEffect(() => {
+        const desired = data.last_active_zone_id || 'GLOBAL';
+        if (desired !== activeViewId) setActiveViewId(desired);
+    }, [data.last_active_zone_id]);
+    // Persistir sempre que a visão ativa for uma zona
+    React.useEffect(() => {
+        if (activeViewId && activeViewId !== 'GLOBAL') {
+            try { onUpdate({ last_active_zone_id: activeViewId } as any); } catch { /* noop */ }
+        }
+    }, [activeViewId]);
+    const zoneIds = (data.zones || []).map(z => z.id);
+    const viewOrder = ['GLOBAL', ...zoneIds];
+    const currentViewIndex = Math.max(0, viewOrder.indexOf(activeViewId));
+    const goPrevView = () => {
+        const nextView = viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length];
+        setActiveViewId(nextView);
+        if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
+    };
+    const goNextView = () => {
+        const nextView = viewOrder[(currentViewIndex + 1) % viewOrder.length];
+        setActiveViewId(nextView);
+        if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
+    };
+
+    const activeZoneIndex = activeViewId === 'GLOBAL' ? -1 : zoneIds.indexOf(activeViewId);
+    const activeZone = activeZoneIndex >= 0 ? data.zones[activeZoneIndex] : undefined;
+    const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, Math.max(0, activeZoneIndex));
+
+    // Dados por visão ativa
+    let activeZoneRisk: { [key: string]: number } | null = null;
+    let activeZoneChart: { name: string; value: number }[] = [];
+    if (activeZone) {
+        const lossCalcs = calculateLossesForZone(activeZone);
+        const zoneBaseProbCalcs = calculateProbabilities(activeZone.probability_data || data.probability_data, data.analyze_data_line_probabilities, data.has_data_line);
+        const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, activeZone);
+        const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
+        activeZoneRisk = r;
+        activeZoneChart = ALL_RISK_COMPONENTS.map(key => ({
+            name: key,
+            value:
+                key === 'RU' ? ((r.RU || 0) + (r.RUT || 0)) :
+                key === 'RV' ? ((r.RV || 0) + (r.RVT || 0)) :
+                key === 'RW' ? ((r.RW || 0) + (r.RWT || 0)) :
+                key === 'RZ' ? ((r.RZ || 0) + (r.RZT || 0)) :
+                (r[key] || 1e-12),
+        }));
+        selectedRisks.forEach(riskKey => {
+            activeZoneChart.push({ name: riskKey, value: r[riskKey] || 1e-12 });
+        });
+    }
+
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base">
-                            <SlidersHorizontal className="w-5 h-5 text-blue-400" />
-                            Configuração da Estrutura
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div>
-                            <Label className="text-base font-semibold text-slate-200 mb-2 block">Tipo de Estrutura (Fator rs)</Label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => handleSimulatorUpdate('rs', 1)}
-                                    className={`p-3 rounded-lg border text-center transition-colors text-sm flex flex-col items-center justify-center h-20 ${
-                                        (data.zones[0]?.loss_data.rs || 1) === 1
-                                        ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                        : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
-                                    }`}
-                                >
-                                    <span className="font-bold">Robusta</span>
-                                    <span className="text-xs mt-1 opacity-80">Metálica ou Concreto</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleSimulatorUpdate('rs', 2)}
-                                    className={`p-3 rounded-lg border text-center transition-colors text-sm flex flex-col items-center justify-center h-20 ${
-                                        (data.zones[0]?.loss_data.rs || 1) === 2
-                                        ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                        : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
-                                    }`}
-                                >
-                                    <span className="font-bold">Simples</span>
-                                    <span className="text-xs mt-1 opacity-80">Madeira ou Alvenaria</span>
-                                </button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Resumo Global e ajustes quando há múltiplas zonas, ou UI padrão quando única zona */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
                 <Card className="h-full">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-base">
-                            <SlidersHorizontal className="w-5 h-5 text-blue-400" />
-                            Ajustar Proteções
+                        <CardTitle className="flex items-center justify-between text-base">
+                            <span className="flex items-center gap-2">
+                                <SlidersHorizontal className="w-5 h-5 text-blue-400" />
+                                {`Ajustar Proteções — ${activeHeading}`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
+                                    <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                </button>
+                                <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
+                                    <ChevronRight className="w-5 h-5 text-slate-300" />
+                                </button>
+                            </div>
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                         <div>
+                        <div>
                             <Label className="text-base font-semibold text-slate-200">Nível do SPDA (PB)</Label>
                             <Select
-                                value={String(data.probability_data.PB)}
-                                onValueChange={(val) => handleSimulatorUpdate('PB', parseFloat(val))}
+                                value={String(activeZone ? (activeZone.probability_overrides?.PB ?? data.probability_data.PB) : data.probability_data.PB)}
+                                onValueChange={(val) => activeZone ? handleZoneProbOverrideUpdate(activeZone.id, 'PB', parseFloat(val)) : handleSimulatorUpdate('PB', parseFloat(val))}
                                 options={PB_OPTIONS}
                                 onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
                                 wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-2' : 'relative mt-2'}
@@ -327,12 +391,11 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <div>
                             <Label className="text-base font-semibold text-slate-200">Proteção vs. Incêndio (rp)</Label>
                             <Select
-                                value={String(data.zones[0]?.loss_data.rp || 1)}
-                                onValueChange={(val) => handleSimulatorUpdate('rp', parseFloat(val))}
+                                value={String(activeZone ? (activeZone.loss_data.rp ?? (data.zones[0]?.loss_data.rp ?? 1)) : (data.zones[0]?.loss_data.rp ?? 1))}
+                                onValueChange={(val) => activeZone ? handleZoneLossUpdate(activeZone.id, 'rp', parseFloat(val)) : handleSimulatorUpdate('rp', parseFloat(val))}
                                 options={RP_OPTIONS}
                                 onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
                                 wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-2' : 'relative mt-2'}
@@ -346,26 +409,23 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                     </CardContent>
                 </Card>
 
-                {/* Card de Zonas removido desta etapa para ficar na Etapa 4 */}
-                
                 <div className="space-y-6">
                     {selectedRisks.length > 0 ? (
                         selectedRisks.map(riskKey => {
                             const riskTolerance = TOLERABLE_RISKS[riskKey];
-                            const currentTotalRiskValue = risk_results[riskKey] || 0;
+                            const currentTotalRiskValue = activeZone ? (activeZoneRisk?.[riskKey] || 0) : (risk_results[riskKey] || 0);
                             const isAcceptable = currentTotalRiskValue <= riskTolerance;
                             const formula = riskFormulas[riskKey];
-
                             return (
                                 <Card key={riskKey} className={`border-2 ${isAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
                                     <CardHeader>
                                         <CardTitle className="flex items-center justify-between text-base">
                                             {formula ? (
-                                                <FormulaTooltip formulas={{ [riskKey]: formula }} values={risk_results}>
-                                                    <span className="flex items-center gap-2">RT ({riskKey})</span>
+                                                <FormulaTooltip formulas={{ [riskKey]: formula }} values={activeZone ? (activeZoneRisk || {}) : risk_results}>
+                                                    <span className="flex items-center gap-2">{`RT (${riskKey}) — ${activeHeading}`}</span>
                                                 </FormulaTooltip>
                                             ) : (
-                                                <span className="flex items-center gap-2">RT ({riskKey})</span>
+                                                <span className="flex items-center gap-2">{`RT (${riskKey}) — ${activeHeading}`}</span>
                                             )}
                                             {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
                                         </CardTitle>
@@ -374,9 +434,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         <div className={`text-4xl font-bold mb-2 whitespace-nowrap ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
                                             <ScientificNotation value={currentTotalRiskValue} />
                                         </div>
-                                        <div className="text-sm text-slate-400 mb-3">
-                                            Limite: <ScientificNotation value={riskTolerance} precision={2} />
-                                        </div>
+                                        <div className="text-sm text-slate-400 mb-3">Limite: <ScientificNotation value={riskTolerance} precision={2} /></div>
                                         <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
                                             {isAcceptable ? 'Risco Aceitável' : 'Risco Não Aceitável'}
                                         </div>
@@ -385,19 +443,19 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             );
                         })
                     ) : (
-                         <Alert className="border-yellow-500/50 bg-yellow-900/40 text-yellow-200 h-full flex flex-col justify-center">
+                        <Alert className="border-yellow-500/50 bg-yellow-900/40 text-yellow-200 h-full flex flex-col justify-center">
                             <AlertTriangle className="h-4 w-4 text-yellow-300" />
-                            <AlertDescription>Nenhum tipo de risco foi selecionado para análise. Volte para a etapa "Seleção de Componentes de Risco" para escolher um ou mais tipos.</AlertDescription>
+                            <AlertDescription>Nenhum tipo de risco foi selecionado para análise.</AlertDescription>
                         </Alert>
                     )}
                 </div>
             </div>
-            
+
             <Card>
-                <CardHeader><CardTitle>Componentes de Risco</CardTitle></CardHeader>
+                <CardHeader><CardTitle>{`Componentes de Risco — ${activeHeading}`}</CardTitle></CardHeader>
                 <CardContent className="h-[16.25rem]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <BarChart data={activeZone ? activeZoneChart : chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis type="category" dataKey="name" tick={{ fill: '#94a3b8' }} />
                             <YAxis type="number" scale="log" domain={[1e-9, 'auto']} allowDataOverflow tickFormatter={(tick) => tick.toExponential(0)} tick={{ fill: '#94a3b8' }} />
@@ -406,18 +464,17 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             )}
                             <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#F59E0B" strokeDasharray="4 4" />
                             <Bar dataKey="value">
-                                {chartData.map((entry, index) => {
+                                {(activeZone ? activeZoneChart : chartData).map((entry, index) => {
                                     const isTotalRiskBar = selectedRisks.includes(entry.name as any);
                                     const componentKey = entry.name as keyof typeof selected_risk_components;
                                     const isComponentSelected = selected_risk_components[componentKey];
-
                                     let color: string;
                                     let strokeColor = 'rgba(255, 255, 255, 0.2)';
                                     let strokeWidth = 1;
-                                    
                                     if (isTotalRiskBar) {
                                         const riskKey = entry.name as keyof typeof TOLERABLE_RISKS;
-                                        const isAcceptable = (risk_results[riskKey] || 0) <= TOLERABLE_RISKS[riskKey];
+                                        const riskValueForView = activeZone ? (activeZoneRisk?.[riskKey] || 0) : (risk_results[riskKey] || 0);
+                                        const isAcceptable = riskValueForView <= TOLERABLE_RISKS[riskKey];
                                         color = isAcceptable ? '#22c55e' : '#ef4444';
                                         strokeColor = '#facc15';
                                         strokeWidth = 1.5;
@@ -426,19 +483,15 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                     } else {
                                         color = '#64748b80';
                                     }
-                                    
-                                    return <Cell 
-                                        key={`cell-${index}`} 
-                                        fill={color} 
-                                        stroke={strokeColor}
-                                        strokeWidth={strokeWidth}
-                                    />;
+                                    return <Cell key={`cell-view-${index}`} fill={color} stroke={strokeColor} strokeWidth={strokeWidth} />;
                                 })}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
+
+            {/* Renderização por zona removida em favor da navegação por setas (Global/Zona) */}
         </div>
     );
 }

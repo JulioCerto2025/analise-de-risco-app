@@ -1,9 +1,10 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, AutoCorrectingInput, AutoCorrectingTextarea, Textarea, Button, Label } from '../ui';
+import React, { useState, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, AutoCorrectingInput, AutoCorrectingTextarea, Textarea, Label } from '../ui';
 import { Briefcase } from 'lucide-react';
 import { AnalysisData } from '../../types';
  
 import { DatePicker } from '../DatePicker';
+// Removidos framer-motion e serviços de análise preliminar
 
 // Removido o processador de Markdown e elementos de análise preliminar da IA.
 
@@ -14,10 +15,6 @@ interface ProjectInfoStepProps {
 }
 
 export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
-    
-    
-
-    
 
     const handleValueUpdate = (id: string, value: string) => {
         const patch: any = { [id]: value };
@@ -114,20 +111,13 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
                                 onUpdate={(newValue) => handleValueUpdate('clientName', newValue)}
                                 placeholder="Ex: Relatório Análise de Risco - Edifício Central"
                             />
-                            <AutoCorrectingInput
-                                id="clientAddress"
-                                label="Endereço do Cliente"
-                                value={data.clientAddress}
-                                onUpdate={(newValue) => handleValueUpdate('clientAddress', newValue)}
-                                placeholder="Ex: Rua Fictícia, 123, Rio de Janeiro - RJ"
-                            />
                             <AutoCorrectingTextarea
                                 id="projectName"
                                 label="Descrição detalhada conforme AVCB (Corpo de Bombeiros)"
                                 value={data.projectName}
                                 onUpdate={(newValue) => handleValueUpdate('projectName', newValue)}
                                 placeholder="Exemplo: Hospital com 10 andares, 20.000m², com UTI, centro cirúrgico e apartamentos. Ocupação 24/7 por médicos, enfermeiros (em turnos de 12h) e pacientes. Horário de visitação das 14h às 18h com fluxo intenso de pessoas."
-                                rows={5}
+                                rows={8}
                             />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                                 <AutoCorrectingInput
@@ -169,7 +159,8 @@ export function ProjectInfoStep({ data, onUpdate }: ProjectInfoStepProps) {
                     </div>
                 </CardContent>
             </Card>
-            
+
+
         </div>
     );
 }

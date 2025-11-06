@@ -10,11 +10,9 @@ export function formatSmartNumber(value: number, options?: { maxDecimals?: numbe
     // Notação científica com vírgula no mantissa
     return value.toExponential(sciPrecision).replace('.', ',');
   }
-  // Formata com até maxDecimals e remove zeros à direita
-  const fixed = value.toFixed(maxDecimals);
-  const [intPart, decPartRaw] = fixed.split('.');
-  const decPart = (decPartRaw || '').replace(/0+$/, '');
-  return decPart ? `${intPart},${decPart}` : intPart;
+  // Formata usando locale pt-BR para aplicar ponto nos milhares e vírgula nos decimais
+  // Máximo de casas decimais é respeitado sem adicionar zeros desnecessários
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: maxDecimals });
 }
 
 export function formatScientificNode(value: number, precision: number = 2) {

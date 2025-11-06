@@ -284,7 +284,7 @@ export function calculateProbabilities(probData: ProbabilityData, analyzeDataLin
 export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const losses: { [key: string]: any } = {};
     const ld = zone?.loss_data;
-    const LT_CONSTANT = 0.01; // LT is a constant for injuries
+    // LT pode ser configurável pelo usuário (padrão 0,01)
 
     if (!ld) return {};
     
@@ -294,6 +294,7 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
         nz: Number(ld.nz) || 0,
         tz: Number(ld.tz) || 0,
         rt: Number(ld.rt) || 0,
+        lt: Number((ld as any).lt) || 0.01,
         rs: Number(ld.rs) || 1,
         rp: Number(ld.rp) || 0,
         rf: Number(ld.rf) || 0,
@@ -306,7 +307,7 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const nt_r1 = safeValues.nt;
     const factor_r1 = nt_r1 > 0 ? (safeValues.nz / nt_r1) * (safeValues.tz / 8760) : 0;
     
-    losses.LA = safeValues.rt * LT_CONSTANT * factor_r1 * safeValues.rs;
+    losses.LA = safeValues.rt * safeValues.lt * factor_r1 * safeValues.rs;
     losses.LB = safeValues.rs * safeValues.rp * safeValues.rf * safeValues.hz * safeValues.LF * factor_r1;
     losses.LC = safeValues.LO * factor_r1 * safeValues.rs;
     losses.LU = losses.LA;
@@ -497,14 +498,20 @@ export function mergeZoneProbabilities(
 export function aggregateFrequenciesForZones(
     zones: Zone[],
     eventCalcs: Partial<CalculationResults>,
-    baseProbCalcs: { [key: string]: number },
+    globalProbData: ProbabilityData,
+    analyze_data_line_probabilities: boolean,
     freqConfig: AnalysisData['frequency_config'],
     has_electric_line: boolean,
     has_data_line: boolean
 ): { [key: string]: number } {
     const total: { [key: string]: number } = { F: 0, FB: 0, FC: 0, FM: 0, FV: 0, FW: 0, FZ: 0 };
     zones.forEach((zone) => {
-        const pZone = mergeZoneProbabilities(baseProbCalcs, zone);
+        const zoneBaseCalcs = calculateProbabilities(
+            zone.probability_data || globalProbData,
+            analyze_data_line_probabilities,
+            has_data_line
+        );
+        const pZone = mergeZoneProbabilities(zoneBaseCalcs, zone);
         const fr = calculateFrequencies(eventCalcs, pZone, freqConfig, has_electric_line, has_data_line);
         total.F += fr.F || 0;
         total.FB += fr.FB || 0;

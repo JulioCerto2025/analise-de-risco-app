@@ -28,3 +28,12 @@ Visualize seu app no AI Studio: https://ai.studio/apps/drive/1X-_lr1QRtCgsmPyp6_
    `npm run preview`
 
 O projeto usa Vite e React. As dependências são resolvidas via bundler; não há `importmap` externo em produção.
+
+## Mudanças recentes
+
+- Removida a funcionalidade "Consulta Preliminar (Corpo de Bombeiros)" da UI e do tipo de dados.
+- Campos de IA preliminar removidos de `types.ts`: `preliminaryAiStatus`, `preliminaryAiResult`, `preliminaryAiError`.
+- Helpers obsoletos removidos de `lib/geminiService.ts`: `getPreliminaryHeuristic` e `getPreliminaryAnalysis`.
+- O relatório técnico continua disponível via IA para formatação do texto (`generateFullReportText`); demais cálculos são feitos localmente.
+
+Não é necessário nenhuma ação adicional para usuários. Para desenvolvedores, evite introduzir dependências nos helpers removidos.

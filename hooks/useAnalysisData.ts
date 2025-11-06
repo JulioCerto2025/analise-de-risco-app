@@ -16,19 +16,19 @@ import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
 const STORAGE_KEY = 'spda-analysis-data';
 
 const initialInputData: AnalysisInputData = {
-    projectName: 'Edifício Residencial Multifamiliar, 8 andares, 4 apartamentos por andar, totalizando 32 Apartamentos. Altura do piso ocupado á descarga 24 m, Área aproximada de 2400 m2',
-    clientName: 'Conjunto Residencial Multifamiliar',
-    clientAddress: 'Centro Joinville/SC',
-    projectDate: new Date().toISOString().split('T')[0],
-    technicalManagerName: 'Eng. Júlio Certo',
-    licenseNumber: 'Eng. Eletricista / CREA-SP: 12345678910/D',
+    projectName: '',
+    clientName: '',
+    clientAddress: '',
+    projectDate: '',
+    technicalManagerName: '',
+    licenseNumber: '',
     zones: [{ 
         id: 'default-zone-1', 
         name: 'Zona 1',
         loss_data: { 
             // R1
             nz: 120, nt: 120, tz: 6903, te: 0,
-            rt: 0.001, rp: 0.2, rf: 0.001, hz: 5, 
+            rt: 0.001, lt: 0.01, rp: 0.2, rf: 0.001, hz: 5, 
             rs: 1,
             LF: 0.1, LO: 0.001,
             // R3
@@ -38,6 +38,7 @@ const initialInputData: AnalysisInputData = {
             ca: 1, cb: 200000, cc: 100000, cs: 10000, ce: 0, ct_economic: 1000000
         } 
     }],
+    last_active_zone_id: 'default-zone-1',
     h: 25.5,
     l: 23,
     w: 22.5,
@@ -45,6 +46,8 @@ const initialInputData: AnalysisInputData = {
     // ng: (sem preset; usuário irá digitar manualmente na Etapa Ng)
     location: '',
     mapRegion: 'sudeste',
+    ufDraft: '',
+    cityDraft: '',
     cd: 0.5,
     has_electric_line: true,
     line_sections_1: [
@@ -109,10 +112,7 @@ const initialInputData: AnalysisInputData = {
     fireRiskAiResult: null,
     fireRiskAiStatus: 'idle',
     fireRiskAiError: null,
-    preliminaryAiResult: null,
-    preliminaryAiStatus: 'idle',
-    preliminaryAiError: null,
-};
+    };
 
 
 export function useAnalysisData() {
@@ -136,6 +136,10 @@ export function useAnalysisData() {
             if (loss.LO == null || Number(loss.LO) === 0) {
                 (loss as any).LO = 0.001;
             }
+            // Garantir LT padrão (0,01) quando ausente
+            if (loss.lt == null) {
+                (loss as any).lt = 0.01;
+            }
             const probability_overrides = (z && z.probability_overrides && typeof z.probability_overrides === 'object') ? z.probability_overrides : {};
             const homogeneous_type = (z && (z.homogeneous_type === 'P' || z.homogeneous_type === 'L')) ? z.homogeneous_type : 'L';
             return { id, name, loss_data: loss, probability_overrides, homogeneous_type } as Zone;
@@ -149,6 +153,13 @@ export function useAnalysisData() {
                 ...base,
                 ...(raw || {}),
                 zones: sanitizeZones(raw?.zones ?? base.zones),
+                // Persistir última zona ativa se for válida; caso contrário, primeira zona
+                last_active_zone_id: (() => {
+                    const candidate = (raw?.last_active_zone_id ?? base.last_active_zone_id) as string | undefined;
+                    const zoneIds = (raw?.zones ?? base.zones).map((z: any) => z?.id || z?.name).filter(Boolean);
+                    if (candidate && zoneIds.includes(candidate)) return candidate;
+                    return zoneIds[0] || base.zones[0].id;
+                })(),
                 selected_risk_components: {
                     ...base.selected_risk_components,
                     ...(raw?.selected_risk_components || {})
@@ -186,13 +197,8 @@ export function useAnalysisData() {
             const normalizeStatus = (s: any): 'idle' | 'success' | 'error' => {
                 return s === 'success' || s === 'error' ? s : 'idle';
             };
-            safe.preliminaryAiStatus = normalizeStatus((raw?.preliminaryAiStatus ?? safe.preliminaryAiStatus));
             safe.fireRiskAiStatus = normalizeStatus((raw?.fireRiskAiStatus ?? safe.fireRiskAiStatus));
             // Se estava em loading, não manter erro anterior
-            if (safe.preliminaryAiStatus === 'idle') {
-                // Mantém resultado, mas limpa erro para evitar bloqueio visual
-                safe.preliminaryAiError = null;
-            }
             if (safe.fireRiskAiStatus === 'idle') {
                 safe.fireRiskAiError = null;
             }
@@ -236,6 +242,12 @@ export function useAnalysisData() {
         // Remover hífen em endereços no formato "Bairro - Cidade/UF"
         if (typeof data.clientAddress === 'string' && ADDRESS_HYPHEN_REGEX.test(data.clientAddress)) {
             nextData.clientAddress = data.clientAddress.replace(ADDRESS_HYPHEN_REGEX, ' ');
+            needsUpdate = true;
+        }
+
+        // Zerar localização carregada para evitar textos antigos
+        if (typeof data.location === 'string' && data.location.trim().length > 0) {
+            nextData.location = '';
             needsUpdate = true;
         }
 
@@ -313,6 +325,7 @@ export function useAnalysisData() {
     // Inicialização automática de Ng a partir de "Informações do Projeto" ou valor padrão
     useEffect(() => {
         const setDefaultsFromProjectInfo = async () => {
+            return;
             try {
                 // Se Ng já está definido (>0), não sobrescreve
                 if (typeof data.ng === 'number' && data.ng > 0) return;
@@ -341,7 +354,6 @@ export function useAnalysisData() {
                 };
 
                 let nextNg: number = 18; // valor padrão solicitado
-                let nextLocation: string | undefined;
                 let nextRegion: string | undefined;
 
                 if (lastCity && lastUf) {
@@ -372,12 +384,10 @@ export function useAnalysisData() {
                     if (typeof preset === 'number' && preset > 0) {
                         nextNg = preset;
                     }
-                    nextLocation = `${resolvedCity} - ${lastUf}`;
                     nextRegion = getRegionFromState(lastUf);
                 }
 
                 const patch: Partial<AnalysisInputData> = { ng: nextNg };
-                if (nextLocation) patch.location = nextLocation;
                 if (nextRegion) patch.mapRegion = nextRegion as any;
 
                 setData(prev => ({ ...prev, ...patch }));
@@ -398,6 +408,7 @@ export function useAnalysisData() {
     // Sincroniza cidade/UF, região e Ng quando o endereço muda (Step 1)
     useEffect(() => {
         const syncFromAddress = async () => {
+            return;
             try {
                 const address = (data.clientAddress || '').toString().trim();
                 if (!address) return;
@@ -536,43 +547,37 @@ export function useAnalysisData() {
     const zoneCalculations: ZoneCalculations[] = useMemo(() => {
         return data.zones.map(zone => {
             const lossCalculations = calculateLossesForZone(zone);
-            // Mesclar probabilidades globais com overrides da zona (se houver)
-            const zoneProbCalcs = mergeZoneProbabilities(probabilityCalculations, zone);
+            // Calcular probabilidades base por zona (ou usar global quando a zona não define parâmetros próprios)
+            const zoneBaseProbCalcs = calculateProbabilities(
+                (zone.probability_data || data.probability_data),
+                data.analyze_data_line_probabilities,
+                data.has_data_line
+            );
+            // Mesclar com overrides da zona (se houver)
+            const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
             const riskCalculations = calculateRisksForZone(
-                eventCalculations, 
-                zoneProbCalcs, 
+                eventCalculations,
+                zoneProbCalcs,
                 lossCalculations,
-                data.selected_risk_components // Pass selections to the calculator
+                data.selected_risk_components
             );
             return { zone, lossCalculations, riskCalculations };
         });
-    }, [data.zones, eventCalculations, probabilityCalculations, data.selected_risk_components]); // Add dependency
+    }, [data.zones, eventCalculations, data.selected_risk_components, data.analyze_data_line_probabilities, data.has_data_line, data.probability_data]);
 
     // Memoized aggregation of risks from all zones
     const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
 
     // Helper to check if any zone defines probability overrides
-    const anyZoneHasProbOverrides = useMemo(() => {
-        return (data.zones || []).some(z => z?.probability_overrides && Object.keys(z.probability_overrides).length > 0);
-    }, [data.zones]);
+    // Removido: lógica condicional por overrides; somamos sempre por zonas.
 
     // Memoized calculation for frequencies (F)
     const frequencyResults = useMemo(() => {
-        if (anyZoneHasProbOverrides) {
-            // Aggregate frequency across zones using per-zone probability overrides
-            return aggregateFrequenciesForZones(
-                data.zones,
-                eventCalculations,
-                probabilityCalculations,
-                data.frequency_config,
-                data.has_electric_line,
-                data.has_data_line
-            );
-        }
-        // Fallback to global calculation when no overrides are present to avoid duplicating totals
-        return calculateFrequencies(
+        return aggregateFrequenciesForZones(
+            data.zones,
             eventCalculations,
-            probabilityCalculations,
+            data.probability_data,
+            data.analyze_data_line_probabilities,
             data.frequency_config,
             data.has_electric_line,
             data.has_data_line
@@ -580,11 +585,11 @@ export function useAnalysisData() {
     }, [
         data.zones,
         eventCalculations,
-        probabilityCalculations,
+        data.probability_data,
+        data.analyze_data_line_probabilities,
         data.frequency_config,
         data.has_electric_line,
-        data.has_data_line,
-        anyZoneHasProbOverrides
+        data.has_data_line
     ]);
 
     // Assemble the final, complete data object

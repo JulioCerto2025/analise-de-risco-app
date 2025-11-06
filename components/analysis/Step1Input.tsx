@@ -10,7 +10,7 @@ interface Step1InputProps {
     onUpdate: (newData: Partial<AnalysisData>) => void;
 }
 
-const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValues }: { label: React.ReactNode; value: number; unit: string; color: string; formula?: string; formulaKey?: string; formulaValues?: { [key: string]: any } }) => {
+const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValues, extraFormulas, extraValues }: { label: React.ReactNode; value: number; unit: string; color: string; formula?: string; formulaKey?: string; formulaValues?: { [key: string]: any }, extraFormulas?: { [key: string]: string }, extraValues?: { [key: string]: any } }) => {
     const colorClasses: { [key: string]: { bg: string, text: string } } = {
         blue: { bg: "bg-blue-950/80", text: "text-white" },
         purple: { bg: "bg-purple-950/80", text: "text-white" },
@@ -19,17 +19,26 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const { bg, text } = colorClasses[color] || colorClasses.blue;
 
     const content = (
-        <div className={`p-4 rounded-lg flex flex-col items-center justify-center text-center ${bg}`}>
-            <div className={`font-bold text-2xl ${text}`}>{value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
+        <div className={`p-4 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
+            <div className={`font-bold text-2xl md:text-3xl ${text}`}>{value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
             <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
                 {label} <span>({unit})</span>
             </div>
         </div>
     );
 
-    if (formula && formulaKey) {
+    const formulasObj = {
+        ...(extraFormulas || {}),
+        ...(formula && formulaKey ? { [formulaKey]: formula } : {}),
+    };
+    const valuesObj = {
+        ...(extraValues || {}),
+        ...(formulaValues || {}),
+    };
+
+    if (Object.keys(formulasObj).length > 0) {
         return (
-            <FormulaTooltip formulas={{ [formulaKey]: formula }} values={formulaValues}>
+            <FormulaTooltip formulas={formulasObj} values={valuesObj}>
                 {content}
             </FormulaTooltip>
         );
@@ -48,17 +57,20 @@ const DimensionInput = ({ icon, label, id, value, onUpdate, color }: { icon: str
     const { bg } = colorClasses[color] || colorClasses.blue;
 
     return (
-        <div className="relative">
-            <div className={`absolute top-1/2 -translate-y-1/2 left-3 w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${bg}`}>
-                {icon}
+        <div className="space-y-2">
+            <Label htmlFor={String(id)}>{label}</Label>
+            <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${bg}`}>
+                    {icon}
+                </div>
+                <DecimalInput
+                    id={String(id)}
+                    value={value}
+                    onUpdate={onUpdate}
+                    noWrapper
+                    className="flex-1"
+                />
             </div>
-            <DecimalInput
-                label={label}
-                id={id}
-                value={value}
-                onUpdate={onUpdate}
-                className="pl-11"
-            />
         </div>
     );
 };
@@ -93,40 +105,45 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="flex flex-col gap-6">
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Building className="w-5 h-5 text-slate-100" />Área de Exposição da Estrutura (Ad) e Próximo da Estrutura (Am)</CardTitle>
+                    <CardTitle className="flex items-start gap-3">
+                        <Building className="w-5 h-5 text-slate-100" />
+                        <div className="leading-tight">
+                            <div className="text-slate-100 font-semibold">
+                                Área Exp. Estrut. (Ad) <span className="text-slate-300 font-medium">e Próximo (Am)</span>
+                            </div>
+                        </div>
+                    </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div>
-                        <Label className="font-semibold text-slate-200">Dimensões da Estrutura</Label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                    <div className="space-y-2">
+                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Dimensões da Estrutura</span>
+                        <div className="grid grid-cols-2 gap-4 mt-2 p-4 rounded-lg bg-blue-950/30 border border-slate-700">
                             <DimensionInput icon="L" label="Comprimento" id="l" value={data.l} onUpdate={val => onUpdate({ l: val })} color="blue" />
                             <DimensionInput icon="W" label="Largura" id="w" value={data.w} onUpdate={val => onUpdate({ w: val })} color="green" />
                             <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
                             <DimensionInput icon="Hp" label="Altura de Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" />
                         </div>
                     </div>
-                    <div className="hidden sm:block">
-                        <Label className="font-semibold text-slate-200">
-                            Resultados da Área de Exposição
-                        </Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
-                            <ResultBox 
-                                label={<span>A<sub>d</sub></span>} 
-                                value={ad} unit="m²" color="blue" 
-                                formula="L×W+2(3×H)(L+W)+π(3×H)²" formulaKey="Ad" formulaValues={{ L: data.l, W: data.w, H: data.h }}
-                            />
-                            <ResultBox 
-                                label={<span>A<sub>d'</sub></span>} 
-                                value={adp} unit="m²" color="purple" 
-                                formula="π(3×Hp)²" formulaKey="Ad'" formulaValues={{ Hp: data.hp }}
-                            />
+                    <div className="hidden sm:block space-y-2">
+                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados da Área de Exposição</span>
+                        <div className="grid grid-cols-2 gap-3 mt-2 p-4 rounded-lg bg-slate-900/40 border border-slate-700">
                             <ResultBox 
                                 label={<span>A<sub>df</sub></span>} 
                                 value={adf} unit="m² (max)" color="blue" 
-                                formula="max(Ad, Adp)" formulaKey="Adf" formulaValues={{ Ad: ad, Adp: adp }}
+                                formula="max(Ad, Adp)" formulaKey="Adf" 
+                                formulaValues={{ Ad: ad, Adp: adp }}
+                                extraFormulas={{
+                                    Ad: "L×W+2(3×H)(L+W)+π(3×H)²",
+                                    "Ad'": "π(3×Hp)²",
+                                }}
+                                extraValues={{
+                                    L: data.l, W: data.w, H: data.h, Hp: data.hp,
+                                    Ad: ad, Adp: adp, Adf: adf,
+                                }}
                             />
                             <ResultBox 
                                 label={<span>A<sub>m</sub></span>} 
@@ -137,9 +154,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                     </div>
                 </CardContent>
             </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                <Card className="h-fit">
+            <Card className="h-fit">
                     <CardHeader>
                         <CardTitle>CD - Fator de Localização</CardTitle>
                     </CardHeader>
@@ -152,6 +167,9 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                         </Select>
                     </CardContent>
                 </Card>
+            </div>
+
+            <div className="w-full">
                 <Card className="h-fit">
                     <CardHeader>
                         <CardTitle>Zonas de Estudo de Proteção</CardTitle>

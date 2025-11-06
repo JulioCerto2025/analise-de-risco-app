@@ -122,6 +122,8 @@ export interface Zone {
   id: string;
   name: string;
   loss_data: Partial<LossData>;
+  // Parâmetros de Probabilidade específicos da Zona (duplicam a estrutura global quando a zona precisa de valores próprios)
+  probability_data?: ProbabilityData;
   // Overrides for derived probabilities per zone (keys like PB, PC, PCT, PM, PMT, etc.)
   probability_overrides?: { [key: string]: number };
   // Define qual conjunto é homogêneo na zona: Probabilidade (P) ou Perdas (L)
@@ -133,14 +135,7 @@ export interface FireRiskInfo {
     explanation: string;
 }
 
-export interface PreliminaryAiResult {
-    rf: number;
-    hz: number;
-    nz: number;
-    rp: number;
-    tz: number;
-    explanation: string;
-}
+// Preliminary AI fields removed as the feature was deprecated
 
 export interface CalculatedData {
     calculations: Partial<CalculationResults>;
@@ -158,6 +153,8 @@ export interface AnalysisInputData {
   technicalManagerName: string;
   licenseNumber: string;
   zones: Zone[];
+  // Persistência: última zona ativa selecionada na UI
+  last_active_zone_id?: string;
   h: number;
   l: number;
   w: number;
@@ -165,6 +162,9 @@ export interface AnalysisInputData {
   ng?: number;
   location: string;
   mapRegion: string;
+  // Rascunhos de UF/Cidade para persistir digitação antes do commit
+  ufDraft?: string;
+  cityDraft?: string;
   cd: number;
   has_electric_line: boolean;
   line_sections_1: LineSection[];
@@ -196,10 +196,6 @@ export interface AnalysisInputData {
   fireRiskAiResult?: FireRiskInfo | null;
   fireRiskAiStatus?: 'idle' | 'loading' | 'success' | 'error';
   fireRiskAiError?: string | null;
-
-  preliminaryAiResult?: PreliminaryAiResult | null;
-  preliminaryAiStatus?: 'idle' | 'loading' | 'success' | 'error';
-  preliminaryAiError?: string | null;
 }
 
 
