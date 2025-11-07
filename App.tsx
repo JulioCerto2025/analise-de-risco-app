@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Alert, AlertDescription, AlertTitle } from "./components/ui";
@@ -88,7 +88,22 @@ const getRegionFromState = (stateUF: string = ''): string => {
 
 
 export default function App() {
-    const [currentStep, setCurrentStep] = useState(1);
+    const initialStep = useMemo(() => {
+        try {
+            const isBrowser = typeof window !== 'undefined';
+            if (!isBrowser) return 1;
+            const url = new URL(window.location.href);
+            const fromQuery = url.searchParams.get('step');
+            const fromHash = url.hash.startsWith('#step=') ? url.hash.replace('#step=', '') : null;
+            const raw = fromQuery ?? fromHash ?? '1';
+            const n = parseInt(raw, 10);
+            if (!isNaN(n) && n >= 1 && n <= STEPS.length) return n;
+            return 1;
+        } catch {
+            return 1;
+        }
+    }, []);
+    const [currentStep, setCurrentStep] = useState(initialStep);
     // Removido: controle de loop por zona entre etapas 7 e 8
     const { data, updateData } = useAnalysisData();
     const [errors, setErrors] = useState<string[]>([]);
@@ -193,6 +208,19 @@ export default function App() {
             setCurrentStep(step);
         }
     }, []);
+
+    // Sincroniza a etapa atual com a URL para permitir deep-linking (?step=11)
+    useEffect(() => {
+        try {
+            const isBrowser = typeof window !== 'undefined';
+            if (!isBrowser) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('step', String(currentStep));
+            window.history.replaceState(null, '', url.toString());
+        } catch (_) {
+            // silencioso
+        }
+    }, [currentStep]);
 
     const renderStep = useMemo(() => {
         try {

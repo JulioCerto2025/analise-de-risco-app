@@ -23,7 +23,54 @@ const escapeHtml = (str: string) => str
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-const markdownToHtml = (markdown: string): string => {
+// Preferências de formatação configuráveis
+interface FormatPrefs {
+    paragraphFontSizePt: number;
+    paragraphLineHeight: number;
+    paragraphMarginTopPx: number;
+    paragraphMarginBottomPx: number;
+    listItemMarginTopPx: number;
+    listItemMarginBottomPx: number;
+    listItemExtraMarginBottomPx: number; // usado em itens com "Resultado:" ou "Cálculo:"
+    blockMarginBetweenItemsPx: number; // espaço entre blocos (Ad, Adf, Am, etc.)
+    listMarginTopPx: number;
+    listMarginBottomPx: number;
+    listPaddingLeftPx: number;
+    h2FontSizeRem: number;
+    h2MarginTopPx: number;
+    h2MarginBottomPx: number;
+    h3FontSizeRem: number;
+    h3MarginTopPx: number;
+    h3MarginBottomPx: number;
+    figureMarginTopPx: number;
+    figureMarginBottomPx: number;
+    emptyLineHeightPx: number; // altura de espaçamento quando há linha em branco
+}
+
+const defaultFormatPrefs: FormatPrefs = {
+    paragraphFontSizePt: 11,
+    paragraphLineHeight: 1.35,
+    paragraphMarginTopPx: 6,
+    paragraphMarginBottomPx: 8,
+    listItemMarginTopPx: 4,
+    listItemMarginBottomPx: 4,
+    listItemExtraMarginBottomPx: 10, // margem mais discreta sob rótulos
+    blockMarginBetweenItemsPx: 20, // separação visual entre blocos individuais (bem destacado)
+    listMarginTopPx: 8,
+    listMarginBottomPx: 12,
+    listPaddingLeftPx: 18,
+    h2FontSizeRem: 1.25,
+    h2MarginTopPx: 14,
+    h2MarginBottomPx: 10,
+    h3FontSizeRem: 1.1,
+    h3MarginTopPx: 10,
+    h3MarginBottomPx: 8,
+    figureMarginTopPx: 10,
+    figureMarginBottomPx: 10,
+    emptyLineHeightPx: 20,
+};
+
+const markdownToHtml = (markdown: string, prefs: FormatPrefs): string => {
     if (!markdown) return '';
     const text = markdown.replace(/\\n/g, '\n');
 
@@ -34,7 +81,32 @@ const markdownToHtml = (markdown: string): string => {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        const processInline = (str: string) => escapeHtml(str).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Espaço manual: linha em branco cria espaçamento visual
+        if (line.trim() === '') {
+            if (inList) {
+                html += `<li style="list-style:none;margin:${prefs.listItemMarginTopPx}px 0 ${prefs.listItemMarginBottomPx}px"><span style="display:inline-block;height:${prefs.emptyLineHeightPx}px"></span></li>\n`;
+            } else {
+                html += `<p style="margin:${prefs.emptyLineHeightPx}px 0 ${prefs.emptyLineHeightPx}px;font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">&nbsp;</p>\n`;
+            }
+            continue;
+        }
+
+        // Remover linhas compostas apenas por asteriscos ("*", "**" etc.) e seus espaços
+        // Essas linhas não têm conteúdo semântico e estavam aparecendo como símbolos soltos.
+        if (/^\s*\*+\s*$/.test(line)) {
+            continue;
+        }
+
+        const processInline = (str: string) => {
+            let s = escapeHtml(str);
+            // Bold **...**
+            s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Italic *...* (avoid matching list markers and bold)
+            s = s.replace(/(^|[^*])\*(?!\*)([^*]+?)\*(?!\*)/g, (_m, p1, p2) => `${p1}<em>${p2}</em>`);
+            // Remover quaisquer asteriscos remanescentes para evitar símbolos soltos no output
+            s = s.replace(/\*/g, '');
+            return s;
+        };
 
         // Horizontal rule ---
         if (line.trim() === '---') {
@@ -72,7 +144,7 @@ const markdownToHtml = (markdown: string): string => {
             }
 
             const figCaptionHtml = captionText ? `<figcaption>${processInline(captionText)}</figcaption>` : '';
-            html += `<figure>` +
+            html += `<figure style="margin:${prefs.figureMarginTopPx}px 0 ${prefs.figureMarginBottomPx}px">` +
                     `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="max-width:100%;height:auto;border-radius:4px;border:none;display:inline-block;page-break-inside:avoid"/>` +
                     `${figCaptionHtml}` +
                     `</figure>\n`;
@@ -83,24 +155,24 @@ const markdownToHtml = (markdown: string): string => {
         if (line.startsWith('> ')) {
             if (inList) { html += '</ul>\n'; inList = false; }
             const content = processInline(line.substring(2));
-            html += `<p>${content}</p>\n`;
+            html += `<p style="margin:${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px;font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${content}</p>\n`;
             continue;
         }
 
         if (line.startsWith('## ')) {
             if (inList) { html += '</ul>\n'; inList = false; }
-            html += `<h2 style="font-size:1.25rem;line-height:1.6;font-weight:700;">${processInline(line.substring(3))}</h2>\n`;
+            html += `<h2 style="font-size:${prefs.h2FontSizeRem}rem;line-height:1.6;font-weight:700;margin:${prefs.h2MarginTopPx}px 0 ${prefs.h2MarginBottomPx}px;">${processInline(line.substring(3))}</h2>\n`;
             continue;
         }
         if (line.startsWith('### ')) {
             if (inList) { html += '</ul>\n'; inList = false; }
-            html += `<h3 style="font-size:1.1rem;line-height:1.5;font-weight:700;">${processInline(line.substring(4))}</h3>\n`;
+            html += `<h3 style="font-size:${prefs.h3FontSizeRem}rem;line-height:1.5;font-weight:700;margin:${prefs.h3MarginTopPx}px 0 ${prefs.h3MarginBottomPx}px;">${processInline(line.substring(4))}</h3>\n`;
             continue;
         }
 
         if (line.trim().startsWith('* ')) {
             if (!inList) {
-                html += '<ul>\n';
+                html += `<ul style="margin:${prefs.listMarginTopPx}px 0 ${prefs.listMarginBottomPx}px;padding-left:${prefs.listPaddingLeftPx}px">\n`;
                 inList = true;
             }
             let itemContent = line.trim().substring(2);
@@ -108,7 +180,47 @@ const markdownToHtml = (markdown: string): string => {
                 itemContent += ' ' + lines[i + 1].trim();
                 i++;
             }
-            html += `<li>${processInline(itemContent)}</li>\n`;
+            // Detectar "Resultado:", "Cálculo:" e "Fórmula:" (com ou sem acento) e separar em linhas distintas
+            const normItem = itemContent.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+            const isResult = /\bresultado:\b/.test(normItem);
+            const isCalc = /\bcalculo:\b/.test(normItem);
+            const isFormula = /\bformula:\b/.test(normItem);
+            // Cabeçalho de bloco: "**Área de Exposição (Ad):**" e similares
+            const isBlockHeader = /^\*\*[^*]+?\*\*:/.test(itemContent.trim());
+            const liTop = isBlockHeader ? prefs.blockMarginBetweenItemsPx : Math.max(0, prefs.listItemMarginTopPx);
+            const liBottom = (isBlockHeader || isResult || isCalc || isFormula)
+                ? prefs.blockMarginBetweenItemsPx
+                : prefs.listItemMarginBottomPx;
+            const liMargin = `${liTop}px 0 ${liBottom}px`;
+
+            // Quebra automática dentro do item de lista para seguir o modelo: título, Fórmula, Cálculo, Resultado cada em sua linha, com espaçadores
+            const splitRegex = /(F[óo]rmula:|C[áa]lculo:|Resultado:)/gi;
+            const marker = '\u00A7\u00A7';
+            const marked = itemContent.replace(splitRegex, marker + '$1');
+            const parts = marked.split(marker).filter(p => p.trim().length > 0);
+
+            if (parts.length > 1 || /:\s*$/.test(itemContent.trim())) {
+                let inner = '';
+                for (const part of parts) {
+                    const normPart = part.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                    const isResSeg = /\bresultado:\b/.test(normPart);
+                    const isCalcSeg = /\bcalculo:\b/.test(normPart);
+                    const isFormSeg = /\bformula:\b/.test(normPart);
+                    const pMarginSeg = (isResSeg || isCalcSeg || isFormSeg)
+                        ? `${prefs.paragraphMarginTopPx}px 0 ${prefs.listItemExtraMarginBottomPx}px`
+                        : `${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px`;
+                    inner += `<p style="margin:${pMarginSeg};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(part)}</p>`;
+                    // Linha em branco após "Resultado:" para destacá-lo visualmente
+                    if (isResSeg) {
+                        inner += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>`;
+                    }
+                    // Spacer em branco abaixo de cada linha para melhorar legibilidade ao copiar para Word
+                    // Removido espaçador extra para manter ergonomia (apenas margem padrão abaixo de cada linha)
+                }
+                html += `<li style="margin:${liMargin};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${inner}</li>\n`;
+            } else {
+                html += `<li style="margin:${liMargin};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(itemContent)}</li>\n`;
+            }
             continue;
         }
 
@@ -122,7 +234,47 @@ const markdownToHtml = (markdown: string): string => {
             const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
             const isCaptionAhead = /^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/.test(line.trim()) && /^!\[(.*?)\]\((.*?)\)$/.test(nextLine);
             if (!isCaptionAhead) {
-                html += `<p>${processInline(line)}</p>\n`;
+                // Dividir a linha em múltiplos parágrafos quando contiver rótulos
+                // "Fórmula:", "Cálculo:" ou "Resultado:" para garantir quebra em linhas separadas.
+                const splitRegex = /(F[óo]rmula:|C[áa]lculo:|Resultado:)/gi;
+                const marker = '\u00A7\u00A7';
+                const marked = line.replace(splitRegex, marker + '$1');
+                const parts = marked.split(marker).filter(p => p.trim().length > 0);
+
+                if (parts.length > 1) {
+                    for (const part of parts) {
+                        const normPart = part.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                        const isResultSeg = /\bresultado:\b/.test(normPart);
+                        const isCalcSeg = /\bcalculo:\b/.test(normPart);
+                        const isFormulaSeg = /\bformula:\b/.test(normPart);
+                        const pMarginSeg = (isResultSeg || isCalcSeg || isFormulaSeg)
+                            ? `${prefs.paragraphMarginTopPx}px 0 ${prefs.listItemExtraMarginBottomPx}px`
+                            : `${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px`;
+                        html += `<p style="margin:${pMarginSeg};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(part)}</p>\n`;
+                        // Linha em branco após "Resultado:" em parágrafos segmentados
+                        if (isResultSeg) {
+                            html += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>\n`;
+                        }
+                    }
+                } else {
+                    const normLine = line.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+                    const isResultP = /\bresultado:\b/.test(normLine);
+                    const isCalcP = /\bcalculo:\b/.test(normLine);
+                    const isFormulaP = /\bformula:\b/.test(normLine);
+                    const pMargin = (isResultP || isCalcP || isFormulaP)
+                        ? `${prefs.paragraphMarginTopPx}px 0 ${prefs.listItemExtraMarginBottomPx}px`
+                        : `${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px`;
+                    html += `<p style="margin:${pMargin};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(line)}</p>\n`;
+                    // Linha em branco após "Resultado:" em parágrafo único
+                    if (isResultP) {
+                        html += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>\n`;
+                    }
+                    // Se o próximo conteúdo iniciar um novo item de lista (novo bloco), adiciona linha em branco
+                    const nextIsNewListItem = (i + 1 < lines.length) && lines[i + 1].trim().startsWith('* ');
+                    if (!isResultP && nextIsNewListItem) {
+                        html += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>\n`;
+                    }
+                }
             }
         }
     }
@@ -149,6 +301,20 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
     const [footerHeight, setFooterHeight] = useState<number>(22); // mm (zona segura base – altura)
     const [footerPadding, setFooterPadding] = useState<number>(6); // mm (zona segura base – padding)
 
+    // Preferências de formatação (salvas localmente)
+    const FORMAT_STORAGE_KEY = 'report_format_prefs';
+    const loadFormatPrefs = (): FormatPrefs => {
+        try {
+            const raw = localStorage.getItem(FORMAT_STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return { ...defaultFormatPrefs, ...parsed } as FormatPrefs;
+            }
+        } catch {}
+        return defaultFormatPrefs;
+    };
+    const [formatPrefs] = useState<FormatPrefs>(loadFormatPrefs());
+
     const handleGenerateReport = async () => {
         setIsGenerating(true);
         setReportText('');
@@ -164,7 +330,7 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
         if (!reportText) return;
 
         // Convert Markdown to HTML to copy with formatting
-        const html = markdownToHtml(reportText);
+        const html = markdownToHtml(reportText, formatPrefs);
 
         // Generate readable plain text as fallback
         const plainText = reportText
@@ -250,7 +416,7 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
                             variant="secondary"
                             size="sm"
                             onClick={() => {
-                                const html = markdownToHtml(reportText);
+                                const html = markdownToHtml(reportText, formatPrefs);
                                 const win = window.open('', '_blank');
                                 if (!win) return;
                                 const padTop = Math.max(4, headerPadding);
@@ -260,11 +426,11 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
 *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:#ffffff; color:#111827; margin:0; line-height:1.6;}
 main{padding:${padTop}mm ${pageMarginLR}mm ${padBottom}mm; overflow:visible;}
-h2{font-size:20px; line-height:1.6; color:#0f172a; font-weight:700; margin:16px 0 10px; break-inside:avoid; break-after:avoid-page;}
-h3{font-size:18px; line-height:1.5; color:#1f2937; font-weight:700; margin:12px 0 8px; break-inside:avoid; break-after:avoid-page;}
-ul{margin:8px 0 12px; padding-left:18px; break-inside:avoid;}
-li{break-inside:avoid;}
-p{margin:8px 0; break-inside:avoid;}
+h2{font-size:${formatPrefs.h2FontSizeRem}rem; line-height:1.6; color:#0f172a; font-weight:700; margin:${formatPrefs.h2MarginTopPx}px 0 ${formatPrefs.h2MarginBottomPx}px; break-inside:avoid; break-after:avoid-page;}
+h3{font-size:${formatPrefs.h3FontSizeRem}rem; line-height:1.5; color:#1f2937; font-weight:700; margin:${formatPrefs.h3MarginTopPx}px 0 ${formatPrefs.h3MarginBottomPx}px; break-inside:avoid; break-after:avoid-page;}
+ul{margin:${formatPrefs.listMarginTopPx}px 0 ${formatPrefs.listMarginBottomPx}px; padding-left:${formatPrefs.listPaddingLeftPx}px; break-inside:avoid;}
+li{break-inside:avoid; font-size:${formatPrefs.paragraphFontSizePt}pt; line-height:${formatPrefs.paragraphLineHeight};}
+p{margin:${formatPrefs.paragraphMarginTopPx}px 0 ${formatPrefs.paragraphMarginBottomPx}px; break-inside:avoid; font-size:${formatPrefs.paragraphFontSizePt}pt; line-height:${formatPrefs.paragraphLineHeight};}
 img{max-width:100%; height:auto; display:block; page-break-inside:avoid; break-inside:avoid;}
 blockquote{margin:8px 0; padding:10px 12px; border-left:3px solid #3b82f6; background:transparent; color:#0f172a; border-radius:6px; break-inside:avoid;}
 hr{border:0; border-top:1px solid #cbd5e1; margin:12px 0; break-inside:avoid;}
@@ -319,22 +485,22 @@ hr{border:0; border-top:1px solid #cbd5e1; margin:12px 0; break-inside:avoid;}
                                 <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
                                 <p className="mt-3 text-slate-300">Gerando Relatório...</p>
                             </motion.div>
-                        ) : reportText ? (
-                            <motion.div
-                                key="report"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="text-left pt-4 relative"
-                            >
-                                <div
-                                    className="w-full h-[30rem] overflow-y-auto p-5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-[17px] leading-loose tracking-[0.02em] text-slate-100 focus:outline-none prose-styles"
-                                    dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText) }}
-                                />
-                                {/* Configurações removidas: impressão agora usa valores ergonômicos automáticos */}
-                                {/* Barra de ações movida para fora da caixa */}
-                            </motion.div>
-                        ) : (
+                ) : reportText ? (
+                    <motion.div
+                        key="report"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="text-left pt-4 relative"
+                    >
+                        <div
+                            className="w-full h-[30rem] overflow-y-auto p-5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-[17px] leading-loose tracking-[0.02em] text-slate-100 focus:outline-none prose-styles"
+                            dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
+                        />
+                        {/* Configurações removidas: impressão agora usa valores ergonômicos automáticos */}
+                        {/* Barra de ações movida para fora da caixa */}
+                    </motion.div>
+                ) : (
                             <motion.div
                                 key="initial"
                                 initial={{ opacity: 0, scale: 0.9 }}

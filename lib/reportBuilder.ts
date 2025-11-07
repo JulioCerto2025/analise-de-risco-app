@@ -222,8 +222,8 @@ export async function generateFullReportText(data: AnalysisData): Promise<string
         const axisColor = '#475569';
         const angle = typeof opts?.labelAngle === 'number' ? opts!.labelAngle! : -35;
 
-        // Filtros SVG para brilho suave (glow) nos totais
-        const defs = `\n  <defs>\n    <filter id="glowGreen" x="-50%" y="-50%" width="200%" height="200%">\n      <feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#10B981" flood-opacity="0.45"/>\n    </filter>\n    <filter id="glowRed" x="-50%" y="-50%" width="200%" height="200%">\n      <feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#EF4444" flood-opacity="0.45"/>\n    </filter>\n  </defs>`;
+        // Sem filtros de brilho para evitar linhas/halos coloridos nos totais
+        const defs = ``;
 
         // Barras e rótulos
         let bars = '';
@@ -238,20 +238,15 @@ export async function generateFullReportText(data: AnalysisData): Promise<string
             const labelX = x + barWidth / 2;
             const isInactive = fill === '#CBD5E1';
             const isTotal = it.name === 'R Total' || it.name === 'F Total';
-            const totalStrokeColor = (fill === '#10B981') ? '#065f46' : (fill === '#EF4444') ? '#7f1d1d' : '#334155';
-            const strokeAttrs = isInactive
-                ? ` stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 2" fill-opacity="0.25"`
-                : (isTotal ? ` stroke="${totalStrokeColor}" stroke-width="3"` : '');
-            const cornerRadius = isTotal ? 5 : 3;
+            const cornerRadius = 0;
             const valueFontSize = isTotal ? 12 : 10;
             const valueFontWeight = isTotal ? '700' : '400';
-            const filterAttr = isTotal ? (fill === '#10B981' ? ' filter="url(#glowGreen)"' : ' filter="url(#glowRed)"') : '';
-            bars += `\n  <rect x="${x}" y="${y}" width="${barWidth}" height="${barH}" fill="${fill}" rx="${cornerRadius}"${strokeAttrs}${filterAttr} />`;
+            bars += `\n  <rect x="${x}" y="${y}" width="${barWidth}" height="${barH}" fill="${fill}" rx="${cornerRadius}" />`;
             bars += `\n  <text x="${labelX}" y="${labelY}" fill="${labelColor}" font-size="11" text-anchor="${angle < 0 ? 'end' : angle > 0 ? 'start' : 'middle'}" transform="rotate(${angle} ${labelX} ${labelY})">${it.name}</text>`;
             bars += `\n  <text x="${x + barWidth / 2}" y="${y - 6}" fill="${labelColor}" font-size="${valueFontSize}" font-weight="${valueFontWeight}" text-anchor="middle">${valText}</text>`;
         });
 
-        // Linha de tolerância (vermelha pontilhada) — sempre presente quando fornecida
+        // Linha de tolerância (vermelha pontilhada) — restaurada quando fornecida
         let toleranceSvg = '';
         if (typeof opts?.toleranceLine === 'number') {
             const tolVal = Math.max(opts.toleranceLine!, 1e-12);
@@ -370,8 +365,6 @@ export async function generateFullReportText(data: AnalysisData): Promise<string
 ${detailedCalculations}
 
 ## ${sectionNumbering.resultados}. RESULTADOS E CONCLUSÕES
-
-> As figuras são numeradas conforme ABNT: “Figura N — Título”. Escala logarítmica nos gráficos para melhor comparação entre ordens de grandeza.
 
 ${resultadosSection}
 

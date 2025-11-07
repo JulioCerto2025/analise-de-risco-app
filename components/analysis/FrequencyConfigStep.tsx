@@ -671,6 +671,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
+                            {/* Linha de tolerância (pontilhada) restaurada */}
                             <ReferenceLine y={toleranceLimit} strokeWidth={2} stroke="#ef4444" strokeDasharray="3 3" />
                             <Bar dataKey="value">
                                 {(activeViewId === 'GLOBAL' ? chartData : zoneChart).map((entry) => {

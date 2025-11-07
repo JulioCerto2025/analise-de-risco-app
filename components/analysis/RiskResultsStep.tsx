@@ -482,6 +482,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
+                            {/* Linha de tolerância (pontilhada) restaurada */}
                             <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#ef4444" strokeDasharray="3 3" />
                             <Bar dataKey="value">
                                 {(activeZone ? activeZoneChart : chartData).map((entry, index) => {
@@ -489,15 +490,14 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                     const componentKey = entry.name as keyof typeof selected_risk_components;
                                     const isComponentSelected = selected_risk_components[componentKey];
                                     let color: string;
-                                    let strokeColor = 'rgba(255, 255, 255, 0.2)';
-                                    let strokeWidth = 1;
+                                    let strokeColor = 'none';
+                                    let strokeWidth = 0;
                                     if (isTotalRiskBar) {
                                         const riskKey = entry.name as keyof typeof TOLERABLE_RISKS;
                                         const riskValueForView = activeZone ? (activeZoneRisk?.[riskKey] || 0) : (risk_results[riskKey] || 0);
                                         const isAcceptable = riskValueForView <= TOLERABLE_RISKS[riskKey];
                                         color = isAcceptable ? '#22c55e' : '#ef4444';
-                                        strokeColor = '#facc15';
-                                        strokeWidth = 1.5;
+                                        // Sem traço nas barras totais para eliminar linhas coloridas no pé
                                     } else if (isComponentSelected) {
                                         color = '#3B82F6';
                                     } else {
