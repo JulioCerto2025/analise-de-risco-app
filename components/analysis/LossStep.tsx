@@ -362,16 +362,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
 
     const [isFireRiskPanelOpen, setIsFireRiskPanelOpen] = useState(false);
     
-    // Population validation logic
-    const totalNt = useMemo(() => zones[0]?.loss_data?.nt ?? 0, [zones]);
-    const sumOfNz = useMemo(() => zones.reduce((sum, zone) => sum + (zone.loss_data.nz ?? 0), 0), [zones]);
-    const isPopulationMismatch = zones.length > 1 && sumOfNz !== totalNt;
-    const weightedTimeHours = useMemo(() => {
-        const nt = Number(zones[0]?.loss_data?.nt) || 1;
-        if (nt <= 0) return 0;
-        return zones.reduce((acc, z) => acc + (((Number(z.loss_data.nz) || 0) / nt) * (Number(z.loss_data.tz) || 0)), 0);
-    }, [zones]);
-    const isWeightedTimeExceeded = weightedTimeHours > 8760 + 1e-6;
+    // Validações de população/tempo removidas para permitir digitação livre
 
     const availableTabs = useMemo(() => {
         const tabs = [];
@@ -405,43 +396,26 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     const effectiveHomogeneousType: 'P' | 'L' = 'L';
 
     const handleUpdate = useCallback((field: keyof LossData, rawValue: number) => {
-        const value = Number.isFinite(rawValue) ? rawValue : 0;
-
-        // Helper to clamp between 0 and nt
-        const clampNz = (nz: number, nt: number) => Math.max(0, Math.min(nz, Math.max(0, nt)));
-
-        // Read current global nt (from first zone)
-        const currentNt = Math.max(0, Number(zones[0]?.loss_data?.nt) || 0);
+        const value = Number.isFinite(rawValue) ? rawValue : rawValue;
 
         let nextZones = zones.map(z => ({ ...z, loss_data: { ...z.loss_data } }));
 
         if (field === 'nt') {
-            // nt é global: aplicar em todas as zonas, sem redistribuir nz automaticamente.
-            const newNt = Math.max(0, value);
-            nextZones.forEach((z) => { z.loss_data.nt = newNt; });
-            // Não alterar nz; o usuário ajusta manualmente.
+            // nt é global: aplicar em todas as zonas, sem travas
+            nextZones.forEach((z) => { z.loss_data.nt = value as number; });
         } else if (field === 'nz') {
-            // Atualização de nz apenas na zona ativa, sem ajustar outras zonas.
-            const nt = currentNt; // usa nt atual
+            // Atualiza nz apenas na zona ativa, sem clamps
             const activeIndex = nextZones.findIndex(z => z.id === activeZoneId);
             if (activeIndex < 0) {
-                // fallback: aplica direto na primeira zona
-                const othersSum = nextZones.slice(1).reduce((acc, z) => acc + (Number(z.loss_data.nz) || 0), 0);
-                const maxAllowed = Math.max(0, nt - othersSum);
-                nextZones[0].loss_data.nz = Math.max(0, Math.min(value, maxAllowed));
+                nextZones[0].loss_data.nz = value as number;
             } else {
-                // 1) Calcular quanto cabe sem exceder soma total nt
-                const sumOthers = nextZones.reduce((acc, z, i) => i === activeIndex ? acc : acc + (Number(z.loss_data.nz) || 0), 0);
-                const maxAllowed = Math.max(0, nt - sumOthers);
-                const newActiveNz = Math.max(0, Math.min(value, maxAllowed));
-                nextZones[activeIndex].loss_data.nz = newActiveNz;
-                // Não ajustar outras zonas automaticamente; usuário controla manualmente.
+                nextZones[activeIndex].loss_data.nz = value as number;
             }
         } else {
             // Outros campos: aplicar somente na zona ativa
             nextZones = nextZones.map(z => {
                 if (z.id !== activeZoneId) return z;
-                return { ...z, loss_data: { ...z.loss_data, [field]: value } };
+                return { ...z, loss_data: { ...z.loss_data, [field]: value as number } };
             });
         }
 
@@ -580,9 +554,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                                 label="Nº Pessoas na Zona (nz)"
                                 value={lossData.nz ?? 0}
                                 onUpdate={val => handleUpdate('nz', val)}
-                                readOnly={zones.length === 1}
-                                title={zones.length === 1 ? "O número de pessoas na zona é igual ao total da estrutura." : ""}
-                                className={`space-y-2 ${zones.length === 1 ? 'opacity-70' : ''}`}
+                                className={`space-y-2`}
                             />
                             <DecimalInput
                                 label="Nº Pessoas Total (nt)"
@@ -605,24 +577,6 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                                 onUpdate={val => handleUpdate('rs', val)}
                             />
                         </div>
-                        {isPopulationMismatch && (
-                            <Alert variant="destructive" className="mt-4">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Atenção: Inconsistência na População</AlertTitle>
-                                <AlertDescription>
-                                    A soma das pessoas em todas as zonas ({sumOfNz}) não é igual ao número total de pessoas na estrutura ({totalNt}). Por favor, ajuste os valores.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {isWeightedTimeExceeded && (
-                            <Alert variant="destructive" className="mt-4">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Atenção: Tempo ponderado excede 8760 h</AlertTitle>
-                                <AlertDescription>
-                                    A soma ponderada do tempo por zona (∑(nz/nt × tz) = {formatSmartNumber(weightedTimeHours, { maxDecimals: 1, useScientificBelow: 0 })} h) excede 8760 h/ano. Ajuste os tempos de permanência.
-                                </AlertDescription>
-                            </Alert>
-                        )}
                     </>
                 )}
 

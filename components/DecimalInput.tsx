@@ -33,37 +33,18 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
     }, [value, isFocused]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (readOnly) {
-            return;
-        }
+        if (readOnly) return;
         const val = e.target.value;
 
-        // Rule: Disallow periods
-        if (val.includes('.')) {
-            setError('Use vírgula (,) para casas decimais, não ponto (.).');
-            setDisplayValue(val); // Show the invalid input to the user
-            return;
-        }
-
-        // Rule: Allow only numbers and a single comma
-        if (val !== '' && !/^[0-9]*,?[0-9]*$/.test(val)) {
-            // Invalid character, ignore the change
-            return;
-        }
-
+        // Libera digitação: aceita números com sinal, ponto ou vírgula
         setError(null);
         setDisplayValue(val);
 
-        // Converter para número e enviar somente quando for válido
-        const sanitizedValue = val.replace(',', '.');
-        const numericValue = parseFloat(sanitizedValue);
+        const sanitized = val.replace(',', '.');
+        const numericValue = Number(sanitized);
 
-        // Evita sobrescrever com 0 em estados intermediários (vazio ou apenas vírgula)
-        if (val === '' || val === ',') {
-            return; // não atualiza o estado pai ainda
-        }
-
-        if (!isNaN(numericValue)) {
+        // Não bloqueia digitação; só atualiza quando for um número válido
+        if (!Number.isNaN(numericValue) && Number.isFinite(numericValue)) {
             onUpdate(numericValue);
         }
     };
@@ -92,7 +73,7 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
     const inputNode = (
         <Input
             id={id}
-            type="text" // Use text to allow comma
+            type="text"
             value={displayValue}
             onChange={handleChange}
             onFocus={handleFocus}
