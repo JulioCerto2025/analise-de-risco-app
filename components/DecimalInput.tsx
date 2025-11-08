@@ -15,9 +15,12 @@ interface DecimalInputProps {
     useThousands?: boolean;
     currency?: boolean;
     currencySymbol?: string;
+    min?: number;
+    max?: number;
+    blockScientific?: boolean;
 }
 
-export function DecimalInput({ id, label, value, onUpdate, placeholder, className, readOnly, title, isAiSuggested, noWrapper, useThousands, currency, currencySymbol }: DecimalInputProps) {
+export function DecimalInput({ id, label, value, onUpdate, placeholder, className, readOnly, title, isAiSuggested, noWrapper, useThousands, currency, currencySymbol, min, max, blockScientific }: DecimalInputProps) {
     const [displayValue, setDisplayValue] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
@@ -63,9 +66,20 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const applyBounds = (n: number) => {
+        let r = n;
+        if (typeof min === 'number') r = Math.max(min, r);
+        if (typeof max === 'number') r = Math.min(max, r);
+        return r;
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (readOnly) return;
-        const val = e.target.value;
+        let val = e.target.value;
+        if (blockScientific) {
+            // Remove qualquer tentativa de notação científica
+            val = val.replace(/[eE]/g, '');
+        }
 
         // Libera digitação: aceita números com sinal, ponto ou vírgula
         setError(null);
@@ -80,7 +94,7 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
 
         // Não bloqueia digitação; só atualiza quando for um número válido
         if (!Number.isNaN(numericValue) && Number.isFinite(numericValue)) {
-            onUpdate(numericValue);
+            onUpdate(applyBounds(numericValue));
         }
     };
 
@@ -105,8 +119,9 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
             .replace(',', '.'));
         if (!isNaN(numericValue)) {
             // Garante sincronização final
-            onUpdate(numericValue);
-            setDisplayValue(formatNumber(numericValue));
+            const bounded = applyBounds(numericValue);
+            onUpdate(bounded);
+            setDisplayValue(formatNumber(bounded));
         }
     };
 

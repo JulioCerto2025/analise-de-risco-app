@@ -366,6 +366,8 @@ ${detailedCalculations}
 
 ## ${sectionNumbering.resultados}. RESULTADOS E CONCLUSÕES
 
+> Obs.: Neste relatório final são exibidos somente os gráficos globais, independentemente do número de zonas.
+
 ${resultadosSection}
 
 ### Figura 1 — Componentes de Risco — Global

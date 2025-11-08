@@ -707,14 +707,14 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                                 <div className="grid grid-cols-2 gap-2">
                                     {PROB_KEYS.slice(0,6).map(k => (
                                         <div key={k}>
-                                            <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                            <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} min={0} max={1} blockScientific />
                                         </div>
                                     ))}
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     {PROB_KEYS.slice(6).map(k => (
                                         <div key={k}>
-                                            <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} />
+                                            <DecimalInput label={k} value={Number(currentZone?.probability_overrides?.[k]) || 0} onUpdate={(v) => handleProbOverrideUpdate(k, Number(v) || 0)} min={0} max={1} blockScientific />
                                         </div>
                                     ))}
                                 </div>

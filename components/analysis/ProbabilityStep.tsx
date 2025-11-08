@@ -514,6 +514,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         const n = Number(v);
         return Number.isFinite(n) && !Number.isNaN(n) ? n : 0;
     };
+    const globalForDisplay = (zones.length <= 1) ? zoneProbCalcsBase : globalProbCalcsBase;
     const chartData = Object.entries(zoneProbCalcs)
         .filter(([key]) => ![
             'Ks1',
@@ -533,7 +534,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         .map(([key, value]) => ({ 
             name: key, 
             value: toFinite(value), 
-            ...(showGlobalBars ? { globalValue: toFinite((globalProbCalcsBase as any)[key]) } : {}), 
+            ...(showGlobalBars ? { globalValue: toFinite((globalForDisplay as any)[key]) } : {}), 
             fill: '#3b82f6' 
         }));
     
@@ -551,10 +552,11 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     };
 
     const handleProbOverrideUpdate = (key: string, value: number) => {
+        const clampedValue = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
         const updatedZones = zones.map(z => {
             if (z.id !== (currentZone?.id || activeZoneId)) return z;
             const nextOverrides = { ...(z.probability_overrides || {}) };
-            nextOverrides[key] = value;
+            nextOverrides[key] = clampedValue;
             return { ...z, probability_overrides: nextOverrides };
         });
         onChange({ zones: updatedZones });
@@ -645,7 +647,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                     />
                                 </div>
                                 <div>
-                                    <DecimalInput label="KS1: Largura da malha wm1 (m)" value={prob.wm1} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { wm1: v })} />
+                                    <DecimalInput label="KS1: Largura da malha wm1 (m)" value={prob.wm1} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { wm1: v })} min={0} />
                                     <p className="text-xs text-slate-400 mt-1">Ks1 calculado: <span className="font-bold text-blue-300">{formatSmartNumber(zoneProbCalcsBase.Ks1 || 0, { maxDecimals: 3, useScientificBelow: 0 })}</span></p>
                                     {isKs1Capped && (
                                         <Alert variant="destructive" className="mt-2 p-2 text-xs flex items-center">
@@ -655,7 +657,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                     )}
                                 </div>
                                 <div>
-                                    <DecimalInput label="KS2: Largura da malha wm2 (m)" value={prob.wm2} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { wm2: v })} />
+                                    <DecimalInput label="KS2: Largura da malha wm2 (m)" value={prob.wm2} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { wm2: v })} min={0} />
                                     <p className="text-xs text-slate-400 mt-1">Ks2 calculado: <span className="font-bold text-blue-300">{formatSmartNumber(zoneProbCalcsBase.Ks2 || 0, { maxDecimals: 3, useScientificBelow: 0 })}</span></p>
                                     {isKs2Capped && (
                                         <Alert variant="destructive" className="mt-2 p-2 text-xs flex items-center">

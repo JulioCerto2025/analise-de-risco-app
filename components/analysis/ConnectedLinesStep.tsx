@@ -326,10 +326,10 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
 const SelectField = ({ label, value, options, onChange }: { label: string; value: number; options: {value: number, label: string}[], onChange: (val: string) => void }) => (
     <div className="space-y-2">
-        <Label>{label}</Label>
+        <Label className="text-sm sm:text-base">{label}</Label>
         <Select value={String(value)} onValueChange={onChange} options={options}>
-            <SelectTrigger className="min-w-[260px]"><SelectValue /></SelectTrigger>
-            <SelectContent className="max-w-[640px]">
+            <SelectTrigger className="w-full sm:min-w-[260px] truncate text-left"><SelectValue /></SelectTrigger>
+            <SelectContent className="w-[min(90vw,640px)]">
                 {options.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
             </SelectContent>
         </Select>

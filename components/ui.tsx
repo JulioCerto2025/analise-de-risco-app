@@ -272,7 +272,7 @@ export const SelectTrigger = React.forwardRef<
         type="button" 
         onClick={() => context.setOpen(!context.open)} 
         onKeyDown={context.handleKeyDown}
-        className={`flex h-10 w-full items-center justify-between rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm ring-offset-background placeholder:text-slate-400 focus:outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} 
+        className={`flex h-10 w-full items-center justify-between gap-2 overflow-hidden rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm ring-offset-background placeholder:text-slate-400 focus:outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} 
         {...props}
         >
         {children}
@@ -290,9 +290,9 @@ export const SelectValue = () => {
     const labelToShow = context.selectedLabel ?? selectedOption?.label;
 
     const displayContent = labelToShow ? (
-        <span className="truncate text-left flex-1">{labelToShow}</span>
+        <span className="flex-1 min-w-0 truncate text-left">{labelToShow}</span>
     ) : (
-        <span className="text-slate-400 text-left flex-1">{context.placeholder}</span>
+        <span className="flex-1 min-w-0 text-slate-400 text-left truncate">{context.placeholder}</span>
     );
 
     return displayContent;
