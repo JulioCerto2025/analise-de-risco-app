@@ -4,6 +4,7 @@ import { Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } 
 interface ShieldingSliderProps {
     isShielded: boolean;
     rsValue: number;
+    uw: number; // tensão suportável para calcular o ponderador (PLD)
     onChange: (isShielded: boolean, newRsValue: number) => void;
 }
 
@@ -30,6 +31,7 @@ const getSelectedValue = (isShielded: boolean, rs: number): number => {
 export const ShieldingSlider: React.FC<ShieldingSliderProps> = ({
     isShielded,
     rsValue,
+    uw,
     onChange,
 }) => {
     const selectedValue = getSelectedValue(isShielded, rsValue);
@@ -55,9 +57,33 @@ export const ShieldingSlider: React.FC<ShieldingSliderProps> = ({
                      <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    {rsOptions.map(opt => (
-                        <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />
-                    ))}
+                    {rsOptions.map(opt => {
+                        // Ponderador exibido à direita: PLD calculado pela Tabela B.8
+                        // Para 'Não Blindada', PLD = 1.0
+                        const rightText = opt.value === 0
+                            ? '1.0'
+                            : (() => {
+                                // Assumir blindada = true para cálculo do ponderador por faixa
+                                // O cálculo exato também depende de Uw
+                                try {
+                                    // Import dinâmico evita dependência circular
+                                    const { calculatePld } = require('../utils/calculations');
+                                    const pld = calculatePld(Number(opt.value), Number(uw), true);
+                                    return String(pld);
+                                } catch {
+                                    return '';
+                                }
+                              })();
+                        return (
+                            <SelectItem
+                                key={opt.value}
+                                value={String(opt.value)}
+                                label={opt.label}
+                                showRightValue
+                                rightText={rightText}
+                            />
+                        );
+                    })}
                 </SelectContent>
             </Select>
         </div>

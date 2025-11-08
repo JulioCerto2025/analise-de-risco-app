@@ -727,6 +727,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                         <ShieldingSlider 
                                                             isShielded={prob.is_shielded_electric_ext}
                                                             rsValue={prob.rs_electric_ext}
+                                                            uw={prob.Uw_electric_ext}
                                                             onChange={(isShielded, rs) => handleProbabilityChangeForZone(activeZoneId, { is_shielded_electric_ext: isShielded, rs_electric_ext: rs })}
                                                         />
                                                     </div>
@@ -863,6 +864,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                             <ShieldingSlider 
                                                                 isShielded={prob.is_shielded_data_ext}
                                                                 rsValue={prob.rs_data_ext}
+                                                                uw={prob.Uw_data_ext}
                                                                 onChange={(isShielded, rs) => handleProbabilityChangeForZone(activeZoneId, { is_shielded_data_ext: isShielded, rs_data_ext: rs })}
                                                             />
                                                         </div>

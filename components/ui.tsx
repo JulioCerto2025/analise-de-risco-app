@@ -353,8 +353,8 @@ SelectContent.displayName = "SelectContent";
 
 export const SelectItem = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { value: string | number; label: string; showRightValue?: boolean }
->(({ label, value, showRightValue = false, className, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & { value: string | number; label: string; showRightValue?: boolean, rightText?: string }
+>(({ label, value, showRightValue = false, rightText, className, ...props }, ref) => {
   const context = useContext(SelectContext);
   if (!context) throw new Error("SelectItem must be used within a Select");
   
@@ -386,7 +386,9 @@ export const SelectItem = React.forwardRef<
             )}
             <span className="ml-2 whitespace-normal break-words">{label}{isValueRedundant ? '' : ':'}</span>
         </div>
-        {showRightValue && !isValueRedundant && <span className="font-medium text-blue-400">{String(value)}</span>}
+        {showRightValue && !isValueRedundant && (
+            <span className="font-medium text-blue-400">{rightText ?? String(value)}</span>
+        )}
     </div>
   );
 });
