@@ -47,6 +47,22 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
         }
     }, [value, isFocused]);
 
+    // Garantir que a digitação não se perca ao navegar: flush no unmount
+    useEffect(() => {
+        return () => {
+            const val = displayValue;
+            const numericValue = parseFloat(val
+                .replace(/\s/g, '')
+                .replace(/^R\$/, '')
+                .replace(/R\$|\./g, '')
+                .replace(',', '.'));
+            if (!Number.isNaN(numericValue) && Number.isFinite(numericValue)) {
+                try { onUpdate(numericValue); } catch { /* noop */ }
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (readOnly) return;
         const val = e.target.value;

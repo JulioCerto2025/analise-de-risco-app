@@ -137,8 +137,8 @@ export function useAnalysisData() {
             const id = (z && typeof z.id === 'string') ? z.id : `zone_${idx+1}`;
             const name = (z && typeof z.name === 'string' && z.name.trim().length) ? z.name : `Zona ${idx+1}`;
             const loss = { ...defaultZoneTemplate.loss_data, ...(z && z.loss_data ? z.loss_data : {}) };
-            // Aplicar LO padrão também para dados salvos antigos (quando ausente ou zerado)
-            if (loss.LO == null || Number(loss.LO) === 0) {
+            // Aplicar LO padrão apenas quando ausente; preservar zero quando o usuário selecionar "Sem Risco 0"
+            if (loss.LO == null) {
                 (loss as any).LO = 0.001;
             }
             // Garantir LT padrão (0,01) quando ausente
