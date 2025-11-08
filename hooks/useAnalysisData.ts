@@ -109,6 +109,7 @@ const initialInputData: AnalysisInputData = {
         Uw_data_int: 1.5,
     },
     analyze_data_line_probabilities: false,
+    analyze_electric_line_probabilities: true,
     fireRiskAiResult: null,
     fireRiskAiStatus: 'idle',
     fireRiskAiError: null,
@@ -540,8 +541,9 @@ export function useAnalysisData() {
     const probabilityCalculations = useMemo(() => calculateProbabilities(
         data.probability_data,
         data.analyze_data_line_probabilities,
-        data.has_data_line
-    ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line]);
+        data.has_data_line,
+        data.analyze_electric_line_probabilities
+    ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line, data.analyze_electric_line_probabilities]);
     
     // Memoized calculation for losses and risks per zone
     const zoneCalculations: ZoneCalculations[] = useMemo(() => {
@@ -551,7 +553,8 @@ export function useAnalysisData() {
             const zoneBaseProbCalcs = calculateProbabilities(
                 (zone.probability_data || data.probability_data),
                 data.analyze_data_line_probabilities,
-                data.has_data_line
+                data.has_data_line,
+                data.analyze_electric_line_probabilities
             );
             // Mesclar com overrides da zona (se houver)
             const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
@@ -563,7 +566,7 @@ export function useAnalysisData() {
             );
             return { zone, lossCalculations, riskCalculations };
         });
-    }, [data.zones, eventCalculations, data.selected_risk_components, data.analyze_data_line_probabilities, data.has_data_line, data.probability_data]);
+    }, [data.zones, eventCalculations, data.selected_risk_components, data.analyze_data_line_probabilities, data.has_data_line, data.probability_data, data.analyze_electric_line_probabilities]);
 
     // Memoized aggregation of risks from all zones
     const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
@@ -578,6 +581,7 @@ export function useAnalysisData() {
             eventCalculations,
             data.probability_data,
             data.analyze_data_line_probabilities,
+            data.analyze_electric_line_probabilities,
             data.frequency_config,
             data.has_electric_line,
             data.has_data_line
@@ -587,6 +591,7 @@ export function useAnalysisData() {
         eventCalculations,
         data.probability_data,
         data.analyze_data_line_probabilities,
+        data.analyze_electric_line_probabilities,
         data.frequency_config,
         data.has_electric_line,
         data.has_data_line

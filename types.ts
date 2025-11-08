@@ -191,6 +191,7 @@ export interface AnalysisInputData {
   frequency_config: FrequencyConfig;
   probability_data: ProbabilityData;
   analyze_data_line_probabilities: boolean;
+  analyze_electric_line_probabilities: boolean;
     
   // Background AI analysis state
   fireRiskAiResult?: FireRiskInfo | null;

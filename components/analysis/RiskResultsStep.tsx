@@ -402,7 +402,24 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             <Label className="text-base font-semibold text-slate-200">Nível do SPDA (PB)</Label>
                             <Select
                                 value={String(activeZone ? (activeZone.probability_overrides?.PB ?? data.probability_data.PB) : data.probability_data.PB)}
-                                onValueChange={(val) => activeZone ? handleZoneProbOverrideUpdate(activeZone.id, 'PB', parseFloat(val)) : handleSimulatorUpdate('PB', parseFloat(val))}
+                                onValueChange={(val) => {
+                                    const v = parseFloat(val);
+                                    if (activeZone) {
+                                        // Atualização atômica: definir PB na probability_data da zona e remover override PB
+                                        const newZones = data.zones.map(z => {
+                                            if (z.id !== activeZone.id) return z;
+                                            const baseProb = (z.probability_data || data.probability_data);
+                                            const nextProb = { ...baseProb, PB: v } as ProbabilityData;
+                                            const nextOverrides = { ...(z.probability_overrides || {}) };
+                                            delete nextOverrides.PB;
+                                            return { ...z, probability_data: nextProb, probability_overrides: nextOverrides };
+                                        });
+                                        onUpdate({ zones: newZones });
+                                    } else {
+                                        // Visão Global: apenas atualiza probabilidade base
+                                        handleSimulatorUpdate('PB', v);
+                                    }
+                                }}
                                 options={PB_OPTIONS}
                                 onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
                                 wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-2' : 'relative mt-2'}

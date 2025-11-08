@@ -175,7 +175,12 @@ export function calculatePli(lineType: 'electric' | 'data', uw: number): number 
 }
 
 
-export function calculateProbabilities(probData: ProbabilityData, analyzeDataLineProbs: boolean, has_data_line: boolean): { [key: string]: number } {
+export function calculateProbabilities(
+    probData: ProbabilityData,
+    analyzeDataLineProbs: boolean,
+    has_data_line: boolean,
+    analyzeElectricLineProbs: boolean = true
+): { [key: string]: number } {
     const p: Partial<ProbabilityData> = probData || {};
 
     // Garantir que todos os valores sejam números válidos
@@ -219,9 +224,9 @@ export function calculateProbabilities(probData: ProbabilityData, analyzeDataLin
     
     // Probabilidades - Estrutura e Linha Elétrica
     const PA = safeValues.PTA * safeValues.PB;
-    const PC = safeValues.PSPD_electric * safeValues.CLD_electric_int;
+    let PC = safeValues.PSPD_electric * safeValues.CLD_electric_int;
     const Pms = Math.pow(Ks1 * Ks2 * safeValues.Ks3_electric_int * Ks4_electric_int, 2);
-    const PM = safeValues.PSPD_electric * Pms;
+    let PM = safeValues.PSPD_electric * Pms;
     const PU = safeValues.PTU_electric * safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
     const PV = safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
     const PW = safeValues.PSPD_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
@@ -250,6 +255,13 @@ export function calculateProbabilities(probData: ProbabilityData, analyzeDataLin
         }
     }
     
+    // Se o usuário optar por não analisar sistemas internos da linha elétrica,
+    // zere PC e PM (mantendo cálculos externos e derivados como Ks4, etc.)
+    if (!analyzeElectricLineProbs) {
+        PC = 0;
+        PM = 0;
+    }
+
     // Garantir que todos os valores retornados sejam números válidos
     const result = {
         PA: Number(PA) || 0,
@@ -500,6 +512,7 @@ export function aggregateFrequenciesForZones(
     eventCalcs: Partial<CalculationResults>,
     globalProbData: ProbabilityData,
     analyze_data_line_probabilities: boolean,
+    analyze_electric_line_probabilities: boolean,
     freqConfig: AnalysisData['frequency_config'],
     has_electric_line: boolean,
     has_data_line: boolean
@@ -509,7 +522,8 @@ export function aggregateFrequenciesForZones(
         const zoneBaseCalcs = calculateProbabilities(
             zone.probability_data || globalProbData,
             analyze_data_line_probabilities,
-            has_data_line
+            has_data_line,
+            analyze_electric_line_probabilities
         );
         const pZone = mergeZoneProbabilities(zoneBaseCalcs, zone);
         const fr = calculateFrequencies(eventCalcs, pZone, freqConfig, has_electric_line, has_data_line);

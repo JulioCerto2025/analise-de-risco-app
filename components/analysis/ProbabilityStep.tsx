@@ -280,6 +280,44 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             const baseProb = (zone.probability_data || data.probability_data);
             const newZoneProb: ProbabilityData = { ...baseProb, ...updates } as ProbabilityData;
 
+            // Limpeza de overrides dependentes quando parâmetros-base mudam
+            const fields = Object.keys(updates);
+            const clearKeys = new Set<string>();
+
+            // PB selecionado diretamente: remover override PB
+            if (fields.includes('PB')) {
+                clearKeys.add('PB');
+            }
+            // Mudanças que afetam probabilidades internas de linha elétrica
+            if (fields.includes('PSPD_electric') || fields.includes('CLD_electric_int') || fields.includes('Ks3_electric_int')) {
+                clearKeys.add('PC');
+                clearKeys.add('PM');
+            }
+            // Mudanças que afetam probabilidades internas de linha de dados
+            if (fields.includes('PSPD_data') || fields.includes('CLD_data_int') || fields.includes('Ks3_data_int')) {
+                clearKeys.add('PCT');
+                clearKeys.add('PMT');
+            }
+            // Mudanças externas que impactam PU/PV/PW/PZ (elétrica)
+            if (fields.includes('CLD_electric_ext') || fields.includes('CLI_electric_ext') || fields.includes('is_shielded_electric_ext') || fields.includes('rs_electric_ext') || fields.includes('Uw_electric_ext')) {
+                clearKeys.add('PU');
+                clearKeys.add('PV');
+                clearKeys.add('PW');
+                clearKeys.add('PZ');
+            }
+            // Mudanças externas que impactam PUT/PVT/PWT/PZT (dados)
+            if (fields.includes('CLD_data_ext') || fields.includes('CLI_data_ext') || fields.includes('is_shielded_data_ext') || fields.includes('rs_data_ext') || fields.includes('Uw_data_ext')) {
+                clearKeys.add('PUT');
+                clearKeys.add('PVT');
+                clearKeys.add('PWT');
+                clearKeys.add('PZT');
+            }
+            // PTU e PEB impactam conjuntos específicos
+            if (fields.includes('PTU_electric')) { clearKeys.add('PU'); }
+            if (fields.includes('PTU_data')) { clearKeys.add('PUT'); }
+            if (fields.includes('PEB_electric')) { clearKeys.add('PV'); clearKeys.add('PU'); }
+            if (fields.includes('PEB_data')) { clearKeys.add('PVT'); clearKeys.add('PUT'); }
+
             const electricExtChanged = 'is_shielded_electric_ext' in updates || 'rs_electric_ext' in updates || 'Uw_electric_ext' in updates;
             if (electricExtChanged) {
                 newZoneProb.PLD_electric_ext = calculatePld(
@@ -298,7 +336,13 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 );
             }
 
-            const updatedZones = zones.map(z => z.id === zoneId ? { ...z, probability_data: newZoneProb } : z);
+            const updatedZones = zones.map(z => {
+                if (z.id !== zoneId) return z;
+                const nextOverrides = { ...(z.probability_overrides || {}) };
+                // Remover todas as chaves marcadas para limpeza
+                clearKeys.forEach(k => { delete nextOverrides[k]; });
+                return { ...z, probability_data: newZoneProb, probability_overrides: nextOverrides };
+            });
             onChange({ zones: updatedZones });
         } else {
             const newProbData = { ...data.probability_data, ...updates };
@@ -441,10 +485,16 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                         value={currentZone?.probability_overrides?.PB ?? prob.PB} 
                                         options={PB_OPTIONS} 
                                         onUpdate={(v) => {
-                                            if (currentZone?.probability_overrides?.PB != null) {
-                                                handleRemoveProbOverride('PB');
-                                            }
-                                            handleProbabilityChangeForZone(activeZoneId, { PB: v });
+                                            // Atualiza PB e remove override em UM patch para evitar corrida de estado
+                                            const updatedZones = zones.map(z => {
+                                                if (z.id !== (currentZone?.id || activeZoneId)) return z;
+                                                const baseProb = (z.probability_data || data.probability_data);
+                                                const newZoneProb = { ...baseProb, PB: v } as ProbabilityData;
+                                                const nextOverrides = { ...(z.probability_overrides || {}) };
+                                                delete nextOverrides.PB;
+                                                return { ...z, probability_data: newZoneProb, probability_overrides: nextOverrides };
+                                            });
+                                            onChange({ zones: updatedZones });
                                         }} 
                                     />
                                 </div>
