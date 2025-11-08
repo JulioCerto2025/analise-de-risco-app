@@ -253,13 +253,17 @@ export function calculateProbabilities(
             Pmst = Math.pow(Ks1 * Ks2 * safeValues.Ks3_data_int * Ks4_data_int, 2);
             PMT = safeValues.PSPD_data * Pmst;
         }
+
+        // Se a análise da linha de dados estiver desativada para a zona, zere também os externos
+        if (!analyzeDataLineProbs) {
+            PUT = 0; PVT = 0; PWT = 0; PZT = 0; PCT = 0; PMT = 0;
+        }
     }
     
-    // Se o usuário optar por não analisar sistemas internos da linha elétrica,
-    // zere PC e PM (mantendo cálculos externos e derivados como Ks4, etc.)
+    // Se a análise da linha elétrica estiver desativada para a zona,
+    // zere internos (PC, PM) e externos (PU, PV, PW, PZ)
     if (!analyzeElectricLineProbs) {
-        PC = 0;
-        PM = 0;
+        PC = 0; PM = 0; PU = 0; PV = 0; PW = 0; PZ = 0;
     }
 
     // Garantir que todos os valores retornados sejam números válidos

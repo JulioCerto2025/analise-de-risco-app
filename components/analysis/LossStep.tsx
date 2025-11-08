@@ -374,9 +374,22 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         }
     }, [forceActiveZoneId, data.last_active_zone_id, zones, activeZoneId]);
     const isMobile = useIsMobile();
-    const [showGlobalBars, setShowGlobalBars] = useState(false);
+    const [showGlobalBars, setShowGlobalBars] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = window.localStorage.getItem('loss_showGlobalBars');
+            return saved === 'true';
+        }
+        return false;
+    });
 
     const [isFireRiskPanelOpen, setIsFireRiskPanelOpen] = useState(false);
+    
+    // Persistir seleção de "Mostrar barras globais" entre navegações
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('loss_showGlobalBars', String(showGlobalBars));
+        }
+    }, [showGlobalBars]);
     
     // Validações de população/tempo removidas para permitir digitação livre
 

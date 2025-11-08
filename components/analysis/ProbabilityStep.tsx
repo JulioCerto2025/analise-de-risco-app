@@ -186,7 +186,13 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const [electricSubTab, setElectricSubTab] = useState<'external' | 'internal'>('external');
     const [dataSubTab, setDataSubTab] = useState<'external' | 'internal'>('external');
     const isMobile = useIsMobile();
-    const [showGlobalBars, setShowGlobalBars] = useState(false);
+    const [showGlobalBars, setShowGlobalBars] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = window.localStorage.getItem('probability_showGlobalBars');
+            return saved === 'true';
+        }
+        return false;
+    });
     const { zones = [] } = data;
     const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
     // Removido conceito de visão Global para etapa 7
@@ -213,6 +219,13 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             setActiveTab('structure');
         }
     }, [data.has_electric_line, data.has_data_line, activeTab]);
+
+    // Persistir seleção de "Mostrar barras globais" entre navegações
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('probability_showGlobalBars', String(showGlobalBars));
+        }
+    }, [showGlobalBars]);
 
     // Centralized function to handle all probability state changes and recalculate PLD immediately.
     const handleProbabilityChange = useCallback((updates: Partial<ProbabilityData>) => {
@@ -567,7 +580,15 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                         onCheckedChange={(checked) => {
                                             const val = !!checked;
                                             if (currentZone) {
-                                                const updatedZones = zones.map(z => z.id === (currentZone?.id || activeZoneId) ? { ...z, analyze_electric_line_probabilities: val } : z);
+                                                const updatedZones = zones.map(z => {
+                                                    if (z.id !== (currentZone?.id || activeZoneId)) return z;
+                                                    // Ao desativar a análise da linha elétrica na zona, limpar overrides relacionados
+                                                    const nextOverrides = { ...(z.probability_overrides || {}) };
+                                                    if (!val) {
+                                                        ['PC','PM','PU','PV','PW','PZ'].forEach(k => { delete nextOverrides[k]; });
+                                                    }
+                                                    return { ...z, analyze_electric_line_probabilities: val, probability_overrides: nextOverrides };
+                                                });
                                                 onChange({ zones: updatedZones });
                                             } else {
                                                 onChange({ analyze_electric_line_probabilities: val });
@@ -697,7 +718,15 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                         onCheckedChange={(checked) => {
                                             const val = !!checked;
                                             if (currentZone) {
-                                                const updatedZones = zones.map(z => z.id === (currentZone?.id || activeZoneId) ? { ...z, analyze_data_line_probabilities: val } : z);
+                                                const updatedZones = zones.map(z => {
+                                                    if (z.id !== (currentZone?.id || activeZoneId)) return z;
+                                                    // Ao desativar a análise da linha de dados na zona, limpar overrides relacionados
+                                                    const nextOverrides = { ...(z.probability_overrides || {}) };
+                                                    if (!val) {
+                                                        ['PCT','PMT','PUT','PVT','PWT','PZT'].forEach(k => { delete nextOverrides[k]; });
+                                                    }
+                                                    return { ...z, analyze_data_line_probabilities: val, probability_overrides: nextOverrides };
+                                                });
                                                 onChange({ zones: updatedZones });
                                             } else {
                                                 onChange({ analyze_data_line_probabilities: val });
