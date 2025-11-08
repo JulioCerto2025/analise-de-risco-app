@@ -302,7 +302,12 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     // Pre-compute per-zone risk calculations when needed
     const perZoneRisk: { zone: Zone; risk: { [key: string]: number } }[] = multipleZones ? data.zones.map(zone => {
         const lossCalcs = calculateLossesForZone(zone);
-        const zoneBaseProbCalcs = calculateProbabilities(zone.probability_data || data.probability_data, data.analyze_data_line_probabilities, data.has_data_line);
+        const zoneBaseProbCalcs = calculateProbabilities(
+            zone.probability_data || data.probability_data,
+            data.analyze_data_line_probabilities,
+            data.has_data_line,
+            data.analyze_electric_line_probabilities
+        );
         const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
         return { zone, risk: r };
@@ -355,7 +360,12 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     let activeZoneChart: { name: string; value: number }[] = [];
     if (activeZone) {
         const lossCalcs = calculateLossesForZone(activeZone);
-        const zoneBaseProbCalcs = calculateProbabilities(activeZone.probability_data || data.probability_data, data.analyze_data_line_probabilities, data.has_data_line);
+        const zoneBaseProbCalcs = calculateProbabilities(
+            activeZone.probability_data || data.probability_data,
+            data.analyze_data_line_probabilities,
+            data.has_data_line,
+            data.analyze_electric_line_probabilities
+        );
         const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, activeZone);
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
         activeZoneRisk = r;
