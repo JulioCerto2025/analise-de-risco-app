@@ -142,6 +142,7 @@ interface SelectContextType {
   selectedLabel?: string;
   setSelectedLabel?: (label: string | undefined) => void;
   triggerRef: React.RefObject<HTMLButtonElement>;
+  contentRef: React.RefObject<HTMLDivElement>;
 }
 
 const SelectContext = createContext<SelectContextType | null>(null);
@@ -152,6 +153,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const options = optionsProp || [];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,13 +167,17 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
+    const handleClickOutside = (event: MouseEvent | Event) => {
+      const target = event.target as Node | null;
+      const inWrapper = !!(ref.current && target && ref.current.contains(target));
+      const inContent = !!(contentRef.current && target && contentRef.current.contains(target));
+      if (!inWrapper && !inContent) {
         handleSetOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // Usar 'click' para permitir que o onClick do item dispare antes
+    document.addEventListener("click", handleClickOutside, true);
+    return () => document.removeEventListener("click", handleClickOutside, true);
   }, [ref]);
 
   useEffect(() => {
@@ -241,7 +247,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   };
 
   return (
-    <SelectContext.Provider value={{ open, setOpen: handleSetOpen, value: internalValue, setValue: handleValueChange, onValueChange, placeholder, options: options || [], handleKeyDown, selectedLabel, setSelectedLabel, triggerRef }}>
+    <SelectContext.Provider value={{ open, setOpen: handleSetOpen, value: internalValue, setValue: handleValueChange, onValueChange, placeholder, options: options || [], handleKeyDown, selectedLabel, setSelectedLabel, triggerRef, contentRef }}>
       <div className={wrapperClassName || "relative"} ref={ref}>{children}</div>
     </SelectContext.Provider>
   );
@@ -325,9 +331,17 @@ export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttribut
       window.removeEventListener('scroll', recalc);
     };
   }, [context.open]);
+
+  // Expor a referência do conteúdo para o handler de clique externo
+  const setPortalRef = (node: HTMLDivElement | null) => {
+    if (!node) return;
+    context.contentRef.current = node;
+    if (typeof ref === 'function') ref(node as any);
+    else if (ref && 'current' in (ref as any)) (ref as any).current = node;
+  };
   
   return createPortal(
-      <div ref={ref} style={{ position: 'fixed', left, top: computedTop, width, transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] min-w-[12rem] max-w-[56rem] rounded-xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 border-slate-600 ${className}`}>
+      <div ref={setPortalRef} style={{ position: 'fixed', left, top: computedTop, width, transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] min-w-[12rem] max-w-[56rem] rounded-xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 border-slate-600 ${className}`}>
           <div ref={containerRef} className="p-1 overflow-auto" style={{ maxHeight: availableHeight }}>
               {children}
           </div>
