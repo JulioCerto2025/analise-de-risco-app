@@ -112,6 +112,12 @@ export const COMBINED_CLD_CLI_OPTIONS = [
     { value: '0_0',   label: 'Linha/Cabo sem risco (Isolada, Metálica, Fibra, etc.) (CLD=0, CLI=0)' },
 ];
 
+// Opções apenas de CLD para uso nas abas internas (sem CLI)
+export const CLD_ONLY_OPTIONS = [
+    { value: 1, label: 'Sem blindagem (CLD=1)' },
+    { value: 0, label: 'Linha/Cabo sem risco (CLD=0)' },
+];
+
 export const PTU_OPTIONS = [
     { value: 1, label: "Sem Proteção 1" },
     { value: 0.1, label: "Alertas Visíveis 0,1" },
