@@ -403,7 +403,6 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 );
             }
 
-            const fields = Object.keys(updates);
             const keysToSync = GLOBAL_SYNC_KEYS.filter(k => fields.includes(k));
             if (keysToSync.length > 0) {
                 const changesForAll: Partial<ProbabilityData> = {};
