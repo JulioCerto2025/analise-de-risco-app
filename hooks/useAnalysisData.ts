@@ -39,6 +39,7 @@ const initialInputData: AnalysisInputData = {
         } 
     }],
     last_active_zone_id: 'default-zone-1',
+    last_active_view_id: 'GLOBAL',
     h: 25.5,
     l: 23,
     w: 22.5,
@@ -177,6 +178,14 @@ export function useAnalysisData() {
                     const zoneIds = (raw?.zones ?? base.zones).map((z: any) => z?.id || z?.name).filter(Boolean);
                     if (candidate && zoneIds.includes(candidate)) return candidate;
                     return zoneIds[0] || base.zones[0].id;
+                })(),
+                // Persistir última visão ativa (aceita 'GLOBAL' ou id de zona válido)
+                last_active_view_id: (() => {
+                    const candidate = (raw?.last_active_view_id ?? base.last_active_view_id) as string | undefined;
+                    const zoneIds = (raw?.zones ?? base.zones).map((z: any) => z?.id || z?.name).filter(Boolean);
+                    if (candidate === 'GLOBAL') return 'GLOBAL';
+                    if (candidate && zoneIds.includes(candidate)) return candidate;
+                    return 'GLOBAL';
                 })(),
                 selected_risk_components: {
                     ...base.selected_risk_components,

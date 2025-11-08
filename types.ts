@@ -158,6 +158,8 @@ export interface AnalysisInputData {
   zones: Zone[];
   // Persistência: última zona ativa selecionada na UI
   last_active_zone_id?: string;
+  // Persistência: última visão selecionada (pode ser 'GLOBAL' ou id de zona)
+  last_active_view_id?: string;
   h: number;
   l: number;
   w: number;

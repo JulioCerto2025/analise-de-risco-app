@@ -314,15 +314,15 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     }) : [];
 
     // Navegação entre Global e Zonas
-    const [activeViewId, setActiveViewId] = React.useState<string>(data.last_active_zone_id || 'GLOBAL');
+    const [activeViewId, setActiveViewId] = React.useState<string>(data.last_active_view_id || 'GLOBAL');
     React.useEffect(() => {
-        const desired = data.last_active_zone_id || 'GLOBAL';
+        const desired = data.last_active_view_id || 'GLOBAL';
         if (desired !== activeViewId) setActiveViewId(desired);
-    }, [data.last_active_zone_id]);
-    // Persistir sempre que a visão ativa for uma zona
+    }, [data.last_active_view_id]);
+    // Persistir sempre que a visão ativa mudar (Global ou Zona)
     React.useEffect(() => {
-        if (activeViewId && activeViewId !== 'GLOBAL') {
-            try { onUpdate({ last_active_zone_id: activeViewId } as any); } catch { /* noop */ }
+        if (activeViewId) {
+            try { onUpdate({ last_active_view_id: activeViewId } as any); } catch { /* noop */ }
         }
     }, [activeViewId]);
     const zoneIds = (data.zones || []).map(z => z.id);
@@ -331,12 +331,12 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     const goPrevView = () => {
         const nextView = viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length];
         setActiveViewId(nextView);
-        if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
+        try { onUpdate({ last_active_view_id: nextView } as any); } catch { /* noop */ }
     };
     const goNextView = () => {
         const nextView = viewOrder[(currentViewIndex + 1) % viewOrder.length];
         setActiveViewId(nextView);
-        if (nextView !== 'GLOBAL') try { onUpdate({ last_active_zone_id: nextView } as any); } catch { /* noop */ }
+        try { onUpdate({ last_active_view_id: nextView } as any); } catch { /* noop */ }
     };
 
     // Em caso de zona única, sempre usar visão Global
