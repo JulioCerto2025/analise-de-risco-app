@@ -128,6 +128,9 @@ export interface Zone {
   probability_overrides?: { [key: string]: number };
   // Define qual conjunto é homogêneo na zona: Probabilidade (P) ou Perdas (L)
   homogeneous_type?: 'P' | 'L';
+  // Flags por zona: permitem analisar sistemas internos de forma independente por zona
+  analyze_data_line_probabilities?: boolean;
+  analyze_electric_line_probabilities?: boolean;
 }
 
 export interface FireRiskInfo {

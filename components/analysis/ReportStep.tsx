@@ -369,15 +369,17 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
     const probabilityCalculations = useMemo(() => calculateProbabilities(
         data.probability_data,
         data.analyze_data_line_probabilities,
-        data.has_data_line
-    ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line]);
+        data.has_data_line,
+        data.analyze_electric_line_probabilities
+    ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line, data.analyze_electric_line_probabilities]);
     const zoneCalculations: ZoneCalculations[] = useMemo(() => {
         return data.zones.map(zone => {
             const lossCalculations = calculateLossesForZone(zone);
             const zoneBaseProbCalcs = calculateProbabilities(
                 (zone.probability_data || data.probability_data),
-                data.analyze_data_line_probabilities,
-                data.has_data_line
+                (zone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
+                data.has_data_line,
+                (zone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
             );
             const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
             const riskCalculations = calculateRisksForZone(
@@ -388,7 +390,7 @@ export function ReportStep({ data, onUpdate }: ReportStepProps) {
             );
             return { zone, lossCalculations, riskCalculations };
         });
-    }, [data.zones, eventCalculations, data.selected_risk_components, data.analyze_data_line_probabilities, data.has_data_line, data.probability_data]);
+    }, [data.zones, eventCalculations, data.selected_risk_components, data.has_data_line, data.probability_data]);
     const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
 
     // Removido: lógica de comparação com exemplo NBR 5419-2:2015

@@ -124,8 +124,11 @@ export function useAnalysisData() {
             name: 'Zona 1',
             loss_data: { ...initialInputData.zones[0].loss_data },
             probability_overrides: {},
-            homogeneous_type: 'L'
-        };
+            homogeneous_type: 'L',
+            // Flags por zona: defaultam aos valores globais iniciais
+            analyze_data_line_probabilities: initialInputData.analyze_data_line_probabilities,
+            analyze_electric_line_probabilities: initialInputData.analyze_electric_line_probabilities,
+        } as Zone;
         if (!Array.isArray(zs) || zs.length === 0) {
             return [defaultZoneTemplate];
         }
@@ -143,7 +146,21 @@ export function useAnalysisData() {
             }
             const probability_overrides = (z && z.probability_overrides && typeof z.probability_overrides === 'object') ? z.probability_overrides : {};
             const homogeneous_type = (z && (z.homogeneous_type === 'P' || z.homogeneous_type === 'L')) ? z.homogeneous_type : 'L';
-            return { id, name, loss_data: loss, probability_overrides, homogeneous_type } as Zone;
+            const analyze_data_line_probabilities = (typeof z?.analyze_data_line_probabilities === 'boolean') 
+                ? z.analyze_data_line_probabilities 
+                : defaultZoneTemplate.analyze_data_line_probabilities!;
+            const analyze_electric_line_probabilities = (typeof z?.analyze_electric_line_probabilities === 'boolean') 
+                ? z.analyze_electric_line_probabilities 
+                : defaultZoneTemplate.analyze_electric_line_probabilities!;
+            return { 
+                id, 
+                name, 
+                loss_data: loss, 
+                probability_overrides, 
+                homogeneous_type,
+                analyze_data_line_probabilities,
+                analyze_electric_line_probabilities,
+            } as Zone;
         });
     };
 
@@ -552,9 +569,9 @@ export function useAnalysisData() {
             // Calcular probabilidades base por zona (ou usar global quando a zona não define parâmetros próprios)
             const zoneBaseProbCalcs = calculateProbabilities(
                 (zone.probability_data || data.probability_data),
-                data.analyze_data_line_probabilities,
+                (zone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
                 data.has_data_line,
-                data.analyze_electric_line_probabilities
+                (zone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
             );
             // Mesclar com overrides da zona (se houver)
             const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
@@ -566,7 +583,13 @@ export function useAnalysisData() {
             );
             return { zone, lossCalculations, riskCalculations };
         });
-    }, [data.zones, eventCalculations, data.selected_risk_components, data.analyze_data_line_probabilities, data.has_data_line, data.probability_data, data.analyze_electric_line_probabilities]);
+    }, [
+        data.zones, 
+        eventCalculations, 
+        data.selected_risk_components, 
+        data.has_data_line, 
+        data.probability_data
+    ]);
 
     // Memoized aggregation of risks from all zones
     const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);

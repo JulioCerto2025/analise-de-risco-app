@@ -521,9 +521,9 @@ export function aggregateFrequenciesForZones(
     zones.forEach((zone) => {
         const zoneBaseCalcs = calculateProbabilities(
             zone.probability_data || globalProbData,
-            analyze_data_line_probabilities,
+            (zone.analyze_data_line_probabilities ?? analyze_data_line_probabilities),
             has_data_line,
-            analyze_electric_line_probabilities
+            (zone.analyze_electric_line_probabilities ?? analyze_electric_line_probabilities)
         );
         const pZone = mergeZoneProbabilities(zoneBaseCalcs, zone);
         const fr = calculateFrequencies(eventCalcs, pZone, freqConfig, has_electric_line, has_data_line);

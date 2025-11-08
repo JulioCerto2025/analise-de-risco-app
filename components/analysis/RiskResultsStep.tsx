@@ -304,9 +304,9 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         const lossCalcs = calculateLossesForZone(zone);
         const zoneBaseProbCalcs = calculateProbabilities(
             zone.probability_data || data.probability_data,
-            data.analyze_data_line_probabilities,
+            (zone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
             data.has_data_line,
-            data.analyze_electric_line_probabilities
+            (zone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
         );
         const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
@@ -362,9 +362,9 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         const lossCalcs = calculateLossesForZone(activeZone);
         const zoneBaseProbCalcs = calculateProbabilities(
             activeZone.probability_data || data.probability_data,
-            data.analyze_data_line_probabilities,
+            (activeZone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
             data.has_data_line,
-            data.analyze_electric_line_probabilities
+            (activeZone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
         );
         const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, activeZone);
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);

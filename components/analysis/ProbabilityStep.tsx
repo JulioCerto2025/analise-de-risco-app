@@ -385,11 +385,13 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
     // Removido: cálculos locais de Ks4 não utilizados
 
+    const zoneAnalyzeData = (currentZone?.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities);
+    const zoneAnalyzeElectric = (currentZone?.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities);
     const zoneProbCalcsBase = calculateProbabilities(
         prob,
-        data.analyze_data_line_probabilities,
+        zoneAnalyzeData,
         data.has_data_line,
-        data.analyze_electric_line_probabilities
+        zoneAnalyzeElectric
     );
     const zoneProbCalcs = mergeZoneProbabilities(zoneProbCalcsBase, currentZone || { id: '', name: '', loss_data: {} });
     const chartData = Object.entries(zoneProbCalcs)
@@ -531,8 +533,16 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <div className="flex items-center space-x-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                     <Checkbox
                                         id={`analyze_electric_line_probs_active`}
-                                        checked={data.analyze_electric_line_probabilities}
-                                        onCheckedChange={(checked) => onChange({ analyze_electric_line_probabilities: !!checked })}
+                                        checked={zoneAnalyzeElectric}
+                                        onCheckedChange={(checked) => {
+                                            const val = !!checked;
+                                            if (currentZone) {
+                                                const updatedZones = zones.map(z => z.id === (currentZone?.id || activeZoneId) ? { ...z, analyze_electric_line_probabilities: val } : z);
+                                                onChange({ zones: updatedZones });
+                                            } else {
+                                                onChange({ analyze_electric_line_probabilities: val });
+                                            }
+                                        }}
                                     />
                                     <Label htmlFor={`analyze_electric_line_probs_active`} className="cursor-pointer flex-1">
                                         Analisar Fatores de Probabilidade para Linha Elétrica
@@ -542,7 +552,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                     Desmarque esta opção se a linha elétrica não possui cabeamento interno.
                                 </p>
                                 <AnimatePresence>
-                                    {data.analyze_electric_line_probabilities && (
+                                    {zoneAnalyzeElectric && (
                                         <motion.div
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{ opacity: 1, height: 'auto' }}
@@ -653,8 +663,16 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <div className="flex items-center space-x-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                     <Checkbox
                                         id={`analyze_data_line_probs_active`}
-                                        checked={data.analyze_data_line_probabilities}
-                                        onCheckedChange={(checked) => onChange({ analyze_data_line_probabilities: !!checked })}
+                                        checked={zoneAnalyzeData}
+                                        onCheckedChange={(checked) => {
+                                            const val = !!checked;
+                                            if (currentZone) {
+                                                const updatedZones = zones.map(z => z.id === (currentZone?.id || activeZoneId) ? { ...z, analyze_data_line_probabilities: val } : z);
+                                                onChange({ zones: updatedZones });
+                                            } else {
+                                                onChange({ analyze_data_line_probabilities: val });
+                                            }
+                                        }}
                                     />
                                     <Label htmlFor={`analyze_data_line_probs_active`} className="cursor-pointer flex-1">
                                         Analisar Fatores de Probabilidade para Linha de Dados
@@ -664,7 +682,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                     Desmarque esta opção se a linha de dados termina na entrada (ex: modem) e não possui cabeamento interno.
                                 </p>
                                 <AnimatePresence>
-                                    {data.analyze_data_line_probabilities && (
+                                    {zoneAnalyzeData && (
                                         <motion.div
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{ opacity: 1, height: 'auto' }}

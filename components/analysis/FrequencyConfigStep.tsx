@@ -439,8 +439,9 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
     if (activeZone) {
         const zoneBaseCalcs = calculateProbabilities(
             activeZone.probability_data || data.probability_data,
-            data.analyze_data_line_probabilities,
-            data.has_data_line
+            (activeZone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
+            data.has_data_line,
+            (activeZone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
         );
         const pZone = mergeZoneProbabilities(zoneBaseCalcs, activeZone);
         zoneFr = calculateFrequencies(
