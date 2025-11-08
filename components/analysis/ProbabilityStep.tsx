@@ -443,7 +443,21 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         return Number.isFinite(n) && !Number.isNaN(n) ? n : 0;
     };
     const chartData = Object.entries(zoneProbCalcs)
-        .filter(([key]) => !['Ks1', 'Ks2', 'Ks4_electric_int', 'Ks4_data_int', 'Pli_electric_ext', 'Pli_data_ext', 'PEB_electric', 'PEB_data', 'Pms', 'Pmst'].includes(key)) 
+        .filter(([key]) => ![
+            'Ks1',
+            'Ks2',
+            'Ks4_electric_int',
+            'Ks4_data_int',
+            'Pli_electric_ext',
+            'Pli_data_ext',
+            'PEB_electric',
+            'PEB_data',
+            'Pms',
+            'Pmst',
+            // Ocultar barras de parâmetros PSPD (elétrica e dados) conforme solicitado
+            'PSPD_electric',
+            'PSPD_data'
+        ].includes(key)) 
         .map(([key, value]) => ({ 
             name: key, 
             value: toFinite(value), 
