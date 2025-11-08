@@ -293,16 +293,31 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             // PB selecionado diretamente: remover override PB
             if (fields.includes('PB')) {
                 clearKeys.add('PB');
+                // PB impacta PA = PTA × PB, limpar override de PA para refletir novo PB
+                clearKeys.add('PA');
+            }
+            // PTA impacta PA = PTA × PB, limpar override de PA quando PTA muda
+            if (fields.includes('PTA')) {
+                clearKeys.add('PA');
             }
             // Mudanças que afetam probabilidades internas de linha elétrica
-            if (fields.includes('PSPD_electric') || fields.includes('CLD_electric_int') || fields.includes('Ks3_electric_int')) {
+            if (fields.includes('PSPD_electric') || fields.includes('CLD_electric_int') || fields.includes('Ks3_electric_int') || fields.includes('Ks4_electric_int')) {
                 clearKeys.add('PC');
                 clearKeys.add('PM');
+                // PSPD_electric também impacta probabilidades externas PW/PZ
+                if (fields.includes('PSPD_electric')) { clearKeys.add('PW'); clearKeys.add('PZ'); }
+            }
+            // Ks1/Ks2 dependem de wm1/wm2 e impactam PM/PMT via Pms/Pmst
+            if (fields.includes('wm1') || fields.includes('wm2')) {
+                clearKeys.add('PM');
+                clearKeys.add('PMT');
             }
             // Mudanças que afetam probabilidades internas de linha de dados
-            if (fields.includes('PSPD_data') || fields.includes('CLD_data_int') || fields.includes('Ks3_data_int')) {
+            if (fields.includes('PSPD_data') || fields.includes('CLD_data_int') || fields.includes('Ks3_data_int') || fields.includes('Ks4_data_int')) {
                 clearKeys.add('PCT');
                 clearKeys.add('PMT');
+                // PSPD_data também impacta probabilidades externas PWT/PZT
+                if (fields.includes('PSPD_data')) { clearKeys.add('PWT'); clearKeys.add('PZT'); }
             }
             // Mudanças externas que impactam PU/PV/PW/PZ (elétrica)
             if (fields.includes('CLD_electric_ext') || fields.includes('CLI_electric_ext') || fields.includes('is_shielded_electric_ext') || fields.includes('rs_electric_ext') || fields.includes('Uw_electric_ext')) {
@@ -399,10 +414,19 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         data.has_data_line,
         zoneAnalyzeElectric
     );
+    // Cálculos globais (projeto) para comparação nas barras — usam os parâmetros globais do projeto
+    const globalAnalyzeData = (data.analyze_data_line_probabilities ?? zoneAnalyzeData);
+    const globalAnalyzeElectric = (data.analyze_electric_line_probabilities ?? zoneAnalyzeElectric);
+    const globalProbCalcsBase = calculateProbabilities(
+        data.probability_data,
+        globalAnalyzeData,
+        data.has_data_line,
+        globalAnalyzeElectric
+    );
     const zoneProbCalcs = mergeZoneProbabilities(zoneProbCalcsBase, currentZone || { id: '', name: '', loss_data: {} });
     const chartData = Object.entries(zoneProbCalcs)
         .filter(([key]) => !['Ks1', 'Ks2', 'Ks4_electric_int', 'Ks4_data_int', 'Pli_electric_ext', 'Pli_data_ext', 'PEB_electric', 'PEB_data', 'Pms', 'Pmst'].includes(key)) 
-        .map(([key, value]) => ({ name: key, value, ...(showGlobalBars ? { globalValue: (zoneProbCalcsBase as any)[key] } : {}), fill: '#3b82f6' }));
+        .map(([key, value]) => ({ name: key, value, ...(showGlobalBars ? { globalValue: (globalProbCalcsBase as any)[key] } : {}), fill: '#3b82f6' }));
     
     const { Ks1: calculatedKs1 = 0, Ks2: calculatedKs2 = 0 } = zoneProbCalcsBase;
     const isKs1Capped = (prob.wm1 || 0) * 0.12 > 1;
