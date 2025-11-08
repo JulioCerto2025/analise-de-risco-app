@@ -227,8 +227,13 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         }
     }, [showGlobalBars]);
 
+    // Chaves que devem sincronizar entre global e todas as zonas
+    const GLOBAL_SYNC_KEYS = ['PB', 'PEB_electric', 'PEB_data', 'PSPD_electric', 'PSPD_data'];
+
     // Centralized function to handle all probability state changes and recalculate PLD immediately.
     const handleProbabilityChange = useCallback((updates: Partial<ProbabilityData>) => {
+        const fields = Object.keys(updates);
+        const keysToSync = GLOBAL_SYNC_KEYS.filter(k => fields.includes(k));
         // Se existe uma zona ativa, atualiza os parâmetros de probabilidade apenas daquela zona.
         if (currentZone) {
             const newZoneProb: ProbabilityData = { ...(currentZone.probability_data || data.probability_data), ...updates } as ProbabilityData;
@@ -251,8 +256,23 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 );
             }
 
-            const updatedZones = zones.map(z => z.id === (currentZone?.id || activeZoneId) ? { ...z, probability_data: newZoneProb } : z);
-            onChange({ zones: updatedZones });
+            if (keysToSync.length > 0) {
+                const changesForAll: Partial<ProbabilityData> = {};
+                keysToSync.forEach(k => { (changesForAll as any)[k] = (newZoneProb as any)[k]; });
+                const updatedZones = zones.map(z => {
+                    const base = (z.probability_data || data.probability_data);
+                    const merged = { ...base, ...changesForAll } as ProbabilityData;
+                    // Para a zona ativa, manter também outras mudanças específicas
+                    const finalProb = z.id === (currentZone?.id || activeZoneId) ? { ...merged, ...updates } as ProbabilityData : merged;
+                    const nextOverrides = { ...(z.probability_overrides || {}) } as any;
+                    keysToSync.forEach(k => { delete nextOverrides[k]; });
+                    return { ...z, probability_data: finalProb, probability_overrides: nextOverrides };
+                });
+                onChange({ zones: updatedZones, probability_data: { ...data.probability_data, ...changesForAll } });
+            } else {
+                const updatedZones = zones.map(z => z.id === (currentZone?.id || activeZoneId) ? { ...z, probability_data: newZoneProb } : z);
+                onChange({ zones: updatedZones });
+            }
         } else {
             const newProbData = { ...data.probability_data, ...updates };
             const electricExtChanged = 'is_shielded_electric_ext' in updates || 'rs_electric_ext' in updates || 'Uw_electric_ext' in updates;
@@ -271,7 +291,20 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     newProbData.is_shielded_data_ext
                 );
             }
-            onChange({ probability_data: newProbData });
+            if (keysToSync.length > 0) {
+                const changesForAll: Partial<ProbabilityData> = {};
+                keysToSync.forEach(k => { (changesForAll as any)[k] = (newProbData as any)[k]; });
+                const updatedZones = zones.map(z => {
+                    const base = (z.probability_data || data.probability_data);
+                    const merged = { ...base, ...changesForAll } as ProbabilityData;
+                    const nextOverrides = { ...(z.probability_overrides || {}) } as any;
+                    keysToSync.forEach(k => { delete nextOverrides[k]; });
+                    return { ...z, probability_data: merged, probability_overrides: nextOverrides };
+                });
+                onChange({ probability_data: newProbData, zones: updatedZones });
+            } else {
+                onChange({ probability_data: newProbData });
+            }
         }
     }, [currentZone, zones, activeZoneId, data.probability_data, onChange]);
     
@@ -370,14 +403,32 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 );
             }
 
-            const updatedZones = zones.map(z => {
-                if (z.id !== zoneId) return z;
-                const nextOverrides = { ...(z.probability_overrides || {}) };
-                // Remover todas as chaves marcadas para limpeza
-                clearKeys.forEach(k => { delete nextOverrides[k]; });
-                return { ...z, probability_data: newZoneProb, probability_overrides: nextOverrides };
-            });
-            onChange({ zones: updatedZones });
+            const fields = Object.keys(updates);
+            const keysToSync = GLOBAL_SYNC_KEYS.filter(k => fields.includes(k));
+            if (keysToSync.length > 0) {
+                const changesForAll: Partial<ProbabilityData> = {};
+                keysToSync.forEach(k => { (changesForAll as any)[k] = (newZoneProb as any)[k]; });
+                const updatedZones = zones.map(z => {
+                    const base = (z.probability_data || data.probability_data);
+                    const mergedBase = { ...base, ...changesForAll } as ProbabilityData;
+                    const finalProb = z.id === zoneId ? { ...mergedBase, ...updates } as ProbabilityData : mergedBase;
+                    const nextOverrides = { ...(z.probability_overrides || {}) } as any;
+                    // Remover todas as chaves marcadas para limpeza
+                    clearKeys.forEach(k => { delete nextOverrides[k]; });
+                    keysToSync.forEach(k => { delete nextOverrides[k]; });
+                    return { ...z, probability_data: finalProb, probability_overrides: nextOverrides };
+                });
+                onChange({ zones: updatedZones, probability_data: { ...data.probability_data, ...changesForAll } });
+            } else {
+                const updatedZones = zones.map(z => {
+                    if (z.id !== zoneId) return z;
+                    const nextOverrides = { ...(z.probability_overrides || {}) };
+                    // Remover todas as chaves marcadas para limpeza
+                    clearKeys.forEach(k => { delete nextOverrides[k]; });
+                    return { ...z, probability_data: newZoneProb, probability_overrides: nextOverrides };
+                });
+                onChange({ zones: updatedZones });
+            }
         } else {
             const newProbData = { ...data.probability_data, ...updates };
             const electricExtChanged = 'is_shielded_electric_ext' in updates || 'rs_electric_ext' in updates || 'Uw_electric_ext' in updates;
@@ -396,7 +447,22 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     newProbData.is_shielded_data_ext
                 );
             }
-            onChange({ probability_data: newProbData });
+            const fields = Object.keys(updates);
+            const keysToSync = GLOBAL_SYNC_KEYS.filter(k => fields.includes(k));
+            if (keysToSync.length > 0) {
+                const changesForAll: Partial<ProbabilityData> = {};
+                keysToSync.forEach(k => { (changesForAll as any)[k] = (newProbData as any)[k]; });
+                const updatedZones = zones.map(z => {
+                    const base = (z.probability_data || data.probability_data);
+                    const merged = { ...base, ...changesForAll } as ProbabilityData;
+                    const nextOverrides = { ...(z.probability_overrides || {}) } as any;
+                    keysToSync.forEach(k => { delete nextOverrides[k]; });
+                    return { ...z, probability_data: merged, probability_overrides: nextOverrides };
+                });
+                onChange({ probability_data: newProbData, zones: updatedZones });
+            } else {
+                onChange({ probability_data: newProbData });
+            }
         }
     }, [zones, data.probability_data, onChange]);
 
