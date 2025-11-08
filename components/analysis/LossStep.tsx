@@ -169,7 +169,7 @@ const SelectInput = ({ label, value, options, onUpdate }: { label: string, value
                 onValueChange={(v) => onUpdate(parseFloat(v))} 
                 options={options}
             >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="min-w-[220px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                     {options.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                 </SelectContent>
@@ -177,6 +177,15 @@ const SelectInput = ({ label, value, options, onUpdate }: { label: string, value
         </div>
     );
 };
+
+const ReadOnlyValue = ({ label, value, currency }: { label: string; value: number; currency?: boolean }) => (
+    <div className="space-y-2">
+        <Label>{label}</Label>
+        <div className="px-3 py-2 rounded bg-slate-800/60 border border-slate-700 text-slate-100 font-mono">
+            {currency ? `R$ ${Number(value || 0).toLocaleString('pt-BR')}` : Number(value || 0).toLocaleString('pt-BR')}
+        </div>
+    </div>
+);
 
 const formatValue = (value: number) => formatSmartNumber(value, { useScientificBelow: 0.001, scientificPrecision: 2, maxDecimals: 3 });
 
@@ -237,7 +246,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
             const vm: Record<string, number> = { ...(lossData || {}) };
             if (lossKey === 'LA') {
                 const rt = vm['rt'] || 0;
-                const LT = vm['LT'] || vm['lt'] || 0.01;
+                const LT = (vm['lt4'] ?? vm['LT'] ?? vm['lt'] ?? 0.01);
                 const rs = vm['rs'] || 0;
                 const nz = vm['nz'] || 0;
                 const nt = vm['nt'] || 0;
@@ -415,7 +424,17 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
             // Outros campos: aplicar somente na zona ativa
             nextZones = nextZones.map(z => {
                 if (z.id !== activeZoneId) return z;
-                return { ...z, loss_data: { ...z.loss_data, [field]: value as number } };
+                const updatedLoss = { ...z.loss_data, [field]: value as number } as LossData;
+                // Se mudou algum componente econômico, atualizar CT automaticamente como soma de ca+cb+cc+cs+ce
+                if (['ca','cb','cc','cs','ce'].includes(field as string)) {
+                    const ctSum = (Number(updatedLoss.ca) || 0)
+                        + (Number(updatedLoss.cb) || 0)
+                        + (Number(updatedLoss.cc) || 0)
+                        + (Number(updatedLoss.cs) || 0)
+                        + (Number(updatedLoss.ce) || 0);
+                    (updatedLoss as any).ct_economic = ctSum;
+                }
+                return { ...z, loss_data: updatedLoss };
             });
         }
 
@@ -605,26 +624,27 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                 )}
 
                 {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'cultural' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                        <SelectInput label="Lf3 - Tipo de Dano" value={lossData.lf3 ?? 0.1} options={LF3_OPTIONS} onUpdate={val => handleUpdate('lf3', val)} />
-                        <DecimalInput label="Valor do Patrimônio (cz)" value={lossData.cz ?? 0} onUpdate={val => handleUpdate('cz', val)} />
-                        <DecimalInput label="Valor Total (ct)" value={lossData.ct_cultural ?? 1} onUpdate={val => handleUpdate('ct_cultural', val)} />
-                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                            <SelectInput label="Lf3 - Tipo de Dano" value={lossData.lf3 ?? 0.1} options={LF3_OPTIONS} onUpdate={val => handleUpdate('lf3', val)} />
+                            <DecimalInput label="Valor do Patrimônio (cz)" value={lossData.cz ?? 0} onUpdate={val => handleUpdate('cz', val)} useThousands currency />
+                            <DecimalInput label="Valor Total (ct)" value={lossData.ct_cultural ?? 1} onUpdate={val => handleUpdate('ct_cultural', val)} useThousands currency />
+                        </div>
                 )}
 
                 {effectiveHomogeneousType === 'L' && activeLossTypeTab === 'economica' && (
                     <div>
-                        <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-4 pt-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 pt-2">
                             <SelectInput label="Lf4 - Dano Físico" value={lossData.lf4 ?? 0.2} options={LF4_OPTIONS} onUpdate={val => handleUpdate('lf4', val)} />
                             <SelectInput label="Lo4 - Falha de Sist." value={lossData.lo4 ?? 0.01} options={LO4_OPTIONS} onUpdate={val => handleUpdate('lo4', val)} />
+                            <SelectInput label="LT4 - Choque" value={(lossData as any).lt4 ?? 0.01} options={LT_OPTIONS} onUpdate={val => handleUpdate('lt4', val)} />
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <DecimalInput label="Animais (ca)" value={lossData.ca ?? 0} onUpdate={val => handleUpdate('ca', val)} />
-                            <DecimalInput label="Edificação (cb)" value={lossData.cb ?? 0} onUpdate={val => handleUpdate('cb', val)} />
-                            <DecimalInput label="Conteúdo (cc)" value={lossData.cc ?? 0} onUpdate={val => handleUpdate('cc', val)} />
-                            <DecimalInput label="Sistemas (cs)" value={lossData.cs ?? 0} onUpdate={val => handleUpdate('cs', val)} />
-                            <DecimalInput label="Atividades (ce)" value={lossData.ce ?? 0} onUpdate={val => handleUpdate('ce', val)} />
-                            <DecimalInput label="Valor Total (ct)" value={lossData.ct_economic ?? 1} onUpdate={val => handleUpdate('ct_economic', val)} />
+                            <DecimalInput label="Animais (ca)" value={lossData.ca ?? 0} onUpdate={val => handleUpdate('ca', val)} useThousands currency />
+                            <DecimalInput label="Edificação (cb)" value={lossData.cb ?? 0} onUpdate={val => handleUpdate('cb', val)} useThousands currency />
+                            <DecimalInput label="Conteúdo (cc)" value={lossData.cc ?? 0} onUpdate={val => handleUpdate('cc', val)} useThousands currency />
+                            <DecimalInput label="Sistemas (cs)" value={lossData.cs ?? 0} onUpdate={val => handleUpdate('cs', val)} useThousands currency />
+                            <DecimalInput label="Atividades (ce)" value={lossData.ce ?? 0} onUpdate={val => handleUpdate('ce', val)} useThousands currency />
+                            <ReadOnlyValue label="Valor Total (ct)" value={(Number(lossData.ca)||0)+(Number(lossData.cb)||0)+(Number(lossData.cc)||0)+(Number(lossData.cs)||0)+(Number(lossData.ce)||0)} currency />
                         </div>
                     </div>
                 )}

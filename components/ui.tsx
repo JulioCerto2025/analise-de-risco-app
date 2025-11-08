@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { createPortal } from 'react-dom';
 import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2 } from 'lucide-react';
 import { correctText } from '../lib/geminiService';
@@ -140,6 +141,7 @@ interface SelectContextType {
   handleKeyDown: (e: React.KeyboardEvent) => void;
   selectedLabel?: string;
   setSelectedLabel?: (label: string | undefined) => void;
+  triggerRef: React.RefObject<HTMLButtonElement>;
 }
 
 const SelectContext = createContext<SelectContextType | null>(null);
@@ -149,6 +151,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   const [internalValue, setInternalValue] = useState(value || '');
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const options = optionsProp || [];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -238,7 +241,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
   };
 
   return (
-    <SelectContext.Provider value={{ open, setOpen: handleSetOpen, value: internalValue, setValue: handleValueChange, onValueChange, placeholder, options: options || [], handleKeyDown, selectedLabel, setSelectedLabel }}>
+    <SelectContext.Provider value={{ open, setOpen: handleSetOpen, value: internalValue, setValue: handleValueChange, onValueChange, placeholder, options: options || [], handleKeyDown, selectedLabel, setSelectedLabel, triggerRef }}>
       <div className={wrapperClassName || "relative"} ref={ref}>{children}</div>
     </SelectContext.Provider>
   );
@@ -250,10 +253,16 @@ export const SelectTrigger = React.forwardRef<
 >(({ children, className, hideChevron, ...props }, ref) => {
     const context = useContext(SelectContext);
     if (!context) throw new Error("SelectTrigger must be used within a Select");
+    const setRefs = (node: HTMLButtonElement | null) => {
+      if (!node) return;
+      context.triggerRef.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref && 'current' in (ref as any)) (ref as any).current = node;
+    }
     
     return (
         <button 
-        ref={ref} 
+        ref={setRefs} 
         type="button" 
         onClick={() => context.setOpen(!context.open)} 
         onKeyDown={context.handleKeyDown}
@@ -286,13 +295,44 @@ export const SelectValue = () => {
 export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ children, className }, ref) => {
   const context = useContext(SelectContext);
   if (!context || !context.open) return null;
+  const rect = context.triggerRef.current?.getBoundingClientRect();
+  const left = (rect?.left || 0) + window.scrollX;
+  const topBelow = (rect?.bottom || 0) + window.scrollY + 4;
+  const width = rect?.width || undefined;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = React.useState<'below' | 'above'>('below');
+  const [computedTop, setComputedTop] = React.useState<number>(topBelow);
+  const [availableHeight, setAvailableHeight] = React.useState<number>(Math.floor(window.innerHeight * 0.6));
+
+  useEffect(() => {
+    const recalc = () => {
+      const r = context.triggerRef.current?.getBoundingClientRect();
+      const leftY = (r?.top || 0) + window.scrollY;
+      const belowY = (r?.bottom || 0) + window.scrollY + 4;
+      const spaceBelow = window.innerHeight - (r?.bottom || 0);
+      const spaceAbove = (r?.top || 0);
+      const shouldOpenAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+      setPosition(shouldOpenAbove ? 'above' : 'below');
+      setComputedTop(shouldOpenAbove ? leftY - 4 : belowY);
+      const avail = shouldOpenAbove ? spaceAbove - 12 : spaceBelow - 12;
+      setAvailableHeight(Math.max(160, Math.min(Math.floor(window.innerHeight * 0.7), Math.floor(avail))));
+    };
+    recalc();
+    window.addEventListener('resize', recalc);
+    window.addEventListener('scroll', recalc, { passive: true });
+    return () => {
+      window.removeEventListener('resize', recalc);
+      window.removeEventListener('scroll', recalc);
+    };
+  }, [context.open]);
   
-  return (
-      <div ref={ref} className={`absolute z-50 min-w-[8rem] rounded-xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 w-full mt-1 border-slate-600 ${className}`}>
-          <div className="p-1">
+  return createPortal(
+      <div ref={ref} style={{ position: 'fixed', left, top: computedTop, width, transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] min-w-[12rem] max-w-[56rem] rounded-xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 border-slate-600 ${className}`}>
+          <div ref={containerRef} className="p-1 overflow-auto" style={{ maxHeight: availableHeight }}>
               {children}
           </div>
-      </div>
+      </div>,
+      document.body
   );
 });
 SelectContent.displayName = "SelectContent";
@@ -330,7 +370,7 @@ export const SelectItem = React.forwardRef<
             ) : (
                 <div className="h-4 w-4" /> // Placeholder for alignment
             )}
-            <span className="ml-2 truncate">{label}{isValueRedundant ? '' : ':'}</span>
+            <span className="ml-2 whitespace-normal break-words">{label}{isValueRedundant ? '' : ':'}</span>
         </div>
         {showRightValue && !isValueRedundant && <span className="font-medium text-blue-400">{String(value)}</span>}
     </div>

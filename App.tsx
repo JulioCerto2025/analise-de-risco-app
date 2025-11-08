@@ -368,16 +368,16 @@ export default function App() {
                         </AnimatePresence>
                     </div>
                     {/* Barra de navegação móvel fixa com respeito ao safe-area e leve fundo */}
-                    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+                    <div className="md:hidden fixed left-0 right-0 z-50" style={{ bottom: 'env(safe-area-inset-bottom)' }}>
                         {/* Fundo sutil para evitar faixa branca ao tocar o final */}
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[64px]" style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(to top, rgba(2,6,23,0.95), rgba(2,6,23,0))' }} />
-                        <div className="mx-auto max-w-7xl px-3 pb-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[80px]" style={{ background: 'linear-gradient(to top, rgba(2,6,23,0.95), rgba(2,6,23,0))' }} />
+                        <div className="mx-auto max-w-7xl px-3 pb-2">
                             <div className="grid grid-cols-2 gap-2">
                                 <Button
                                     variant="outline"
                                     onClick={handlePrev}
                                     disabled={currentStep === 1}
-                                    className="flex items-center gap-2 w-full"
+                                    className="flex items-center gap-2 w-full h-12 text-base"
                                 >
                                     <ArrowLeft className="w-4 h-4" />
                                     Anterior
@@ -385,7 +385,7 @@ export default function App() {
                                 <Button
                                     onClick={handleNext}
                                     disabled={currentStep === STEPS.length}
-                                    className="flex items-center gap-2 w-full"
+                                    className="flex items-center gap-2 w-full h-12 text-base"
                                 >
                                     {currentStep === STEPS.length ? "Finalizar" : "Próximo"}
                                     <ArrowRight className="w-4 h-4" />

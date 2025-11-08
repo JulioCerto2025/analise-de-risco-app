@@ -436,7 +436,17 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                     <SelectInput label="PTA - Medidas de Proteção" value={prob.PTA} options={PTA_OPTIONS} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { PTA: v })} />
                                 </div>
                                 <div>
-                                    <SelectInput label="PB - Nível do SPDA" value={prob.PB} options={PB_OPTIONS} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { PB: v })} />
+                                    <SelectInput 
+                                        label="PB - Nível do SPDA" 
+                                        value={currentZone?.probability_overrides?.PB ?? prob.PB} 
+                                        options={PB_OPTIONS} 
+                                        onUpdate={(v) => {
+                                            if (currentZone?.probability_overrides?.PB != null) {
+                                                handleRemoveProbOverride('PB');
+                                            }
+                                            handleProbabilityChangeForZone(activeZoneId, { PB: v });
+                                        }} 
+                                    />
                                 </div>
                                 <div>
                                     <DecimalInput label="KS1: Largura da malha wm1 (m)" value={prob.wm1} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { wm1: v })} />
@@ -693,7 +703,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <YAxis tick={{ fill: '#94a3b8' }} />
                                 {!isMobile && (
                             <Tooltip 
-                                content={<CustomTooltip probData={prob} probCalcs={zoneProbCalcsBase} />}
+                            content={<CustomTooltip probData={prob} probCalcs={zoneProbCalcs} />}
                                 cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
                             />
                                 )}

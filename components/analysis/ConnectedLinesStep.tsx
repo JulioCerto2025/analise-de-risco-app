@@ -328,8 +328,8 @@ const SelectField = ({ label, value, options, onChange }: { label: string; value
     <div className="space-y-2">
         <Label>{label}</Label>
         <Select value={String(value)} onValueChange={onChange} options={options}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
+            <SelectTrigger className="min-w-[260px]"><SelectValue /></SelectTrigger>
+            <SelectContent className="max-w-[640px]">
                 {options.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
             </SelectContent>
         </Select>

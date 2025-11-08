@@ -12,12 +12,27 @@ interface DecimalInputProps {
     title?: string;
     isAiSuggested?: boolean;
     noWrapper?: boolean;
+    useThousands?: boolean;
+    currency?: boolean;
+    currencySymbol?: string;
 }
 
-export function DecimalInput({ id, label, value, onUpdate, placeholder, className, readOnly, title, isAiSuggested, noWrapper }: DecimalInputProps) {
+export function DecimalInput({ id, label, value, onUpdate, placeholder, className, readOnly, title, isAiSuggested, noWrapper, useThousands, currency, currencySymbol }: DecimalInputProps) {
     const [displayValue, setDisplayValue] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
+
+    const formatNumber = (num: number | undefined | null) => {
+        if (num === undefined || num === null || Number.isNaN(num)) return '';
+        if (currency) {
+            const formatted = num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+            return `${currencySymbol || 'R$'} ${formatted}`;
+        }
+        if (useThousands) {
+            return num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+        }
+        return String(num).replace('.', ',');
+    };
 
     useEffect(() => {
         // Atualiza visualização quando o prop muda, mas evita sobrescrever durante digitação ativa
@@ -25,7 +40,7 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
         if (value !== undefined && value !== null) {
             const currentNumericValue = parseFloat(displayValue.replace(',', '.'));
             if (isNaN(currentNumericValue) || currentNumericValue !== value) {
-                setDisplayValue(String(value).replace('.', ','));
+                setDisplayValue(formatNumber(value));
             }
         } else {
             setDisplayValue('');
@@ -40,7 +55,11 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
         setError(null);
         setDisplayValue(val);
 
-        const sanitized = val.replace(',', '.');
+        const sanitized = val
+            .replace(/\s/g, '')
+            .replace(/^R\$/, '')
+            .replace(/R\$|\./g, '')
+            .replace(',', '.');
         const numericValue = Number(sanitized);
 
         // Não bloqueia digitação; só atualiza quando for um número válido
@@ -57,16 +76,21 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
         if (val === '' || val === ',') {
             // Restaura visualmente o valor atual vindo do pai
             if (value !== undefined && value !== null) {
-                setDisplayValue(String(value).replace('.', ','));
+                setDisplayValue(formatNumber(value));
             } else {
                 setDisplayValue('');
             }
             return;
         }
-        const numericValue = parseFloat(val.replace(',', '.'));
+        const numericValue = parseFloat(val
+            .replace(/\s/g, '')
+            .replace(/^R\$/, '')
+            .replace(/R\$|\./g, '')
+            .replace(',', '.'));
         if (!isNaN(numericValue)) {
             // Garante sincronização final
             onUpdate(numericValue);
+            setDisplayValue(formatNumber(numericValue));
         }
     };
 
