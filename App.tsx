@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Alert, AlertDescription, AlertTitle } from "./components/ui";
 import { Step1Input } from './components/analysis/Step1Input';
@@ -308,6 +308,26 @@ export default function App() {
                 </aside>
 
                 <main className="flex-1">
+                    {/* Convite — Comunidade SPDA (WhatsApp) */}
+                    <div className="mb-4 rounded-lg border border-green-600/50 bg-green-900/30 p-4 shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-600/80 rounded-lg flex items-center justify-center shadow">
+                                <MessageCircle className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-sm sm:text-base font-semibold text-green-100">Convite: Comunidade SPDA (WhatsApp)</div>
+                                <p className="text-xs sm:text-sm text-green-200/90">Participe do grupo para aprender, tirar dúvidas e compartilhar experiências.</p>
+                            </div>
+                            <a
+                                href="https://chat.whatsapp.com/IawpsONjvohHjlE8Yhwe9s"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center rounded-xl text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2"
+                            >
+                                Entrar no grupo
+                            </a>
+                        </div>
+                    </div>
                     {/* Cabeçalho móvel: visível apenas no celular */}
                     <div className="md:hidden mb-4 bg-slate-950/70 backdrop-blur-lg border border-slate-500/50 p-4 rounded-lg shadow-2xl">
                         <div className="flex items-center gap-3">
