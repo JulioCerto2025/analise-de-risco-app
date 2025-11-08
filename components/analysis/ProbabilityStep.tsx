@@ -185,6 +185,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const isMobile = useIsMobile();
     const { zones = [] } = data;
     const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
+    const GLOBAL_ID = 'GLOBAL';
     useEffect(() => {
         const desired = data.last_active_zone_id || zones[0]?.id || '';
         if (desired && desired !== activeZoneId) {
@@ -193,7 +194,9 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             setActiveZoneId(zones[0]?.id || '');
         }
     }, [data.last_active_zone_id, zones, activeZoneId]);
-    const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
+    // Global só disponível quando há múltiplas zonas
+    const isGlobal = (zones.length > 1) && activeZoneId === GLOBAL_ID;
+    const currentZone = isGlobal ? undefined : (zones.find(z => z.id === activeZoneId) || zones[0]);
     const prob = (currentZone?.probability_data || data.probability_data);
     // Removidos: estados do modo de testes
     // Estado de zonas para edição de overrides por zona
@@ -275,6 +278,11 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
     // ===== Handlers específicos por zona =====
     const handleProbabilityChangeForZone = useCallback((zoneId: string, updates: Partial<ProbabilityData>) => {
+        // Se estiver em modo Global, delega para o handler global
+        if (zoneId === GLOBAL_ID) {
+            handleProbabilityChange(updates);
+            return;
+        }
         const zone = zones.find(z => z.id === zoneId);
         if (zone) {
             const baseProb = (zone.probability_data || data.probability_data);
@@ -367,6 +375,11 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     }, [zones, data.probability_data, onChange]);
 
     const handleCombinedChangeForZone = (zoneId: string, value: string, lineType: 'electric' | 'data', scope: 'external' | 'internal' = 'external') => {
+        // Se estiver em modo Global, delega para o handler global
+        if (zoneId === GLOBAL_ID) {
+            handleCombinedChange(value, lineType, scope);
+            return;
+        }
         const [cld, cli] = value.split('_').map(parseFloat);
         if (lineType === 'electric') {
             if (scope === 'external') {
@@ -443,7 +456,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     };
     const zoneHeading = makeZoneHeading(currentZone?.name, Math.max(0, currentZoneIndex));
     const multipleZones = zones.length > 1;
-    const activeHeading = multipleZones ? zoneHeading : 'Global';
+    const activeHeading = isGlobal ? 'Global' : (multipleZones ? zoneHeading : 'Global');
 
 
     // Removido conceito Global na etapa 7 — usamos apenas cálculos da zona ativa
@@ -456,9 +469,15 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     <CardHeader>
                         <CardTitle>{`Ajuste de Probabilidades — ${activeHeading}`}</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
                         {multipleZones && (
                             <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
+                                <TabButton 
+                                    isActive={activeZoneId === GLOBAL_ID}
+                                    onClick={() => setActiveZoneId(GLOBAL_ID)}
+                                >
+                                    Global
+                                </TabButton>
                                 {zones.map(zone => (
                                     <TabButton 
                                         key={zone.id} 
@@ -560,7 +579,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                             transition={{ duration: 0.3 }}
                                             className="overflow-visible"
                                         >
-                                            <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4">
+                                            <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 pt-2">
                                                 <div className="md:col-span-3 lg:col-span-3">
                                                     <SelectInput label="PTU - Medida de proteção" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={(v) => handleProbabilityChangeForZone(activeZoneId, { PTU_electric: v })} />
                                                 </div>
@@ -572,7 +591,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                 </div>
                                             </div>
 
-                                            <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg">
+                                            <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg mt-3">
                                                 <TabButton isActive={electricSubTab === 'external'} onClick={() => setElectricSubTab('external')}>Externa</TabButton>
                                                 <TabButton isActive={electricSubTab === 'internal'} onClick={() => setElectricSubTab('internal')}>Interna</TabButton>
                                             </div>
@@ -700,7 +719,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                 <div className="md:col-span-3 lg:col-span-3">
                                                     <SelectInput label="PSPD - Surto Ind. - D3" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={(v) => handleProbabilityChangeForZone(activeZoneId, { PSPD_data: v })} />
                                                 </div>
-                                                <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg md:col-span-6 lg:col-span-12">
+                                                <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg md:col-span-6 lg:col-span-12 mt-3">
                                                     <TabButton isActive={dataSubTab === 'external'} onClick={() => setDataSubTab('external')}>Externa</TabButton>
                                                     <TabButton isActive={dataSubTab === 'internal'} onClick={() => setDataSubTab('internal')}>Interna</TabButton>
                                                 </div>
@@ -791,7 +810,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
                 <Card>
             <CardHeader>
-                <CardTitle className="text-base">Resultados das Probabilidades — {zoneHeading}</CardTitle>
+                <CardTitle className="text-base">Resultados das Probabilidades — {activeHeading}</CardTitle>
             </CardHeader>
                     <CardContent className="h-[15rem]">
                         <ResponsiveContainer width="100%" height="100%">

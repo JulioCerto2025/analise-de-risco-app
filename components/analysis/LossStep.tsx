@@ -213,7 +213,7 @@ const LOSS_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
 };
 
 
-const CustomTooltip = ({ active, payload, label, lossData }: any) => {
+const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: any) => {
     if (active && payload && payload.length) {
         const value = Number(payload[0].value);
         const description = payload[0]?.payload?.description;
@@ -225,8 +225,8 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
         let valuesString = "N/A";
         let detailNodes: React.ReactNode | null = null;
 
-        if (formulaInfo && lossData) {
-            formulaString = formulaInfo.formula;
+        if (formulaInfo && (lossData || isGlobal)) {
+            formulaString = isGlobal ? `Σ_z [ ${formulaInfo.formula} ]` : formulaInfo.formula;
             
             const formatVarValue = (v: any) => {
                 if (typeof v !== 'number') return '0';
@@ -236,88 +236,139 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
                 return String(v).replace('.',',');
             };
 
-            valuesString = formulaInfo.vars.reduce(
-                (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((lossData as any)[v] ?? 0)),
-                formulaInfo.formula
-            );
-    valuesString = valuesString.replace(/\*/g, '×');
+            if (!isGlobal) {
+                valuesString = formulaInfo.vars.reduce(
+                    (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((lossData as any)[v] ?? 0)),
+                    formulaInfo.formula
+                );
+                valuesString = valuesString.replace(/\*/g, '×');
+            } else {
+                const base = zones?.[0]?.loss_data || {};
+                const sumNz = (zones || []).reduce((acc: number, z: any) => acc + (Number(z.loss_data?.nz) || 0), 0);
+                const avgTz = (zones || []).length > 0 ? (zones || []).reduce((acc: number, z: any) => acc + (Number(z.loss_data?.tz) || 0), 0) / (zones || []).length : 0;
+                if (lossKey === 'LA') {
+                    valuesString = `rt × LT × rs × (Σ nz / nt) × (média tz / 8760)`
+                        .replace('rt', formatVarValue(base.rt ?? 0))
+                        .replace('LT', formatVarValue((base as any).LT ?? (base as any).lt ?? 0))
+                        .replace('rs', formatVarValue(base.rs ?? 0))
+                        .replace('Σ nz', formatVarValue(sumNz))
+                        .replace('nt', formatVarValue(base.nt ?? 0))
+                        .replace('média tz', formatVarValue(avgTz));
+                } else if (lossKey === 'LB') {
+                    valuesString = `rs × rp × rf × hz × LF × (Σ nz / nt) × (média tz / 8760)`
+                        .replace('rs', formatVarValue(base.rs ?? 0))
+                        .replace('rp', formatVarValue(base.rp ?? 0))
+                        .replace('rf', formatVarValue(base.rf ?? 0))
+                        .replace('hz', formatVarValue(base.hz ?? 0))
+                        .replace('LF', formatVarValue(base.LF ?? 0))
+                        .replace('Σ nz', formatVarValue(sumNz))
+                        .replace('nt', formatVarValue(base.nt ?? 0))
+                        .replace('média tz', formatVarValue(avgTz));
+                } else if (lossKey === 'LC') {
+                    valuesString = `LO × rs × (Σ nz / nt) × (média tz / 8760)`
+                        .replace('LO', formatVarValue(base.LO ?? 0))
+                        .replace('rs', formatVarValue(base.rs ?? 0))
+                        .replace('Σ nz', formatVarValue(sumNz))
+                        .replace('nt', formatVarValue(base.nt ?? 0))
+                        .replace('média tz', formatVarValue(avgTz));
+                }
+            }
 
             // Construir "Detalhe" com notação científica e estrutura de multiplicação/divisão
-            const vm: Record<string, number> = { ...(lossData || {}) };
-            if (lossKey === 'LA') {
-                const rt = vm['rt'] || 0;
-                const LT = (vm['lt4'] ?? vm['LT'] ?? vm['lt'] ?? 0.01);
-                const rs = vm['rs'] || 0;
-                const nz = vm['nz'] || 0;
-                const nt = vm['nt'] || 0;
-                const tz = vm['tz'] || 0;
+            if (!isGlobal) {
+                const vm: Record<string, number> = { ...(lossData || {}) };
+                if (lossKey === 'LA') {
+                    const rt = vm['rt'] || 0;
+                    const LT = (vm['lt4'] ?? vm['LT'] ?? vm['lt'] ?? 0.01);
+                    const rs = vm['rs'] || 0;
+                    const nz = vm['nz'] || 0;
+                    const nt = vm['nt'] || 0;
+                    const tz = vm['tz'] || 0;
+                    detailNodes = (
+                        <span className="font-mono">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={rt} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={LT} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
+                            <span className="mx-0.5">/</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
+                            <span className="mx-0.5">/</span>
+                            <span>8760</span>
+                        </span>
+                    );
+                } else if (lossKey === 'LB') {
+                    const rs = vm['rs'] || 0;
+                    const rp = vm['rp'] || 0;
+                    const rf = vm['rf'] || 0;
+                    const hz = vm['hz'] || 0;
+                    const LF = vm['LF'] || 0;
+                    const nz = vm['nz'] || 0;
+                    const nt = vm['nt'] || 0;
+                    const tz = vm['tz'] || 0;
+                    detailNodes = (
+                        <span className="font-mono">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={rp} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={rf} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={hz} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={LF} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
+                            <span className="mx-0.5">/</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
+                            <span className="mx-0.5">/</span>
+                            <span>8760</span>
+                        </span>
+                    );
+                } else if (lossKey === 'LC') {
+                    const LO = vm['LO'] || 0;
+                    const rs = vm['rs'] || 0;
+                    const nz = vm['nz'] || 0;
+                    const nt = vm['nt'] || 0;
+                    const tz = vm['tz'] || 0;
+                    detailNodes = (
+                        <span className="font-mono">
+                            <span className="inline-flex items-baseline"><ScientificNotation value={LO} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
+                            <span className="mx-0.5">/</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
+                            <span className="mx-0.5">×</span>
+                            <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
+                            <span className="mx-0.5">/</span>
+                            <span>8760</span>
+                        </span>
+                    );
+                }
+            } else {
+                // Global: mostrar contribuição por zona
+                const contributions = (zones || []).map((z: any) => {
+                    const rl = calculateLossesForZone(z);
+                    const val = (rl as any)[lossKey] || 0;
+                    return { name: z.name || 'Zona', value: val };
+                }).filter(c => c.value > 0);
                 detailNodes = (
-                    <span className="font-mono">
-                        <span className="inline-flex items-baseline"><ScientificNotation value={rt} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={LT} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
-                        <span className="mx-0.5">/</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
-                        <span className="mx-0.5">/</span>
-                        <span>8760</span>
-                    </span>
-                );
-            } else if (lossKey === 'LB') {
-                const rs = vm['rs'] || 0;
-                const rp = vm['rp'] || 0;
-                const rf = vm['rf'] || 0;
-                const hz = vm['hz'] || 0;
-                const LF = vm['LF'] || 0;
-                const nz = vm['nz'] || 0;
-                const nt = vm['nt'] || 0;
-                const tz = vm['tz'] || 0;
-                detailNodes = (
-                    <span className="font-mono">
-                        <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={rp} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={rf} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={hz} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={LF} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
-                        <span className="mx-0.5">/</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
-                        <span className="mx-0.5">/</span>
-                        <span>8760</span>
-                    </span>
-                );
-            } else if (lossKey === 'LC') {
-                const LO = vm['LO'] || 0;
-                const rs = vm['rs'] || 0;
-                const nz = vm['nz'] || 0;
-                const nt = vm['nt'] || 0;
-                const tz = vm['tz'] || 0;
-                detailNodes = (
-                    <span className="font-mono">
-                        <span className="inline-flex items-baseline"><ScientificNotation value={LO} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={rs} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={nz} precision={2} /></span>
-                        <span className="mx-0.5">/</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={nt} precision={2} /></span>
-                        <span className="mx-0.5">×</span>
-                        <span className="inline-flex items-baseline"><ScientificNotation value={tz} precision={2} /></span>
-                        <span className="mx-0.5">/</span>
-                        <span>8760</span>
-                    </span>
+                    <div className="space-y-1">
+                        <p className="text-slate-300 font-semibold">Contribuição por zona:</p>
+                        <ul className="text-slate-100 font-mono text-xs sm:text-sm">
+                            {contributions.map((c, idx) => (
+                                <li key={`${c.name}-${idx}`}>{c.name}: <ScientificNotation value={c.value} precision={2} /></li>
+                            ))}
+                        </ul>
+                    </div>
                 );
             }
         }
@@ -334,7 +385,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
             >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
                 {description && <p className="text-slate-400 text-xs mb-2">{description}</p>}
-                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(value)} precision={2} /></p>
+                <p className="text-blue-400 font-mono">Valor {isGlobal ? 'Agregado' : ''}: <ScientificNotation value={Number(value)} precision={2} /></p>
                 {formulaInfo && (
                      <>
                         <p className="text-slate-300 mt-2 font-semibold">Fórmula:</p>
@@ -358,6 +409,7 @@ const CustomTooltip = ({ active, payload, label, lossData }: any) => {
 
 export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEditor }: LossStepProps) {
     const { zones, risks_to_analyze } = data;
+    const GLOBAL_ID = 'GLOBAL';
     const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
     useEffect(() => {
         const desired = forceActiveZoneId || data.last_active_zone_id || zones[0]?.id || '';
@@ -399,10 +451,21 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     }, [availableTabs, activeLossTypeTab]);
 
 
+    // Global só disponível quando há múltiplas zonas
+    const isGlobal = (zones.length > 1) && activeZoneId === GLOBAL_ID;
     const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
     const lossData = currentZone?.loss_data || {};
     // Fixar modo em Perdas (L) e remover alternância obsoleta
     const effectiveHomogeneousType: 'P' | 'L' = 'L';
+
+    // Se não há múltiplas zonas e a aba atual é GLOBAL, normaliza para primeira zona
+    useEffect(() => {
+        if ((zones.length <= 1) && activeZoneId === GLOBAL_ID) {
+            const fallback = zones[0]?.id || '';
+            setActiveZoneId(fallback);
+            try { onChange({ last_active_zone_id: fallback } as any); } catch { /* noop */ }
+        }
+    }, [zones.length, activeZoneId, onChange]);
 
     const handleUpdate = useCallback((field: keyof LossData, rawValue: number) => {
         const value = Number.isFinite(rawValue) ? rawValue : rawValue;
@@ -421,9 +484,9 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                 nextZones[activeIndex].loss_data.nz = value as number;
             }
         } else {
-            // Outros campos: aplicar somente na zona ativa
+            // Outros campos: aplicar na zona ativa ou em todas as zonas quando em modo Global
             nextZones = nextZones.map(z => {
-                if (z.id !== activeZoneId) return z;
+                if (!isGlobal && z.id !== activeZoneId) return z;
                 const updatedLoss = { ...z.loss_data, [field]: value as number } as LossData;
                 // Se mudou algum componente econômico, atualizar CT automaticamente como soma de ca+cb+cc+cs+ce
                 if (['ca','cb','cc','cs','ce'].includes(field as string)) {
@@ -489,8 +552,17 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         }
     }, [data.projectName, data.clientAddress, data.zones, activeZoneId, lossData, onChange]);
     
-    // Calcular perdas da zona ativa para o gráfico
-    const l = calculateLossesForZone(currentZone);
+    // Calcular perdas para o gráfico (global ou zona)
+    const l = isGlobal
+        ? zones.reduce((acc, z) => {
+            const rl = calculateLossesForZone(z);
+            return {
+                LA: (acc.LA || 0) + (rl.LA || 0),
+                LB: (acc.LB || 0) + (rl.LB || 0),
+                LC: (acc.LC || 0) + (rl.LC || 0),
+            } as any;
+        }, { LA: 0, LB: 0, LC: 0 } as any)
+        : calculateLossesForZone(currentZone);
 
     // Group identical loss components for a cleaner chart visualization
     const groupedLossComponents = [
@@ -523,7 +595,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     };
     const zoneHeading = makeZoneHeading(currentZone?.name, currentZoneIndex);
     const multipleZones = zones.length > 1;
-    const activeHeading = multipleZones ? zoneHeading : 'Global';
+    const activeHeading = isGlobal ? 'Global' : (multipleZones ? zoneHeading : 'Global');
 
     const editorCard = (
         <Card>
@@ -533,8 +605,17 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                {multipleZones && (
+                {(zones.length > 1) && (
                     <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
+                        <TabButton
+                            isActive={activeZoneId === GLOBAL_ID}
+                            onClick={() => {
+                                setActiveZoneId(GLOBAL_ID);
+                                try { onChange({ last_active_zone_id: GLOBAL_ID } as any); } catch { /* noop */ }
+                            }}
+                        >
+                            Global
+                        </TabButton>
                         {zones.map(zone => (
                             <TabButton 
                                 key={zone.id} 
@@ -572,7 +653,9 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                             <DecimalInput
                                 label="Nº Pessoas na Zona (nz)"
                                 value={lossData.nz ?? 0}
-                                onUpdate={val => handleUpdate('nz', val)}
+                                onUpdate={val => { if (!isGlobal) handleUpdate('nz', val); }}
+                                readOnly={isGlobal}
+                                title={isGlobal ? 'Edite por zona; indisponível no modo Global' : undefined}
                                 className={`space-y-2`}
                             />
                             <DecimalInput
@@ -702,30 +785,109 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         </Card>
     );
 
+    const baseLoss = zones[0]?.loss_data || {};
+    const sumNz = zones.reduce((acc, z) => acc + (Number(z.loss_data?.nz) || 0), 0);
+    const avgTz = zones.length > 0 ? zones.reduce((acc, z) => acc + (Number(z.loss_data?.tz) || 0), 0) / zones.length : 0;
     const chartCard = (
         <Card>
             <CardHeader>
-                <CardTitle className="text-base">Resultados das Perdas — {zoneHeading}</CardTitle>
+                <CardTitle className="text-base">Resultados das Perdas — {activeHeading}</CardTitle>
             </CardHeader>
             <CardContent className="h-[16rem]">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                        <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
-                        <YAxis tick={{ fill: '#94a3b8' }} />
-                        {!isMobile && (
-                            <Tooltip 
-                                content={<CustomTooltip lossData={lossData} />}
-                                cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                            />
-                        )}
-                        <Bar dataKey="value">
-                            {chartData.map((entry) => (
-                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+                {isGlobal ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                        <div className="h-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                                    <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
+                                    <YAxis tick={{ fill: '#94a3b8' }} />
+                                    {!isMobile && (
+                                        <Tooltip 
+                                            content={<CustomTooltip lossData={lossData} isGlobal={isGlobal} zones={zones} />}
+                                            cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                                        />
+                                    )}
+                                    <Bar dataKey="value">
+                                        {chartData.map((entry) => (
+                                            <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="space-y-2 bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+                            <p className="text-slate-200 font-semibold">Parâmetros Globais Ativos</p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <Label>nt</Label>
+                                    <div className="font-mono">{Number(baseLoss.nt || 0).toLocaleString('pt-BR')}</div>
+                                </div>
+                                <div>
+                                    <Label>rs</Label>
+                                    <div className="font-mono">{String(baseLoss.rs ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>rf</Label>
+                                    <div className="font-mono">{String(baseLoss.rf ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>rp</Label>
+                                    <div className="font-mono">{String(baseLoss.rp ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>hz</Label>
+                                    <div className="font-mono">{String(baseLoss.hz ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>LF</Label>
+                                    <div className="font-mono">{String(baseLoss.LF ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>LO</Label>
+                                    <div className="font-mono">{String(baseLoss.LO ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>rt</Label>
+                                    <div className="font-mono">{String(baseLoss.rt ?? 0).replace('.', ',')}</div>
+                                </div>
+                                <div>
+                                    <Label>LT</Label>
+                                    <div className="font-mono">{String((baseLoss as any).LT ?? (baseLoss as any).lt ?? 0).replace('.', ',')}</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+                                <div>
+                                    <Label>Σ nz (todas as zonas)</Label>
+                                    <div className="font-mono">{Number(sumNz || 0).toLocaleString('pt-BR')}</div>
+                                </div>
+                                <div>
+                                    <Label>tz médio</Label>
+                                    <div className="font-mono">{String(avgTz || 0).replace('.', ',')}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                            <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
+                            <YAxis tick={{ fill: '#94a3b8' }} />
+                            {!isMobile && (
+                                <Tooltip 
+                                    content={<CustomTooltip lossData={lossData} />}
+                                    cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                                />
+                            )}
+                            <Bar dataKey="value">
+                                {chartData.map((entry) => (
+                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                )}
             </CardContent>
         </Card>
     );
