@@ -94,8 +94,8 @@ export const Checkbox = React.forwardRef<
       type="button"
       role="checkbox"
       aria-checked={checked}
-      onClick={() => onCheckedChange(!checked)}
-      className={`peer h-4 w-4 shrink-0 rounded-lg border ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center ${
+      onClick={(e) => { e.stopPropagation(); onCheckedChange(!checked); }}
+      className={`peer h-4 w-4 shrink-0 rounded-lg border ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center cursor-pointer ${
         checked ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent border-slate-500'
       } ${className}`}
       {...props}

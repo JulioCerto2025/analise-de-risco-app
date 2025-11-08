@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Button, Alert, AlertDescription, FormulaTooltip, AlertTitle, useIsMobile } from '../ui';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Button, Alert, AlertDescription, FormulaTooltip, AlertTitle, useIsMobile, Checkbox } from '../ui';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Rectangle } from "recharts";
 import { Sparkles, Loader2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DecimalInput } from "../DecimalInput";
@@ -213,7 +213,7 @@ const LOSS_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
 };
 
 
-const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: any) => {
+const CustomTooltip = ({ active, payload, label, lossData, showGlobalBars }: any) => {
     if (active && payload && payload.length) {
         const value = Number(payload[0].value);
         const description = payload[0]?.payload?.description;
@@ -225,8 +225,8 @@ const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: an
         let valuesString = "N/A";
         let detailNodes: React.ReactNode | null = null;
 
-        if (formulaInfo && (lossData || isGlobal)) {
-            formulaString = isGlobal ? `Σ_z [ ${formulaInfo.formula} ]` : formulaInfo.formula;
+        if (formulaInfo && lossData) {
+            formulaString = formulaInfo.formula;
             
             const formatVarValue = (v: any) => {
                 if (typeof v !== 'number') return '0';
@@ -236,46 +236,14 @@ const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: an
                 return String(v).replace('.',',');
             };
 
-            if (!isGlobal) {
-                valuesString = formulaInfo.vars.reduce(
-                    (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((lossData as any)[v] ?? 0)),
-                    formulaInfo.formula
-                );
-                valuesString = valuesString.replace(/\*/g, '×');
-            } else {
-                const base = zones?.[0]?.loss_data || {};
-                const sumNz = (zones || []).reduce((acc: number, z: any) => acc + (Number(z.loss_data?.nz) || 0), 0);
-                const avgTz = (zones || []).length > 0 ? (zones || []).reduce((acc: number, z: any) => acc + (Number(z.loss_data?.tz) || 0), 0) / (zones || []).length : 0;
-                if (lossKey === 'LA') {
-                    valuesString = `rt × LT × rs × (Σ nz / nt) × (média tz / 8760)`
-                        .replace('rt', formatVarValue(base.rt ?? 0))
-                        .replace('LT', formatVarValue((base as any).LT ?? (base as any).lt ?? 0))
-                        .replace('rs', formatVarValue(base.rs ?? 0))
-                        .replace('Σ nz', formatVarValue(sumNz))
-                        .replace('nt', formatVarValue(base.nt ?? 0))
-                        .replace('média tz', formatVarValue(avgTz));
-                } else if (lossKey === 'LB') {
-                    valuesString = `rs × rp × rf × hz × LF × (Σ nz / nt) × (média tz / 8760)`
-                        .replace('rs', formatVarValue(base.rs ?? 0))
-                        .replace('rp', formatVarValue(base.rp ?? 0))
-                        .replace('rf', formatVarValue(base.rf ?? 0))
-                        .replace('hz', formatVarValue(base.hz ?? 0))
-                        .replace('LF', formatVarValue(base.LF ?? 0))
-                        .replace('Σ nz', formatVarValue(sumNz))
-                        .replace('nt', formatVarValue(base.nt ?? 0))
-                        .replace('média tz', formatVarValue(avgTz));
-                } else if (lossKey === 'LC') {
-                    valuesString = `LO × rs × (Σ nz / nt) × (média tz / 8760)`
-                        .replace('LO', formatVarValue(base.LO ?? 0))
-                        .replace('rs', formatVarValue(base.rs ?? 0))
-                        .replace('Σ nz', formatVarValue(sumNz))
-                        .replace('nt', formatVarValue(base.nt ?? 0))
-                        .replace('média tz', formatVarValue(avgTz));
-                }
-            }
+            valuesString = formulaInfo.vars.reduce(
+                (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((lossData as any)[v] ?? 0)),
+                formulaInfo.formula
+            );
+            valuesString = valuesString.replace(/\*/g, '×');
 
             // Construir "Detalhe" com notação científica e estrutura de multiplicação/divisão
-            if (!isGlobal) {
+            {
                 const vm: Record<string, number> = { ...(lossData || {}) };
                 if (lossKey === 'LA') {
                     const rt = vm['rt'] || 0;
@@ -353,23 +321,6 @@ const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: an
                         </span>
                     );
                 }
-            } else {
-                // Global: mostrar contribuição por zona
-                const contributions = (zones || []).map((z: any) => {
-                    const rl = calculateLossesForZone(z);
-                    const val = (rl as any)[lossKey] || 0;
-                    return { name: z.name || 'Zona', value: val };
-                }).filter(c => c.value > 0);
-                detailNodes = (
-                    <div className="space-y-1">
-                        <p className="text-slate-300 font-semibold">Contribuição por zona:</p>
-                        <ul className="text-slate-100 font-mono text-xs sm:text-sm">
-                            {contributions.map((c, idx) => (
-                                <li key={`${c.name}-${idx}`}>{c.name}: <ScientificNotation value={c.value} precision={2} /></li>
-                            ))}
-                        </ul>
-                    </div>
-                );
             }
         }
 
@@ -385,7 +336,10 @@ const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: an
             >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
                 {description && <p className="text-slate-400 text-xs mb-2">{description}</p>}
-                <p className="text-blue-400 font-mono">Valor {isGlobal ? 'Agregado' : ''}: <ScientificNotation value={Number(value)} precision={2} /></p>
+                {showGlobalBars && payload[0]?.payload?.globalValue !== undefined && (
+                    <p className="text-indigo-400 font-mono">Global: <ScientificNotation value={Number(payload[0].payload.globalValue)} precision={2} /></p>
+                )}
+                <p className="text-blue-400 font-mono">Zona: <ScientificNotation value={Number(value)} precision={2} /></p>
                 {formulaInfo && (
                      <>
                         <p className="text-slate-300 mt-2 font-semibold">Fórmula:</p>
@@ -409,7 +363,7 @@ const CustomTooltip = ({ active, payload, label, lossData, isGlobal, zones }: an
 
 export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEditor }: LossStepProps) {
     const { zones, risks_to_analyze } = data;
-    const GLOBAL_ID = 'GLOBAL';
+    // Removido conceito de visão Global para etapa 8
     const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
     useEffect(() => {
         const desired = forceActiveZoneId || data.last_active_zone_id || zones[0]?.id || '';
@@ -420,6 +374,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         }
     }, [forceActiveZoneId, data.last_active_zone_id, zones, activeZoneId]);
     const isMobile = useIsMobile();
+    const [showGlobalBars, setShowGlobalBars] = useState(false);
 
     const [isFireRiskPanelOpen, setIsFireRiskPanelOpen] = useState(false);
     
@@ -451,21 +406,12 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     }, [availableTabs, activeLossTypeTab]);
 
 
-    // Global só disponível quando há múltiplas zonas
-    const isGlobal = (zones.length > 1) && activeZoneId === GLOBAL_ID;
     const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
     const lossData = currentZone?.loss_data || {};
     // Fixar modo em Perdas (L) e remover alternância obsoleta
     const effectiveHomogeneousType: 'P' | 'L' = 'L';
 
-    // Se não há múltiplas zonas e a aba atual é GLOBAL, normaliza para primeira zona
-    useEffect(() => {
-        if ((zones.length <= 1) && activeZoneId === GLOBAL_ID) {
-            const fallback = zones[0]?.id || '';
-            setActiveZoneId(fallback);
-            try { onChange({ last_active_zone_id: fallback } as any); } catch { /* noop */ }
-        }
-    }, [zones.length, activeZoneId, onChange]);
+    // Removida normalização de modo global (não aplicável)
 
     const handleUpdate = useCallback((field: keyof LossData, rawValue: number) => {
         const value = Number.isFinite(rawValue) ? rawValue : rawValue;
@@ -484,9 +430,9 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                 nextZones[activeIndex].loss_data.nz = value as number;
             }
         } else {
-            // Outros campos: aplicar na zona ativa ou em todas as zonas quando em modo Global
+            // Outros campos: aplicar somente na zona ativa
             nextZones = nextZones.map(z => {
-                if (!isGlobal && z.id !== activeZoneId) return z;
+                if (z.id !== activeZoneId) return z;
                 const updatedLoss = { ...z.loss_data, [field]: value as number } as LossData;
                 // Se mudou algum componente econômico, atualizar CT automaticamente como soma de ca+cb+cc+cs+ce
                 if (['ca','cb','cc','cs','ce'].includes(field as string)) {
@@ -552,17 +498,17 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         }
     }, [data.projectName, data.clientAddress, data.zones, activeZoneId, lossData, onChange]);
     
-    // Calcular perdas para o gráfico (global ou zona)
-    const l = isGlobal
-        ? zones.reduce((acc, z) => {
-            const rl = calculateLossesForZone(z);
-            return {
-                LA: (acc.LA || 0) + (rl.LA || 0),
-                LB: (acc.LB || 0) + (rl.LB || 0),
-                LC: (acc.LC || 0) + (rl.LC || 0),
-            } as any;
-        }, { LA: 0, LB: 0, LC: 0 } as any)
-        : calculateLossesForZone(currentZone);
+    // Calcular perdas para o gráfico (zona ativa)
+    const l = calculateLossesForZone(currentZone);
+
+    // Calcular perdas globais (soma de todas as zonas)
+    const globalTotals = zones.reduce((acc, z) => {
+        const r = calculateLossesForZone(z);
+        acc.LA += r.LA || 0;
+        acc.LB += r.LB || 0;
+        acc.LC += r.LC || 0;
+        return acc;
+    }, { LA: 0, LB: 0, LC: 0 });
 
     // Group identical loss components for a cleaner chart visualization
     const groupedLossComponents = [
@@ -572,7 +518,13 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     ];
 
     const chartData = groupedLossComponents
-        .map(item => ({ name: item.name, description: item.description, value: item.value || 0, fill: item.color }))
+        .map(item => ({ 
+            name: item.name, 
+            description: item.description, 
+            value: item.value || 0, 
+            ...(showGlobalBars ? { globalValue: item.name.startsWith('LA') ? (globalTotals.LA || 0) : item.name.startsWith('LB') ? (globalTotals.LB || 0) : (globalTotals.LC || 0) } : {}),
+            fill: item.color 
+        }))
         .filter(item => item.value > 1e-9); // Filter out zero/negligible values
 
     if (zones.length === 0) {
@@ -595,7 +547,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
     };
     const zoneHeading = makeZoneHeading(currentZone?.name, currentZoneIndex);
     const multipleZones = zones.length > 1;
-    const activeHeading = isGlobal ? 'Global' : (multipleZones ? zoneHeading : 'Global');
+    const activeHeading = zoneHeading;
 
     const editorCard = (
         <Card>
@@ -607,15 +559,6 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
             <CardContent className="space-y-6">
                 {(zones.length > 1) && (
                     <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                        <TabButton
-                            isActive={activeZoneId === GLOBAL_ID}
-                            onClick={() => {
-                                setActiveZoneId(GLOBAL_ID);
-                                try { onChange({ last_active_zone_id: GLOBAL_ID } as any); } catch { /* noop */ }
-                            }}
-                        >
-                            Global
-                        </TabButton>
                         {zones.map(zone => (
                             <TabButton 
                                 key={zone.id} 
@@ -653,9 +596,7 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
                             <DecimalInput
                                 label="Nº Pessoas na Zona (nz)"
                                 value={lossData.nz ?? 0}
-                                onUpdate={val => { if (!isGlobal) handleUpdate('nz', val); }}
-                                readOnly={isGlobal}
-                                title={isGlobal ? 'Edite por zona; indisponível no modo Global' : undefined}
+                                onUpdate={val => { handleUpdate('nz', val); }}
                                 className={`space-y-2`}
                             />
                             <DecimalInput
@@ -785,109 +726,54 @@ export function LossStep({ data, onChange, forceActiveZoneId, hideProbabilityEdi
         </Card>
     );
 
-    const baseLoss = zones[0]?.loss_data || {};
-    const sumNz = zones.reduce((acc, z) => acc + (Number(z.loss_data?.nz) || 0), 0);
-    const avgTz = zones.length > 0 ? zones.reduce((acc, z) => acc + (Number(z.loss_data?.tz) || 0), 0) / zones.length : 0;
     const chartCard = (
         <Card>
             <CardHeader>
-                <CardTitle className="text-base">Resultados das Perdas — {activeHeading}</CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Resultados das Perdas — {activeHeading}</CardTitle>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                        <Checkbox
+                            checked={showGlobalBars}
+                            onCheckedChange={(v) => setShowGlobalBars(!!v)}
+                        />
+                        <button
+                            type="button"
+                            className="text-slate-300 hover:text-slate-200 cursor-pointer select-none"
+                            onClick={() => setShowGlobalBars((prev) => !prev)}
+                        >
+                            Mostrar barras globais
+                        </button>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="h-[16rem]">
-                {isGlobal ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-                        <div className="h-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                                    <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
-                                    <YAxis tick={{ fill: '#94a3b8' }} />
-                                    {!isMobile && (
-                                        <Tooltip 
-                                            content={<CustomTooltip lossData={lossData} isGlobal={isGlobal} zones={zones} />}
-                                            cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                                        />
-                                    )}
-                                    <Bar dataKey="value">
-                                        {chartData.map((entry) => (
-                                            <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="space-y-2 bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-                            <p className="text-slate-200 font-semibold">Parâmetros Globais Ativos</p>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                    <Label>nt</Label>
-                                    <div className="font-mono">{Number(baseLoss.nt || 0).toLocaleString('pt-BR')}</div>
-                                </div>
-                                <div>
-                                    <Label>rs</Label>
-                                    <div className="font-mono">{String(baseLoss.rs ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>rf</Label>
-                                    <div className="font-mono">{String(baseLoss.rf ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>rp</Label>
-                                    <div className="font-mono">{String(baseLoss.rp ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>hz</Label>
-                                    <div className="font-mono">{String(baseLoss.hz ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>LF</Label>
-                                    <div className="font-mono">{String(baseLoss.LF ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>LO</Label>
-                                    <div className="font-mono">{String(baseLoss.LO ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>rt</Label>
-                                    <div className="font-mono">{String(baseLoss.rt ?? 0).replace('.', ',')}</div>
-                                </div>
-                                <div>
-                                    <Label>LT</Label>
-                                    <div className="font-mono">{String((baseLoss as any).LT ?? (baseLoss as any).lt ?? 0).replace('.', ',')}</div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-sm mt-2">
-                                <div>
-                                    <Label>Σ nz (todas as zonas)</Label>
-                                    <div className="font-mono">{Number(sumNz || 0).toLocaleString('pt-BR')}</div>
-                                </div>
-                                <div>
-                                    <Label>tz médio</Label>
-                                    <div className="font-mono">{String(avgTz || 0).replace('.', ',')}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                            <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
-                            <YAxis tick={{ fill: '#94a3b8' }} />
-                            {!isMobile && (
-                                <Tooltip 
-                                    content={<CustomTooltip lossData={lossData} />}
-                                    cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                                />
-                            )}
-                            <Bar dataKey="value">
-                                {chartData.map((entry) => (
-                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                )}
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                        <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
+                        <YAxis tick={{ fill: '#94a3b8' }} />
+                        {!isMobile && (
+                            <Tooltip 
+                                content={<CustomTooltip lossData={lossData} showGlobalBars={showGlobalBars} />}
+                                cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                            />
+                        )}
+                        <Bar dataKey="value">
+                            {chartData.map((entry) => (
+                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                            ))}
+                        </Bar>
+                        {showGlobalBars && (
+                            <Bar 
+                                dataKey="globalValue" 
+                                fill="#8b5cf6" 
+                                fillOpacity={0.22}
+                                stroke="#a78bfa"
+                                shape={(props) => <Rectangle {...props} strokeDasharray="4 3" />}
+                            />
+                        )}
+                    </BarChart>
+                </ResponsiveContainer>
             </CardContent>
         </Card>
     );

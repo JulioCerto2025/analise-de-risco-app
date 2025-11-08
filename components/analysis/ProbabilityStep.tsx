@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, Alert, AlertDescription, Checkbox, useIsMobile } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Rectangle } from "recharts";
 import { AnalysisData, ProbabilityData } from '../../types';
 import { PB_OPTIONS, PSPD_OPTIONS, PTA_OPTIONS, COMBINED_CLD_CLI_OPTIONS, PTU_OPTIONS, KS3_OPTIONS, UW_OPTIONS } from '../../constants';
 import { DecimalInput } from '../DecimalInput';
@@ -77,7 +77,7 @@ const PROBABILITY_FORMULAS: { [key: string]: { formula: string; vars: string[] }
     PZT: { formula: "PSPDₐ × CLIₐ(ext) × Pliₐ(ext)", vars: ["PSPD_data", "CLI_data_ext", "Pli_data_ext"] },
 };
 
-const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => {
+const CustomTooltip = ({ active, payload, label, probData, probCalcs, showGlobalBars }: any) => {
     if (active && payload && payload.length) {
         const formulaInfo = PROBABILITY_FORMULAS[label];
         const allValues = { ...probData, ...probCalcs };
@@ -140,7 +140,10 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
                     className="p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm w-auto min-w-[18rem] max-w-[48rem]"
                 >
                 <p className="font-bold text-slate-100 text-base mb-1">{label}</p>
-                <p className="text-blue-400 font-mono">Valor: <ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
+                {showGlobalBars && payload[0]?.payload?.globalValue !== undefined && (
+                    <p className="text-indigo-400 font-mono">Global: <ScientificNotation value={Number(payload[0].payload.globalValue)} precision={2} /></p>
+                )}
+                <p className="text-blue-400 font-mono">Zona: <ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
                 
                 {formulaInfo && (
                     <div className="mt-2 border-b border-slate-700 pb-2">
@@ -183,9 +186,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const [electricSubTab, setElectricSubTab] = useState<'external' | 'internal'>('external');
     const [dataSubTab, setDataSubTab] = useState<'external' | 'internal'>('external');
     const isMobile = useIsMobile();
+    const [showGlobalBars, setShowGlobalBars] = useState(false);
     const { zones = [] } = data;
     const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
-    const GLOBAL_ID = 'GLOBAL';
+    // Removido conceito de visão Global para etapa 7
     useEffect(() => {
         const desired = data.last_active_zone_id || zones[0]?.id || '';
         if (desired && desired !== activeZoneId) {
@@ -195,8 +199,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         }
     }, [data.last_active_zone_id, zones, activeZoneId]);
     // Global só disponível quando há múltiplas zonas
-    const isGlobal = (zones.length > 1) && activeZoneId === GLOBAL_ID;
-    const currentZone = isGlobal ? undefined : (zones.find(z => z.id === activeZoneId) || zones[0]);
+    const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
     const prob = (currentZone?.probability_data || data.probability_data);
     // Removidos: estados do modo de testes
     // Estado de zonas para edição de overrides por zona
@@ -278,11 +281,6 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
     // ===== Handlers específicos por zona =====
     const handleProbabilityChangeForZone = useCallback((zoneId: string, updates: Partial<ProbabilityData>) => {
-        // Se estiver em modo Global, delega para o handler global
-        if (zoneId === GLOBAL_ID) {
-            handleProbabilityChange(updates);
-            return;
-        }
         const zone = zones.find(z => z.id === zoneId);
         if (zone) {
             const baseProb = (zone.probability_data || data.probability_data);
@@ -375,11 +373,6 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     }, [zones, data.probability_data, onChange]);
 
     const handleCombinedChangeForZone = (zoneId: string, value: string, lineType: 'electric' | 'data', scope: 'external' | 'internal' = 'external') => {
-        // Se estiver em modo Global, delega para o handler global
-        if (zoneId === GLOBAL_ID) {
-            handleCombinedChange(value, lineType, scope);
-            return;
-        }
         const [cld, cli] = value.split('_').map(parseFloat);
         if (lineType === 'electric') {
             if (scope === 'external') {
@@ -409,7 +402,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const zoneProbCalcs = mergeZoneProbabilities(zoneProbCalcsBase, currentZone || { id: '', name: '', loss_data: {} });
     const chartData = Object.entries(zoneProbCalcs)
         .filter(([key]) => !['Ks1', 'Ks2', 'Ks4_electric_int', 'Ks4_data_int', 'Pli_electric_ext', 'Pli_data_ext', 'PEB_electric', 'PEB_data', 'Pms', 'Pmst'].includes(key)) 
-        .map(([key, value]) => ({ name: key, value, fill: '#3b82f6' }));
+        .map(([key, value]) => ({ name: key, value, ...(showGlobalBars ? { globalValue: (zoneProbCalcsBase as any)[key] } : {}), fill: '#3b82f6' }));
     
     const { Ks1: calculatedKs1 = 0, Ks2: calculatedKs2 = 0 } = zoneProbCalcsBase;
     const isKs1Capped = (prob.wm1 || 0) * 0.12 > 1;
@@ -456,7 +449,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     };
     const zoneHeading = makeZoneHeading(currentZone?.name, Math.max(0, currentZoneIndex));
     const multipleZones = zones.length > 1;
-    const activeHeading = isGlobal ? 'Global' : (multipleZones ? zoneHeading : 'Global');
+    const activeHeading = zoneHeading;
 
 
     // Removido conceito Global na etapa 7 — usamos apenas cálculos da zona ativa
@@ -472,12 +465,6 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     <CardContent className="space-y-6">
                         {multipleZones && (
                             <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                                <TabButton 
-                                    isActive={activeZoneId === GLOBAL_ID}
-                                    onClick={() => setActiveZoneId(GLOBAL_ID)}
-                                >
-                                    Global
-                                </TabButton>
                                 {zones.map(zone => (
                                     <TabButton 
                                         key={zone.id} 
@@ -810,7 +797,22 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
                 <Card>
             <CardHeader>
-                <CardTitle className="text-base">Resultados das Probabilidades — {activeHeading}</CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Resultados das Probabilidades — {activeHeading}</CardTitle>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                        <Checkbox
+                            checked={showGlobalBars}
+                            onCheckedChange={(v) => setShowGlobalBars(!!v)}
+                        />
+                        <button
+                            type="button"
+                            className="text-slate-300 hover:text-slate-200 cursor-pointer select-none"
+                            onClick={() => setShowGlobalBars((prev) => !prev)}
+                        >
+                            Mostrar barras globais
+                        </button>
+                    </div>
+                </div>
             </CardHeader>
                     <CardContent className="h-[15rem]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -819,12 +821,21 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
                                 <YAxis tick={{ fill: '#94a3b8' }} />
                                 {!isMobile && (
-                            <Tooltip 
-                            content={<CustomTooltip probData={prob} probCalcs={zoneProbCalcs} />}
-                                cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
-                            />
+                                    <Tooltip 
+                                        content={<CustomTooltip probData={prob} probCalcs={zoneProbCalcs} showGlobalBars={showGlobalBars} />}
+                                        cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }}
+                                    />
                                 )}
-                                <Bar dataKey="value" />
+                                <Bar dataKey="value" fill="#3b82f6" />
+                                {showGlobalBars && (
+                                    <Bar 
+                                        dataKey="globalValue"
+                                        fill="#8b5cf6"
+                                        fillOpacity={0.22}
+                                        stroke="#a78bfa"
+                                        shape={(props) => <Rectangle {...props} strokeDasharray="4 3" />}
+                                    />
+                                )}
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
