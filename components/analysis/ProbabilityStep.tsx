@@ -437,9 +437,19 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         globalAnalyzeElectric
     );
     const zoneProbCalcs = mergeZoneProbabilities(zoneProbCalcsBase, currentZone || { id: '', name: '', loss_data: {} });
+    // Garantir que o gráfico receba apenas números finitos para evitar falhas do Recharts
+    const toFinite = (v: any) => {
+        const n = Number(v);
+        return Number.isFinite(n) && !Number.isNaN(n) ? n : 0;
+    };
     const chartData = Object.entries(zoneProbCalcs)
         .filter(([key]) => !['Ks1', 'Ks2', 'Ks4_electric_int', 'Ks4_data_int', 'Pli_electric_ext', 'Pli_data_ext', 'PEB_electric', 'PEB_data', 'Pms', 'Pmst'].includes(key)) 
-        .map(([key, value]) => ({ name: key, value, ...(showGlobalBars ? { globalValue: (globalProbCalcsBase as any)[key] } : {}), fill: '#3b82f6' }));
+        .map(([key, value]) => ({ 
+            name: key, 
+            value: toFinite(value), 
+            ...(showGlobalBars ? { globalValue: toFinite((globalProbCalcsBase as any)[key]) } : {}), 
+            fill: '#3b82f6' 
+        }));
     
     const { Ks1: calculatedKs1 = 0, Ks2: calculatedKs2 = 0 } = zoneProbCalcsBase;
     const isKs1Capped = (prob.wm1 || 0) * 0.12 > 1;

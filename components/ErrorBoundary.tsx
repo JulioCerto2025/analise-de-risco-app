@@ -28,6 +28,18 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     window.location.reload();
   };
 
+  handleClearStorageAndReload = () => {
+    try {
+      // Limpa apenas a chave de dados da análise para evitar perda de outra configuração
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('spda-analysis-data');
+      }
+    } catch (_) {
+      // silencioso
+    }
+    this.handleReload();
+  };
+
   handleReset = () => {
     this.setState({ hasError: false, error: undefined });
     if (this.props.onReset) this.props.onReset();
@@ -70,10 +82,21 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-200 p-6">
-          <div className="max-w-md w-full space-y-4 text-center">
-            <h1 className="text-lg font-semibold">Ocorreu um erro</h1>
-            <p className="text-sm text-slate-400">O aplicativo encontrou um problema ao renderizar. Você pode recarregar para continuar.</p>
-            <button onClick={this.handleReload} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white">Recarregar app</button>
+          <div className="max-w-2xl w-full space-y-4">
+            <h1 className="text-lg font-semibold text-center">Ocorreu um erro</h1>
+            <p className="text-sm text-slate-400 text-center">O aplicativo encontrou um problema ao renderizar. Você pode recarregar para continuar.</p>
+            <div className="flex items-center justify-center gap-3">
+              <button onClick={this.handleReload} className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white">Recarregar app</button>
+              <button onClick={this.handleClearStorageAndReload} className="px-4 py-2 rounded border border-slate-500 text-slate-200">Limpar dados salvos e recarregar</button>
+            </div>
+            {this.state.error && (
+              <div className="mt-4 rounded border border-slate-700 bg-slate-900/60 p-3">
+                <p className="text-xs text-slate-300"><span className="font-semibold">Erro:</span> {this.state.error.message}</p>
+                {this.state.error.stack && (
+                  <pre className="mt-2 text-[10px] whitespace-pre-wrap text-slate-400">{this.state.error.stack}</pre>
+                )}
+              </div>
+            )}
           </div>
         </div>
       );

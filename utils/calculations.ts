@@ -227,11 +227,11 @@ export function calculateProbabilities(
     let PC = safeValues.PSPD_electric * safeValues.CLD_electric_int;
     const Pms = Math.pow(Ks1 * Ks2 * safeValues.Ks3_electric_int * Ks4_electric_int, 2);
     let PM = safeValues.PSPD_electric * Pms;
-    const PU = safeValues.PTU_electric * safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
-    const PV = safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
-    const PW = safeValues.PSPD_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
+    let PU = safeValues.PTU_electric * safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
+    let PV = safeValues.PEB_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
+    let PW = safeValues.PSPD_electric * safeValues.PLD_electric_ext * safeValues.CLD_electric_ext;
     const Pli_electric_ext = calculatePli('electric', safeValues.Uw_electric_ext);
-    const PZ = safeValues.PSPD_electric * safeValues.CLI_electric_ext * Pli_electric_ext; 
+    let PZ = safeValues.PSPD_electric * safeValues.CLI_electric_ext * Pli_electric_ext; 
 
     // Probabilidades - Linha de Dados
     const Ks4_data_int = safeValues.Uw_data_int > 0 ? 1 / safeValues.Uw_data_int : 1;
