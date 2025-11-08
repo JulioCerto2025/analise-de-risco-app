@@ -167,8 +167,15 @@ export const LO_OPTIONS = [
   { value: 0.001, label: 'Outras partes de hospital D3 0,001' }
 ];
 export const LF3_OPTIONS = [{ value: 0.1, label: 'Museus, galerias 0,1' }];
-export const LF4_OPTIONS = [{ value: 0.5, label: 'Hospital, industrial, museu 0,5' }, { value: 0.2, label: 'Hotel, escola, escritório 0,2' }];
-export const LO4_OPTIONS = [{ value: 0.01, label: 'Hospital, Industrial 0,01' }];
+export const LF4_OPTIONS = [
+  { value: 0, label: 'Sem Risco 0' },
+  { value: 0.5, label: 'Hospital, industrial, museu 0,5' },
+  { value: 0.2, label: 'Hotel, escola, escritório 0,2' }
+];
+export const LO4_OPTIONS = [
+  { value: 0, label: 'Sem Risco 0' },
+  { value: 0.01, label: 'Hospital, Industrial 0,01' }
+];
 
 // LT para Choque Elétrico (LA)
 export const LT_OPTIONS = [
