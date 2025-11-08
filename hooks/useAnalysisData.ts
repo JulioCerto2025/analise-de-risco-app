@@ -16,9 +16,10 @@ import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
 const STORAGE_KEY = 'spda-analysis-data';
 
 const initialInputData: AnalysisInputData = {
-    projectName: '',
-    clientName: '',
-    clientAddress: '',
+    // Preset inicial: Exemplo 1 — NBR 5419-2
+    projectName: 'Exemplo 1 — NBR 5419-2',
+    clientName: 'Cliente Exemplo',
+    clientAddress: 'São Paulo/SP',
     projectDate: '',
     technicalManagerName: '',
     licenseNumber: '',
@@ -44,8 +45,9 @@ const initialInputData: AnalysisInputData = {
     l: 23,
     w: 22.5,
     hp: 29.5,
-    // ng: (sem preset; usuário irá digitar manualmente na Etapa Ng)
-    location: '',
+    // Ng presetado para São Paulo (base local: 16)
+    ng: 16,
+    location: 'São Paulo - SP',
     mapRegion: 'sudeste',
     ufDraft: '',
     cityDraft: '',
@@ -70,7 +72,8 @@ const initialInputData: AnalysisInputData = {
     h_adj_2: 4,
     hp_adj_2: 4,
     cd_adj_2: 0.25,
-    selected_risk_components: { RA: true, RB: true, RC: false, RM: false, RU: true, RV: true, RW: false, RZ: false },
+    // Pré-seleções para facilitar o primeiro uso (Exemplo 1)
+    selected_risk_components: { RA: true, RB: true, RC: true, RM: true, RU: true, RV: true, RW: false, RZ: false },
     risks_to_analyze: { R1: true, R3: false, R4: false },
     frequency_config: { is_critical_system: false, has_equipment_in_ZPR0A: true },
     probability_data: {

@@ -36,9 +36,12 @@ const RISK_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
     RZ: { formula: "Ni_e × PZ × LZ + Ni_t × PZT × LZ", vars: ["ni_electric", "PZ", "LZ", "ni_data", "PZT", "LZ"] },
 };
 
-const CustomTooltip = ({ active, payload, label, data }: any) => {
+const CustomTooltip = ({ active, payload, label, data, ctx }: any) => {
     if (active && payload && payload.length) {
-        const { calculations: c, probability_calculations: p, loss_calculations: l, selected_risk_components: selected } = data;
+        const { calculations: c, probability_calculations: pGlobal, loss_calculations: lGlobal, selected_risk_components: selected } = data;
+        // Quando estamos na visão por zona, usamos cálculos específicos da zona ativa.
+        const p = ctx?.probCalcs ?? pGlobal;
+        const l = ctx?.lossCalcs ?? lGlobal;
         const componentDef = RISK_COMPONENTS_DEFS[label];
         const isTotalRisk = ['R1', 'R3', 'R4'].includes(label);
 
@@ -358,6 +361,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     // Dados por visão ativa
     let activeZoneRisk: { [key: string]: number } | null = null;
     let activeZoneChart: { name: string; value: number }[] = [];
+    // Contexto para o Tooltip: probabilidades e perdas usadas na visão atual
+    let tooltipCtx: { probCalcs: any; lossCalcs: any } | null = null;
     if (activeZone) {
         const lossCalcs = calculateLossesForZone(activeZone);
         const zoneBaseProbCalcs = calculateProbabilities(
@@ -369,6 +374,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, activeZone);
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
         activeZoneRisk = r;
+        tooltipCtx = { probCalcs: zoneProbCalcs, lossCalcs };
         activeZoneChart = ALL_RISK_COMPONENTS.map(key => ({
             name: key,
             value:
@@ -507,7 +513,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             <XAxis type="category" dataKey="name" tick={{ fill: '#94a3b8' }} />
                             <YAxis type="number" scale="log" domain={[1e-9, 'auto']} allowDataOverflow tickFormatter={(tick) => tick.toExponential(0)} tick={{ fill: '#94a3b8' }} />
                             {!isMobile && (
-                                <Tooltip content={<CustomTooltip data={data} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
+                                <Tooltip content={<CustomTooltip data={data} ctx={activeZone ? tooltipCtx : { probCalcs: data.probability_calculations, lossCalcs: data.loss_calculations }} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
                             {/* Linha de tolerância (pontilhada) restaurada */}
                             <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#ef4444" strokeDasharray="3 3" />

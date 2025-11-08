@@ -195,6 +195,9 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     });
     const { zones = [] } = data;
     const [activeZoneId, setActiveZoneId] = useState<string>(data.last_active_zone_id || zones[0]?.id || '');
+    // Estado local apenas para exibição do CLI na aba interna (por zona)
+    const [internalElectricCliDisplay, setInternalElectricCliDisplay] = useState<Record<string, number>>({});
+    const [internalDataCliDisplay, setInternalDataCliDisplay] = useState<Record<string, number>>({});
     // Removido conceito de visão Global para etapa 7
     useEffect(() => {
         const desired = data.last_active_zone_id || zones[0]?.id || '';
@@ -471,12 +474,16 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             if (scope === 'external') {
                 handleProbabilityChangeForZone(zoneId, { CLD_electric_ext: cld, CLI_electric_ext: cli });
             } else {
+                // Persistir apenas o CLD no estado de probabilidade e lembrar o CLI para exibição
+                setInternalElectricCliDisplay(prev => ({ ...prev, [zoneId]: cli }));
                 handleProbabilityChangeForZone(zoneId, { CLD_electric_int: cld });
             }
         } else {
             if (scope === 'external') {
                 handleProbabilityChangeForZone(zoneId, { CLD_data_ext: cld, CLI_data_ext: cli });
             } else {
+                // Persistir apenas o CLD no estado de probabilidade e lembrar o CLI para exibição
+                setInternalDataCliDisplay(prev => ({ ...prev, [zoneId]: cli }));
                 handleProbabilityChangeForZone(zoneId, { CLD_data_int: cld });
             }
         }
@@ -774,16 +781,21 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                     </div>
                                                     <div className="md:col-span-6 lg:col-span-12">
                                                         <div className="space-y-2">
-                                                            <Label>CLD - Blindagem da Linha (Tabela B.4)</Label>
-                                                            <SelectInput 
-                                                                label=""
-                                                                value={prob.CLD_electric_int}
-                                                                options={CLD_ONLY_OPTIONS}
-                                                                onUpdate={(v) => handleProbabilityChangeForZone(activeZoneId, { CLD_electric_int: v })}
-                                                            />
+                                                            <Label>CLD/CLI - Blindagem da Linha e Comp. Interno (Tabela B.4)</Label>
+                                                            <Select
+                                                                value={`${prob.CLD_electric_int}_${internalElectricCliDisplay[activeZoneId] ?? 1}`}
+                                                                onValueChange={(v) => handleCombinedChangeForZone(activeZoneId, v, 'electric', 'internal')}
+                                                                options={COMBINED_CLD_CLI_OPTIONS}
+                                                                placeholder="Selecione o tipo de blindagem e componente..."
+                                                            >
+                                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                                <SelectContent>
+                                                                    {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
+                                                                </SelectContent>
+                                                            </Select>
                                                         </div>
                                                         <div className="text-xs text-slate-300 italic mt-2">
-                                                            Estes parâmetros (CLD, Ks3, Uw) impactam PC e PM.
+                                                            Estes parâmetros (CLD/CLI, Ks3, Uw) impactam PC e PM.
                                                         </div>
                                                     </div>
                                                 </div>
@@ -906,16 +918,21 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                                         </div>
                                                         <div className="md:col-span-6 lg:col-span-12">
                                                             <div className="space-y-2">
-                                                                <Label>CLD - Blindagem da Linha (Tabela B.4)</Label>
-                                                                <SelectInput 
-                                                                    label=""
-                                                                    value={prob.CLD_data_int}
-                                                                    options={CLD_ONLY_OPTIONS}
-                                                                    onUpdate={(v) => handleProbabilityChangeForZone(activeZoneId, { CLD_data_int: v })}
-                                                                />
+                                                                <Label>CLD/CLI - Blindagem da Linha e Comp. Interno (Tabela B.4)</Label>
+                                                                <Select
+                                                                    value={`${prob.CLD_data_int}_${internalDataCliDisplay[activeZoneId] ?? 1}`}
+                                                                    onValueChange={(v) => handleCombinedChangeForZone(activeZoneId, v, 'data', 'internal')}
+                                                                    options={COMBINED_CLD_CLI_OPTIONS}
+                                                                    placeholder="Selecione o tipo de blindagem e componente..."
+                                                                >
+                                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {COMBINED_CLD_CLI_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} label={opt.label} />)}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </div>
                                                             <div className="text-xs text-slate-300 italic mt-2">
-                                                                Estes parâmetros (CLD, Ks3, Uw) impactam PCT e PMT.
+                                                                Estes parâmetros (CLD/CLI, Ks3, Uw) impactam PCT e PMT.
                                                             </div>
                                                         </div>
                                                     </>
