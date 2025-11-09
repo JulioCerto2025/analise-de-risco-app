@@ -707,7 +707,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                             animate={{ opacity: 1, height: 'auto' }}
                                             exit={{ opacity: 0, height: 0 }}
                                             transition={{ duration: 0.3 }}
-                                            className="overflow-visible"
+                                            className="overflow-x-hidden"
                                         >
                                             <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 pt-2">
                                                 <div className="md:col-span-3 lg:col-span-3">
@@ -727,7 +727,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                             </div>
 
                                             {electricSubTab === 'external' && (
-                                                <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4">
+                                                <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 overflow-x-hidden">
                                                     <div className="md:col-span-3 lg:col-span-3">
                                                         <SelectInput label="Uw - Tensão Suportável (kV)" value={prob.Uw_electric_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { Uw_electric_ext: v })} />
                                                     </div>
@@ -771,7 +771,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                             )}
 
                                             {electricSubTab === 'internal' && (
-                                                <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4">
+                                                <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 overflow-x-hidden">
                                                     <div className="md:col-span-3 lg:col-span-3">
                                                         <SelectInput label="Ks3 - Fiação interna" value={prob.Ks3_electric_int} options={KS3_OPTIONS} onUpdate={(v) => handleProbabilityChangeForZone(activeZoneId, { Ks3_electric_int: v })} />
                                                     </div>
@@ -846,9 +846,9 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                             animate={{ opacity: 1, height: 'auto' }}
                                             exit={{ opacity: 0, height: 0 }}
                                             transition={{ duration: 0.3 }}
-                                            className="overflow-visible"
+                                            className="overflow-x-hidden"
                                         >
-                                            <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 pt-2">
+                                            <div className="grid md:grid-cols-6 lg:grid-cols-12 gap-4 pt-2 overflow-x-hidden">
                                                 <div className="md:col-span-3 lg:col-span-3">
                                                     <SelectInput label="PTU - Medida de proteção" value={prob.PTU_data} options={PTU_OPTIONS} onUpdate={(v) => handleProbabilityChangeForZone(activeZoneId, { PTU_data: v })} />
                                                 </div>

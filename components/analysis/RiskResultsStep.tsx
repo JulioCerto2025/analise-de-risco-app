@@ -268,6 +268,11 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     selectedRisks.forEach(riskKey => {
          chartData.push({ name: riskKey, value: risk_results[riskKey] || 1e-12 });
     });
+
+    // Garantir que o eixo Y inclua a linha de tolerância mesmo quando os valores das barras são menores
+    const currentChart = chartData;
+    const maxBarValue = currentChart.reduce((max, d) => (typeof d.value === 'number' ? Math.max(max, d.value) : max), 1e-9);
+    const yMaxDomain = Math.max(maxBarValue, displayedToleranceValue);
     
     const riskFormulas: { [key: string]: string } = {
         R1: ALL_RISK_COMPONENTS.filter(c => selected_risk_components[c]).join(' + '),
@@ -511,7 +516,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         <BarChart data={activeZone ? activeZoneChart : chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                             <XAxis type="category" dataKey="name" tick={{ fill: '#94a3b8' }} />
-                            <YAxis type="number" scale="log" domain={[1e-9, 'auto']} allowDataOverflow tickFormatter={(tick) => tick.toExponential(0)} tick={{ fill: '#94a3b8' }} />
+                            <YAxis type="number" scale="log" domain={[1e-9, yMaxDomain]} allowDataOverflow tickFormatter={(tick) => tick.toExponential(0)} tick={{ fill: '#94a3b8' }} />
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} ctx={activeZone ? tooltipCtx : { probCalcs: data.probability_calculations, lossCalcs: data.loss_calculations }} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}
