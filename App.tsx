@@ -123,6 +123,8 @@ const generateAnnualPassword = () => {
     return generateSecurePassword(`ANNUAL-${now.getFullYear()}-JULIO-2026`);
 };
 
+import { VisitorCounter } from './components/VisitorCounter';
+
 export default function App() {
     const isCadPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cad') !== null;
     
@@ -482,123 +484,148 @@ export default function App() {
     return (
         <AuditProvider value={auditProviderValue}>
             <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
-            <div className="w-full flex justify-center py-2 px-1">
-                <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 items-start pt-6 pb-6 px-4">
-                <aside className="hidden md:block">
-                    <div className="sticky top-6 w-full flex flex-col gap-4 pb-4">
-                        <SidebarNav currentStep={currentStep} setStep={setStep}/>
-                        <div className="flex items-center gap-3 pt-4 border-t border-slate-700/30">
-                            <Button
-                                variant="outline"
-                                onClick={handlePrev}
-                                disabled={currentStep === 1}
-                                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl hover:bg-slate-800/80 transition-all border-slate-700/50 min-h-[48px] flex-1"
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                                <span className="uppercase tracking-widest text-[11px]">Anterior</span>
-                            </Button>
-                            <Button
-                                onClick={handleNext}
-                                disabled={currentStep === STEPS.length}
-                                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[48px] flex-[1.5]"
-                            >
-                                <span className="uppercase tracking-widest text-[11px]">{currentStep === STEPS.length ? "Finalizar" : "Próximo"}</span>
-                                <ArrowRight className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </aside>
-
-                <main className="flex-1 min-w-0 max-w-full">
-                    {/* Cabeçalho móvel: visível apenas no celular */}
-                    <div className="md:hidden mb-4 bg-slate-950/70 backdrop-blur-lg border border-slate-500/50 p-4 rounded-lg shadow-2xl">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-                                <Calculator className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-base font-bold text-slate-100">Análise de Risco</h1>
-                                <p className="text-xs text-slate-400">NBR 5419-2</p>
-                                <div className="mt-2 flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/30 text-blue-300 text-xs font-semibold">
-                                        Etapa {currentStep} de {STEPS.length}
-                                    </span>
-                                    <span className="text-xs text-slate-300">
-                                        {STEPS[currentStep - 1]}
-                                    </span>
+                <div className="w-full flex justify-center py-2 px-1">
+                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 items-start pt-6 pb-6 px-4">
+                        <aside className="hidden md:block">
+                            <div className="sticky top-6 w-full flex flex-col gap-4 pb-4">
+                                <SidebarNav currentStep={currentStep} setStep={setStep}/>
+                                <div className="flex items-center gap-3 pt-4 border-t border-slate-700/30">
+                                    <Button
+                                        variant="outline"
+                                        onClick={handlePrev}
+                                        disabled={currentStep === 1}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl hover:bg-slate-800/80 transition-all border-slate-700/50 min-h-[48px] flex-1"
+                                    >
+                                        <ArrowLeft className="w-4 h-4" />
+                                        <span className="uppercase tracking-widest text-[11px]">Anterior</span>
+                                    </Button>
+                                    <Button
+                                        onClick={handleNext}
+                                        disabled={currentStep === STEPS.length}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[48px] flex-[1.5]"
+                                    >
+                                        <span className="uppercase tracking-widest text-[11px]">{currentStep === STEPS.length ? "Finalizar" : "Próximo"}</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Button>
                                 </div>
                             </div>
-                        </div>
-                        {/* Texto do desenvolvedor removido conforme solicitado */}
-                    </div>
-                    {/* Alertas: ocultos no mobile para mostrar apenas cabeçalho + etapa */}
-                    <div className="hidden md:block">
-                        <AnimatePresence>
-                        {errors.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="mb-6"
-                            >
-                                <Alert variant="destructive">
-                                    <AlertTriangle className="h-5 w-5 mr-2 text-red-300" />
-                                    <AlertTitle>Por favor, corrija os seguintes erros:</AlertTitle>
-                                    <AlertDescription>
-                                        <ul className="list-disc pl-5 mt-2 space-y-1">
-                                            {errors.map((error, i) => <li key={i}>{error}</li>)}
-                                        </ul>
-                                    </AlertDescription>
-                                </Alert>
-                            </motion.div>
-                        )}
-                        </AnimatePresence>
-                    </div>
-                    <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentStep}
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -15 }}
-                                transition={{ duration: 0.25, ease: "easeOut" }}
-                            >
-                                <ErrorBoundary variant="inline">
-                                    {renderStep}
-                                </ErrorBoundary>
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-                    {/* Barra de navegação móvel fixa com respeito ao safe-area e leve fundo */}
-                    <div className="md:hidden fixed left-0 right-0 z-50" style={{ bottom: 'env(safe-area-inset-bottom)' }}>
-                        {/* Fundo sutil para evitar faixa branca ao tocar o final */}
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[80px]" style={{ background: 'linear-gradient(to top, rgba(2,6,23,0.95), rgba(2,6,23,0))' }} />
-                        <div className="mx-auto max-w-7xl px-3 pb-2">
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={handlePrev}
-                                    disabled={currentStep === 1}
-                                    className="flex items-center gap-2 w-full h-12 text-base"
-                                >
-                                    <ArrowLeft className="w-4 h-4" />
-                                    Anterior
-                                </Button>
-                                <Button
-                                    onClick={handleNext}
-                                    disabled={currentStep === STEPS.length}
-                                    className="flex items-center gap-2 w-full h-12 text-base"
-                                >
-                                    {currentStep === STEPS.length ? "Finalizar" : "Próximo"}
-                                    <ArrowRight className="w-4 h-4" />
-                                </Button>
+                        </aside>
+
+                        <main className="flex-1 min-w-0 max-w-full">
+                            {/* Cabeçalho móvel: visível apenas no celular */}
+                            <div className="md:hidden mb-4 bg-slate-950/70 backdrop-blur-lg border border-slate-500/50 p-4 rounded-lg shadow-2xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                                        <Calculator className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-base font-bold text-slate-100">Análise de Risco</h1>
+                                        <p className="text-xs text-slate-400">NBR 5419-2</p>
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded-md bg-blue-500/30 text-blue-300 text-xs font-semibold">
+                                                Etapa {currentStep} de {STEPS.length}
+                                            </span>
+                                            <span className="text-xs text-slate-300">
+                                                {STEPS[currentStep - 1]}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                            
+                            {/* Alertas */}
+                            <div className="hidden md:block">
+                                <AnimatePresence>
+                                {errors.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -20 }}
+                                        className="mb-6"
+                                    >
+                                        <Alert variant="destructive">
+                                            <AlertTriangle className="h-5 w-5 mr-2 text-red-300" />
+                                            <AlertTitle>Por favor, corrija os seguintes erros:</AlertTitle>
+                                            <AlertDescription>
+                                                <ul className="list-disc pl-5 mt-2 space-y-1">
+                                                    {errors.map((error, i) => <li key={i}>{error}</li>)}
+                                                </ul>
+                                            </AlertDescription>
+                                        </Alert>
+                                    </motion.div>
+                                )}
+                                </AnimatePresence>
+                            </div>
+
+                            {/* Convites e Conteúdo */}
+                            {currentStep === 1 && (
+                                <div className="mb-3 rounded-lg border border-slate-500/50 bg-slate-900/60 p-4 shadow-2xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg">
+                                            <MessageCircle className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-[240px]">
+                                            <div className="text-sm font-semibold text-slate-100">Comunidade SPDA (WhatsApp)</div>
+                                            <p className="text-sm text-slate-300">Participe do grupo para aprender, tirar dúvidas e compartilhar experiências.</p>
+                                        </div>
+                                        <a
+                                            href="https://chat.whatsapp.com/IawpsONjvohHjlE8Yhwe9s"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center justify-center rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 h-10 px-4"
+                                        >
+                                            Entrar
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={currentStep}
+                                        initial={{ opacity: 0, y: 15 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -15 }}
+                                        transition={{ duration: 0.25, ease: "easeOut" }}
+                                    >
+                                        <ErrorBoundary variant="inline">
+                                            {renderStep}
+                                        </ErrorBoundary>
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
+
+                            {/* Barra de navegação móvel */}
+                            <div className="md:hidden fixed left-0 right-0 z-50 shadow-2xl" style={{ bottom: 'env(safe-area-inset-bottom)' }}>
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[80px]" style={{ background: 'linear-gradient(to top, rgba(2,6,23,0.95), rgba(2,6,23,0))' }} />
+                                <div className="mx-auto max-w-7xl px-3 pb-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handlePrev}
+                                            disabled={currentStep === 1}
+                                            className="flex items-center gap-2 w-full h-12 text-base"
+                                        >
+                                            <ArrowLeft className="w-4 h-4" />
+                                            Anterior
+                                        </Button>
+                                        <Button
+                                            onClick={handleNext}
+                                            disabled={currentStep === STEPS.length}
+                                            className="flex items-center gap-2 w-full h-12 text-base"
+                                        >
+                                            {currentStep === STEPS.length ? "Finalizar" : "Próximo"}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
                     </div>
-                </main>
+                </div>
+                <VisitorCounter />
             </div>
-        </div>
-    </div>
         </AuditProvider>
     );
 }

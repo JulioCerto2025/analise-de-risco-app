@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, ShieldCheck } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 export function VisitorCounter() {
     const [count, setCount] = useState<number | null>(null); 
