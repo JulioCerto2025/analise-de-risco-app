@@ -88,6 +88,8 @@ const getRegionFromState = (stateUF: string = ''): string => {
 };
 
 
+import { VisitorCounter } from './components/VisitorCounter';
+
 export default function App() {
   // Preview CAD: permite abrir a simulação via query ?cad=1
   const isCadPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cad') !== null;
@@ -284,10 +286,10 @@ export default function App() {
 
     return (
         <>
-            <div className="min-h-screen p-3 sm:p-4 md:p-6" style={{ minHeight: '100svh' }}>
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-stretch">
+            <div className="min-h-screen p-2 sm:p-3 md:p-4" style={{ minHeight: '100svh' }}>
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 items-stretch">
                 <aside className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
-                    <div className="sticky top-4 flex flex-col gap-4">
+                    <div className="sticky top-2 flex flex-col gap-2">
                         <SidebarNav currentStep={currentStep} setStep={setStep}/>
                         {/* Ações rápidas do projeto removidas conforme solicitação */}
                         <div className="grid grid-cols-2 gap-2">
@@ -402,7 +404,7 @@ export default function App() {
                             </div>
                         </div>
                     )}
-                    <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
+                    <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentStep}
@@ -446,6 +448,7 @@ export default function App() {
                 </main>
             </div>
             </div>
+            <VisitorCounter />
         </>
     );
 }
