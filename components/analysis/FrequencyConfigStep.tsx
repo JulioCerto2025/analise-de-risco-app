@@ -443,8 +443,8 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
 
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
                 
                 {activeViewId === 'GLOBAL' ? (
                     <>
@@ -467,7 +467,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                                     )}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4 pt-4">
+                            <CardContent className="space-y-3 pt-2">
                                 <SimulatorSelect
                                     label="PEB - Prot. Surto Cond. D1/D2"
                                     value={data.probability_data.PEB_electric}
@@ -496,7 +496,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                                     {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="text-center p-6">
+                            <CardContent className="text-center p-4">
                                 <div className={`text-4xl font-bold mb-2 ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(F, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
                                 <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
                                     {isAcceptable ? "Frequência Aceitável." : "Frequência Não Aceitável."}
@@ -645,7 +645,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
 
             <Card>
                 <CardHeader><CardTitle>{`Componentes de Frequência — ${activeHeading}`}</CardTitle></CardHeader>
-                <CardContent className="h-[16.25rem]">
+                <CardContent className="h-[14.5rem]">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={activeViewId === 'GLOBAL' ? chartData : zoneChart}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
