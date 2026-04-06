@@ -269,7 +269,7 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
     return (
         <div className="space-y-4">
             {/* Ação Central: Relatório Técnico */}
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col md:flex-row items-stretch gap-4">
                 <AnimatePresence mode="wait">
                     {!reportText ? (
                         <motion.div
@@ -277,7 +277,7 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="w-full"
+                            className="flex-1"
                         >
                             <Button
                                 onClick={handleGenerateReport}
@@ -288,16 +288,13 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                                     <div className="flex flex-col items-center">
                                         <div className="flex items-center gap-4 mb-2">
                                             <Loader2 className="w-8 h-8 animate-spin" />
-                                            <span className="text-xl font-black tracking-widest uppercase">Gerando Relatório Gerencial...</span>
+                                            <span className="text-xl font-black tracking-widest uppercase">Gerando Relatório...</span>
                                         </div>
-                                        <p className="text-[10px] text-blue-300 font-bold uppercase tracking-[0.3em] animate-pulse">
-                                            {generationStep}
-                                        </p>
                                     </div>
                                 ) : (
                                     <>
                                         <FileText className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                        <span className="text-xl font-black tracking-widest uppercase">Gerar Relatório Técnico Gerencial</span>
+                                        <span className="text-xl font-black tracking-widest uppercase">Gerar Relatório Gerencial</span>
                                     </>
                                 )}
                             </Button>
@@ -307,12 +304,12 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                             key="report-view"
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="w-full bg-slate-900/95 border border-slate-700/40 rounded-3xl p-5 shadow-2xl"
+                            className="flex-1 bg-slate-900/95 border border-slate-700/40 rounded-3xl p-5 shadow-2xl"
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
                                     <FileText className="w-6 h-6 text-blue-400" />
-                                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">Preview do Relatório Gerencial</h3>
+                                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">Preview do Relatório</h3>
                                 </div>
                                 <div className="flex gap-2">
                                     <Button variant="outline" size="sm" onClick={handleDownloadWord} className="h-10 px-4 bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-600/20 flex items-center gap-2">
@@ -320,9 +317,6 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                                         Exportar Word
                                     </Button>
                                     <Button variant="outline" size="sm" onClick={handlePrint} className="h-10 px-4">Gerar PDF</Button>
-                                    <Button variant="outline" size="sm" onClick={copyToClipboard} className="h-10 px-4">
-                                        {copySuccess ? 'Copiado' : 'Copiar Texto'}
-                                    </Button>
                                     <Button variant="outline" size="icon" onClick={() => setReportText('')} className="h-10 w-10">
                                         <X className="w-4 h-4" />
                                     </Button>
@@ -335,6 +329,48 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Sidebar discreto para salvar quando o relatório ainda não foi gerado ou junto a ele */}
+                {!reportText && (
+                    <motion.div 
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="md:w-64 h-20 bg-slate-950/40 border border-slate-800 rounded-3xl flex flex-col items-center justify-center gap-1 group hover:bg-blue-900/10 cursor-pointer transition-all border-dashed"
+                        onClick={async () => {
+                            const json = JSON.stringify(data, null, 2);
+                            const defaultName = `PROJETO_SPDA_${(data.clientName || 'PROJETO').replace(/\s+/g, '_').toUpperCase()}.spda`;
+                            
+                            if ('showSaveFilePicker' in window) {
+                                try {
+                                    const handle = await (window as any).showSaveFilePicker({
+                                        suggestedName: defaultName,
+                                        types: [{
+                                            description: 'Arquivo de Projeto SPDA',
+                                            accept: { 'application/json': ['.spda'] },
+                                        }],
+                                    });
+                                    const writable = await handle.createWritable();
+                                    await writable.write(json);
+                                    await writable.close();
+                                    return;
+                                } catch (err: any) {
+                                    if (err.name === 'AbortError') return;
+                                }
+                            }
+
+                            const blob = new Blob([json], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = defaultName;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                         }}
+                    >
+                        <FileDown className="w-6 h-6 text-slate-500 group-hover:text-blue-400 group-hover:scale-110 transition-all" />
+                        <span className="text-[10px] font-black text-slate-500 group-hover:text-blue-400 uppercase tracking-widest leading-none">Salvar Projeto</span>
+                    </motion.div>
+                )}
             </div>
 
             {/* Rodapé: Responsabilidade Técnica - Só aparece se NÃO houver relatório gerado */}
@@ -375,97 +411,6 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                     </Card>
                 </motion.div>
             )}
-
-            {/* Gerenciamento de Arquivos - Card Final */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-            >
-                <div className="p-6 bg-slate-950/50 backdrop-blur-xl border border-blue-500/20 rounded-[2rem] shadow-[0_0_50px_-10px_rgba(59,130,246,0.3)] space-y-4">
-                    <div className="flex items-center gap-3 px-2">
-                        <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
-                            <FolderOpen className="w-6 h-6 text-blue-400" />
-                        </div>
-                        <h4 className="text-sm font-black text-blue-400 uppercase tracking-[0.2em] leading-none">Gerenciamento de Arquivos</h4>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Button 
-                            variant="outline" 
-                            onClick={async () => {
-                                const json = JSON.stringify(data, null, 2);
-                                const defaultName = `PROJETO_SPDA_${(data.clientName || 'PROJETO').replace(/\s+/g, '_').toUpperCase()}.spda`;
-                                
-                                if ('showSaveFilePicker' in window) {
-                                    try {
-                                        const handle = await (window as any).showSaveFilePicker({
-                                            suggestedName: defaultName,
-                                            types: [{
-                                                description: 'Arquivo de Projeto SPDA',
-                                                accept: { 'application/json': ['.spda'] },
-                                            }],
-                                        });
-                                        const writable = await handle.createWritable();
-                                        await writable.write(json);
-                                        await writable.close();
-                                        return;
-                                    } catch (err: any) {
-                                        if (err.name === 'AbortError') return;
-                                    }
-                                }
-
-                                const blob = new Blob([json], { type: 'application/json' });
-                                const url = URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = defaultName;
-                                link.click();
-                                URL.revokeObjectURL(url);
-                             }}
-                             className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1 border-blue-500/30 bg-blue-500/5 hover:bg-blue-600/20 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 group ring-1 ring-blue-400/20"
-                         >
-                             <div className="flex items-center gap-3">
-                                <FileDown className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
-                                <span>Salvar Projeto</span>
-                             </div>
-                         </Button>
-                         
-                         <div className="relative group">
-                             <input 
-                                 type="file" 
-                                 accept=".spda,.json"
-                                 onChange={(e) => {
-                                     const file = e.target.files?.[0];
-                                     if (!file) return;
-                                     const reader = new FileReader();
-                                     reader.onload = (event) => {
-                                         try {
-                                             const json = JSON.parse(event.target?.result as string);
-                                             onUpdate?.(json);
-                                             alert('Projeto carregado com sucesso!');
-                                         } catch (err) {
-                                             alert('Erro ao abrir o arquivo. Certifique-se de que é um arquivo .spda válido.');
-                                         }
-                                     };
-                                     reader.readAsText(file);
-                                 }}
-                                 className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                             />
-                             <Button 
-                                 variant="outline" 
-                                 className="w-full h-16 rounded-2xl flex items-center justify-center gap-3 border-slate-700/50 bg-slate-900/40 hover:bg-slate-800 text-slate-300 font-bold text-sm uppercase tracking-widest pointer-events-none transition-all shadow-lg ring-1 ring-white/5"
-                             >
-                                 <FolderOpen className="w-5 h-5 text-slate-500" />
-                                 Abrir Projeto
-                             </Button>
-                         </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 italic text-center font-bold tracking-tight opacity-80 pt-1">
-                        Arquivos .spda podem ser salvos e abertos localmente para edição posterior.
-                    </p>
-                </div>
-            </motion.div>
         </div>
     );
 };

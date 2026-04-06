@@ -97,85 +97,41 @@ export function ProjectInfoStep({
                                 </div>
                             </div>
 
-                            {/* Gerenciamento de Projetos - SALVAR / ABRIR - VERSÃO COMPACTA */}
-                            <div className="mt-1 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2.5">
-                                <div className="flex items-center gap-2">
+                            {/* Gerenciamento de Projetos - ABRIR APENAS - VERSÃO COMPACTA */}
+                            <div className="mt-1 p-2 bg-blue-500/5 border border-blue-500/10 rounded-xl flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 shrink-0">
                                     <FolderOpen className="w-3.5 h-3.5 text-blue-400" />
-                                    <h4 className="text-[9px] uppercase font-black text-blue-400 tracking-widest leading-none">Gerenciamento de Arquivos</h4>
+                                    <h4 className="text-[9px] uppercase font-black text-blue-400 tracking-widest leading-none">Abrir Projeto</h4>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2.5">
+                                <div className="relative flex-1 max-w-[140px]">
+                                    <input 
+                                        type="file" 
+                                        accept=".spda,.json"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const reader = new FileReader();
+                                            reader.onload = (event) => {
+                                                try {
+                                                    const json = JSON.parse(event.target?.result as string);
+                                                    onUpdate(json);
+                                                    alert('Projeto carregado com sucesso!');
+                                                } catch (err) {
+                                                    alert('Erro ao abrir o arquivo. Certifique-se de que é um arquivo .spda válido.');
+                                                }
+                                            };
+                                            reader.readAsText(file);
+                                        }}
+                                        className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                                    />
                                     <Button 
                                         variant="outline" 
-                                        onClick={async () => {
-                                            const json = JSON.stringify(data, null, 2);
-                                            const defaultName = `PROJETO_SPDA_${(data.clientName || 'SEM_NOME').replace(/\s+/g, '_').toUpperCase()}.spda`;
-                                            
-                                            // Tenta usar a File System Access API (abre o diálogo Salvar Como)
-                                            if ('showSaveFilePicker' in window) {
-                                                try {
-                                                    const handle = await (window as any).showSaveFilePicker({
-                                                        suggestedName: defaultName,
-                                                        types: [{
-                                                            description: 'Arquivo de Projeto SPDA',
-                                                            accept: { 'application/json': ['.spda'] },
-                                                        }],
-                                                    });
-                                                    const writable = await handle.createWritable();
-                                                    await writable.write(json);
-                                                    await writable.close();
-                                                    return;
-                                                } catch (err: any) {
-                                                    // Se o usuário cancelar ou houver erro, prossegue para fallback se não for Cancelar
-                                                    if (err.name === 'AbortError') return;
-                                                }
-                                            }
-
-                                            // Fallback: Download via link (costuma salvar na pasta Downloads padrão)
-                                            const blob = new Blob([json], { type: 'application/json' });
-                                            const url = URL.createObjectURL(blob);
-                                            const link = document.createElement('a');
-                                            link.href = url;
-                                            link.download = defaultName;
-                                            link.click();
-                                            URL.revokeObjectURL(url);
-                                         }}
-                                         className="h-10 rounded-xl flex items-center gap-2 border-blue-500/20 hover:bg-blue-500/10 text-blue-100 font-bold text-[10px] uppercase tracking-wider transition-all"
-                                     >
-                                         <Save className="w-3.5 h-3.5" />
-                                         Salvar Projeto
-                                     </Button>
-                                     
-                                     <div className="relative">
-                                         <input 
-                                             type="file" 
-                                             accept=".spda,.json"
-                                             onChange={(e) => {
-                                                 const file = e.target.files?.[0];
-                                                 if (!file) return;
-                                                 const reader = new FileReader();
-                                                 reader.onload = (event) => {
-                                                     try {
-                                                         const json = JSON.parse(event.target?.result as string);
-                                                         onUpdate(json);
-                                                         alert('Projeto carregado com sucesso!');
-                                                     } catch (err) {
-                                                         alert('Erro ao abrir o arquivo. Certifique-se de que é um arquivo .spda válido.');
-                                                     }
-                                                 };
-                                                 reader.readAsText(file);
-                                             }}
-                                             className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                                         />
-                                         <Button 
-                                             variant="outline" 
-                                             className="w-full h-10 rounded-xl flex items-center gap-2 border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase tracking-wider pointer-events-none transition-all"
-                                         >
-                                             <FolderOpen className="w-3.5 h-3.5" />
-                                             Abrir Projeto
-                                         </Button>
-                                     </div>
-                                 </div>
-                                 <p className="text-[8px] text-slate-500 italic text-center font-medium opacity-70">Arquivos .spda podem ser salvos e abertos localmente.</p>
+                                        className="w-full h-8 rounded-lg flex items-center justify-center gap-2 border-slate-700/50 hover:bg-slate-800 text-slate-300 font-bold text-[9px] uppercase tracking-wider pointer-events-none transition-all leading-none"
+                                    >
+                                        <FolderOpen className="w-3 h-3" />
+                                        Selecionar Arquivo
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -211,53 +167,41 @@ export function ProjectInfoStep({
                                             </div>
 
                                             <div className="grid grid-cols-4 gap-2">
-                                                {/* 48 Horas */}
-                                                <div 
-                                                    onClick={() => copyToClipboard?.(passwords?.trial, 'Degustação')}
-                                                    className="bg-slate-900/60 border border-white/5 rounded-xl p-3 cursor-pointer hover:bg-blue-600/20 transition-all group"
-                                                >
-                                                    <p className="text-[8px] text-blue-400/70 font-black uppercase tracking-widest mb-1.5">48 Horas</p>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-mono font-black text-white tracking-widest leading-none">{passwords?.trial}</span>
-                                                        <Clipboard className="w-3.5 h-3.5 text-slate-600 group-hover:text-blue-400" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Mensal */}
-                                                <div 
-                                                    onClick={() => copyToClipboard?.(passwords?.month, 'Mensal')}
-                                                    className="bg-slate-900/60 border border-white/5 rounded-xl p-3 cursor-pointer hover:bg-teal-600/20 transition-all group"
-                                                >
-                                                    <p className="text-[8px] text-teal-400/70 font-black uppercase tracking-widest mb-1.5">Mensal</p>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-mono font-black text-white tracking-widest leading-none">{passwords?.month}</span>
-                                                        <Clipboard className="w-3.5 h-3.5 text-slate-600 group-hover:text-teal-400" />
-                                                    </div>
-                                                </div>
-
-                                                {/* 6 Meses */}
-                                                <div 
-                                                    onClick={() => copyToClipboard?.(passwords?.semestral, 'Semestral')}
-                                                    className="bg-slate-900/60 border border-white/5 rounded-xl p-3 cursor-pointer hover:bg-purple-600/20 transition-all group"
-                                                >
-                                                    <p className="text-[8px] text-purple-400/70 font-black uppercase tracking-widest mb-1.5">6 Meses</p>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-mono font-black text-white tracking-widest leading-none">{passwords?.semestral}</span>
-                                                        <Clipboard className="w-3.5 h-3.5 text-slate-600 group-hover:text-purple-400" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Anual */}
-                                                <div 
-                                                    onClick={() => copyToClipboard?.(passwords?.annual, 'Anual')}
-                                                    className="bg-emerald-900/60 border border-emerald-500/20 rounded-xl p-3 cursor-pointer hover:bg-emerald-600/20 transition-all group"
-                                                >
-                                                    <p className="text-[8px] text-emerald-400/70 font-black uppercase tracking-widest mb-1.5">Anual</p>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm font-mono font-black text-white tracking-widest leading-none">{passwords?.annual}</span>
-                                                        <Clipboard className="w-3.5 h-3.5 text-slate-600 group-hover:text-emerald-400" />
-                                                    </div>
-                                                </div>
+                                                {[
+                                                    { id: 'trial', label: '48 Horas', color: 'blue', pwd: passwords?.trial },
+                                                    { id: 'month', label: 'Mensal', color: 'teal', pwd: passwords?.month },
+                                                    { id: 'semestral', label: '6 Meses', color: 'purple', pwd: passwords?.semestral },
+                                                    { id: 'annual', label: 'Anual', color: 'emerald', pwd: passwords?.annual }
+                                                ].map((p) => {
+                                                    const [isVisible, setIsVisible] = React.useState(false);
+                                                    return (
+                                                        <div 
+                                                            key={p.id}
+                                                            className={`bg-slate-900/60 border border-white/5 rounded-xl p-3 flex flex-col relative transition-all group overflow-hidden`}
+                                                        >
+                                                            <p className={`text-[8px] text-${p.color}-400/70 font-black uppercase tracking-widest mb-1.5`}>{p.label}</p>
+                                                            <div className="flex items-center justify-between">
+                                                                <span 
+                                                                    onClick={() => setIsVisible(!isVisible)}
+                                                                    className={`text-sm font-mono font-black ${isVisible ? 'text-white' : 'text-slate-800'} tracking-widest leading-none cursor-pointer hover:text-white transition-colors flex-1`}
+                                                                    title="Clique para ver/ocultar"
+                                                                >
+                                                                    {isVisible ? p.pwd : '••••••'}
+                                                                </span>
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        copyToClipboard?.(p.pwd, p.label);
+                                                                    }}
+                                                                    className="p-1.5 hover:bg-white/10 rounded-lg transition-all ml-1 shrink-0"
+                                                                    title="Copiar senha"
+                                                                >
+                                                                    <Clipboard className="w-3.5 h-3.5 text-slate-600 group-hover:text-blue-400" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </motion.div>
                                     )}
