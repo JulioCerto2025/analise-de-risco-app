@@ -103,7 +103,7 @@ export function ProjectInfoStep({
                                     <FolderOpen className="w-3.5 h-3.5 text-blue-400" />
                                     <h4 className="text-[9px] uppercase font-black text-blue-400 tracking-widest leading-none">Abrir Projeto</h4>
                                 </div>
-                                <div className="relative flex-1 max-w-[140px]">
+                                <div className="relative flex-1 max-w-[140px] group">
                                     <input 
                                         type="file" 
                                         accept=".spda,.json"
@@ -126,9 +126,9 @@ export function ProjectInfoStep({
                                     />
                                     <Button 
                                         variant="outline" 
-                                        className="w-full h-8 rounded-lg flex items-center justify-center gap-2 border-slate-700/50 hover:bg-slate-800 text-slate-300 font-bold text-[9px] uppercase tracking-wider pointer-events-none transition-all leading-none"
+                                        className="w-full h-8 rounded-lg flex items-center justify-center gap-2 border-slate-700/50 group-hover:border-blue-500/50 group-hover:bg-blue-600/10 text-slate-300 group-hover:text-blue-400 font-bold text-[9px] uppercase tracking-wider pointer-events-none transition-all leading-none shadow-sm group-hover:shadow-[0_0_15px_-3px_rgba(59,130,246,0.5)]"
                                     >
-                                        <FolderOpen className="w-3 h-3" />
+                                        <FolderOpen className="w-3 h-3 group-hover:scale-110 transition-transform" />
                                         Selecionar Arquivo
                                     </Button>
                                 </div>
