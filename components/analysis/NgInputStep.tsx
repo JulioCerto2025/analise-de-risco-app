@@ -7,7 +7,7 @@ import { MapViewerHandles } from './MapViewer';
 const MapViewerLazy = React.lazy(() => import('./MapViewer').then(m => ({ default: m.MapViewer })));
 import { getUfs, getCitiesByUf, getNgByCity, toUfCode, getUfSuggestions } from '../../data/ngByCity';
 import { geocodeCityWithOSM } from '../../lib/osmGeocoding';
-// Removido: geocodificação/OCR não são utilizados
+import { extractCityAndUf } from '../../utils/addressParser';
 
 interface NgInputStepProps {
     data: AnalysisData;
@@ -252,27 +252,82 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const [ufError, setUfError] = useState<string | null>(null);
     const lastAutoCommitRef = useRef<string>('');
     const lastLocationAppliedRef = useRef<string>('');
+    const lastProcessedAddressRef = useRef<string>('');
     // Coordenadas da cidade (lat/lon). Tenta override local e, se não houver, geocodifica via OSM.
     const [coordsForCity, setCoordsForCity] = useState<{ lat: number; lon: number } | null>(null);
 
-    // (Movido para baixo, após getDynamicPixelBounds, para evitar TDZ)
+    // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
+    const getDynamicPixelBounds = useCallback((region: string): { x1: number; y1: number; x2: number; y2: number } | null => {
+        const ref = mapViewerRef.current;
+        const dims = imageDims || ref?.getImageDimensions() || null;
+        const perc = mapPixelBoundsPercent[region];
+        if (perc && dims) {
+            const x1 = Math.round(dims.width * perc.left);
+            const y1 = Math.round(dims.height * perc.top);
+            const x2 = Math.round(dims.width * perc.right);
+            const y2 = Math.round(dims.height * perc.bottom);
+            if (!imageDims) setImageDims(dims);
+            return { x1, y1, x2, y2 };
+        }
+        const auto = ref?.getContentBounds();
+        if (auto) return auto;
+        const calibrated = mapPixelBounds[region];
+        if (calibrated) return calibrated;
+        if (dims) {
+            if (!imageDims) setImageDims(dims);
+            return { x1: 0, y1: 0, x2: dims.width, y2: dims.height };
+        }
+        return null;
+    }, [imageDims]);
+
+    // Efeito para posicionar o marcador inicial se houver coordenadas salvas
+    useEffect(() => {
+        if (data.lat && data.lon && !markerPoint && mapViewerRef.current) {
+            const region = mapRegion || 'brasil';
+            const geoBounds = mapBounds[region];
+            const pixelBounds = getDynamicPixelBounds(region);
+            if (geoBounds && pixelBounds) {
+                const px = convertGeoToPixel(data.lat, data.lon, geoBounds, pixelBounds);
+                if (px) setMarkerPoint(px);
+            }
+        }
+    }, [data.lat, data.lon, mapRegion, getDynamicPixelBounds]);
+
+    // Efeito unificado para busca de coordenadas (reativo a drafts e seleções oficiais)
     useEffect(() => {
         const run = async () => {
             try {
-                if (!selectedUf || !selectedCity) { setCoordsForCity(null); return; }
-                const uf = selectedUf.toUpperCase();
-                const byUf = CITY_COORDS_OVERRIDES[uf];
-                const override = byUf ? byUf[selectedCity] || null : null;
-                if (override) { setCoordsForCity(override); return; }
-                const fetched = await geocodeCityWithOSM(selectedCity, uf);
-                setCoordsForCity(fetched);
+                const uf = (selectedUf || ufInput || '').trim().toUpperCase();
+                const city = (selectedCity || cityInput || '').trim();
+
+                if (!uf || !city || uf.length < 2) { 
+                    setCoordsForCity(null); 
+                    return; 
+                }
+                
+                const ufCode = (toUfCode(uf) || uf).toUpperCase();
+                const byUf = CITY_COORDS_OVERRIDES[ufCode];
+                let override = null;
+                if (byUf) {
+                    const cityName = city.trim();
+                    const foundKey = Object.keys(byUf).find(k => k.toLowerCase() === cityName.toLowerCase());
+                    if (foundKey) override = byUf[foundKey];
+                }
+                
+                const coords = override || await geocodeCityWithOSM(city, ufCode);
+                if (coords) {
+                    setCoordsForCity(coords);
+                    // Persiste as coordenadas no estado global para estabilidade
+                    if (coords.lat !== data.lat || coords.lon !== data.lon) {
+                        onUpdate({ lat: coords.lat, lon: coords.lon });
+                    }
+                }
             } catch (_) {
                 setCoordsForCity(null);
             }
         };
         run();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedUf, selectedCity]);
+    }, [selectedUf, selectedCity, ufInput, cityInput]);
 
     // Determina a cor do card NG com base no valor atual (2..32)
     const ngPaletteIndex = React.useMemo(() => {
@@ -302,86 +357,40 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         })();
     }, []);
 
-    // Autofill robusto: quando "location" ou "clientAddress" mudarem, tenta extrair Cidade/UF
+    // Autofill robusto: quando "clientAddress" mudar, extrai Cidade/UF e atualiza automaticamente
     useEffect(() => {
-        // Auto-preenchimento desativado conforme solicitação
-        return;
-        const shouldAutofill = (!selectedUf || !selectedCity);
-        if (!shouldAutofill) return;
-        const rawLoc = (data.location || '').toString().trim();
         const rawAddr = (data.clientAddress || '').toString().trim();
-        if (!rawLoc && !rawAddr) return;
+        if (!rawAddr || rawAddr === lastProcessedAddressRef.current) return;
+        
+        lastProcessedAddressRef.current = rawAddr;
 
-        const text = rawLoc || rawAddr;
+        const parsed = extractCityAndUf(rawAddr);
+        if (!parsed) return;
 
-        const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        const cleanSegment = (s: string) => {
-            return (s || '')
-                .replace(/\b(rua|av\.?|avenida|rodovia|estrada|logradouro|praça|praca|alameda|quadra|qd\.|lote|lt\.|bairro|setor|centro|cep|cidade|municipio|município)\b/gi, '')
-                .replace(/\b(bairro\s+[a-zà-ú0-9\- ]+)\b/gi, '')
-                .replace(/\b(distrito\s+[a-zà-ú0-9\- ]+)\b/gi, '')
-                .replace(/\b(zona\s+[a-zà-ú0-9\- ]+)\b/gi, '')
-                .replace(/[0-9#.,]/g, ' ')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-        };
-
-        const extractCityUf = (raw: string): { city: string; uf: string } | null => {
-            if (!raw) return null;
-            // Casos comuns no final da string
-            const mSlash = raw.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
-            const mHyphen = raw.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
-            const mComma = raw.match(/^(.*),\s*([A-Za-z]{2})$/i);
-            const mSpace = raw.match(/^(.*)\s([A-Za-z]{2})$/i);
-            let city = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
-            let uf = ((mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
-            if (city && uf) {
-                city = cleanSegment(city);
-                uf = toUfCode(uf) || uf;
-                return { city, uf };
-            }
-            // Fallback: encontra qualquer UF válido presente e tenta segmento anterior como cidade
-            const ufList = getUfSuggestions();
-            const foundUf = ufList.find(code => new RegExp(`(^|\b)${code}(\b|$)`, 'i').test(raw));
-            if (!foundUf) return null;
-            uf = foundUf.toUpperCase();
-            // divide por vírgulas/hífens e espaços controlados
-            const parts = raw.split(/[,\-]/).map(p => p.trim()).filter(Boolean);
-            // escolhe o último segmento antes da UF quando possível
-            let cityCandidate = '';
-            for (let i = parts.length - 1; i >= 0; i--) {
-                const seg = parts[i];
-                if (new RegExp(`(^|\b)${uf}(\b|$)`, 'i').test(seg)) {
-                    // próximo anterior será cidade
-                    if (i > 0) {
-                        cityCandidate = parts[i - 1];
-                    }
+        const { city, uf } = parsed;
+        
+        (async () => {
+            // Se já estiver selecionado um UF/Cidade diferente e NÃO for a primeira carga, 
+            // talvez devêssemos perguntar, mas a solicitação é que "já preencha".
+            await commitUf(uf);
+            
+            // Tenta casar a cidade com a lista oficial para normalização
+            const cities = await getCitiesByUf(uf);
+            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[.,/]/g, ' ').trim();
+            const rawNorm = norm(city);
+            
+            let bestMatch = city;
+            for (const c of cities) {
+                const cn = norm(c);
+                if (rawNorm === cn || rawNorm.includes(cn) || cn.includes(rawNorm)) {
+                    bestMatch = c;
                     break;
                 }
             }
-            if (!cityCandidate) {
-                // se não encontrou próximo anterior, pega o maior segmento textual
-                cityCandidate = parts.sort((a, b) => b.length - a.length)[0] || '';
-            }
-            cityCandidate = cleanSegment(cityCandidate);
-            if (!cityCandidate) return null;
-            return { city: cityCandidate, uf };
-        };
-
-        (async () => {
-            const parsed = extractCityUf(text);
-            if (!parsed) return;
-            const { city, uf } = parsed;
-            await commitUf(uf);
-            // após carregar cidades oficiais, tenta casar por normalização
-            const cities = await getCitiesByUf(uf);
-            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            const exact = cities.find(c => norm(c) === norm(city));
-            const contains = cities.find(c => norm(c).includes(norm(city)) || norm(city).includes(norm(c)));
-            const best = exact || contains || city;
-            await commitCity(best);
+            
+            await commitCity(bestMatch);
         })();
-    }, [data.location, data.clientAddress, selectedUf, selectedCity]);
+    }, [data.clientAddress]);
 
     // Reidratação: ao retornar para a etapa, restaura UF/Cidade apenas para o estado local
     useEffect(() => {
@@ -483,32 +492,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     }, [mapRegion]);
 
     // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
-    const getDynamicPixelBounds = useCallback((region: string): { x1: number; y1: number; x2: number; y2: number } | null => {
-        const ref = mapViewerRef.current;
-        const dims = imageDims || ref?.getImageDimensions() || null;
-        // 1) Preferir calibração por porcentagem da área da GRADE (lat/long)
-        const perc = mapPixelBoundsPercent[region];
-        if (perc && dims) {
-            const x1 = Math.round(dims.width * perc.left);
-            const y1 = Math.round(dims.height * perc.top);
-            const x2 = Math.round(dims.width * perc.right);
-            const y2 = Math.round(dims.height * perc.bottom);
-            if (!imageDims) setImageDims(dims);
-            return { x1, y1, x2, y2 };
-        }
-        // 2) Se não houver porcentagem, tenta detecção automática de conteúdo
-        const auto = ref?.getContentBounds();
-        if (auto) return auto;
-        // 3) Depois, bounds calibrados fixos por região
-        const calibrated = mapPixelBounds[region];
-        if (calibrated) return calibrated;
-        // 4) Fallback: dimensões inteiras
-        if (dims) {
-            if (!imageDims) setImageDims(dims);
-            return { x1: 0, y1: 0, x2: dims.width, y2: dims.height };
-        }
-        return null;
-    }, [imageDims]);
 
     // Posiciona o marcador para a cidade/UF informados (Brasil como mapa)
     const positionMarkerForCityUf = useCallback(async (city: string, uf: string, attempt: number = 0) => {
@@ -558,24 +541,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     // Manipulador que usa calibração OCR dos eixos para converter pixel→geo fiel ao desenho
     // Removido: handler de clique com OCR/geocodificação
 
-    // Atualiza apenas lat/lon quando Cidade/UF mudam (sem posicionar marcador)
-    useEffect(() => {
-        const fetchCoords = async () => {
-            if (!selectedUf || !selectedCity) return;
-            try {
-                const byUf = CITY_COORDS_OVERRIDES[selectedUf.toUpperCase()] || {};
-                const override = byUf[selectedCity] || null;
-                if (override) {
-                    setCoordsForCity(override);
-                    return;
-                }
-                const fetched = await geocodeCityWithOSM(selectedCity, selectedUf);
-                setCoordsForCity(fetched || null);
-            } catch (_) {}
-        };
-        fetchCoords();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedUf, selectedCity]);
+    // Redundância de coordenadas unificada no efeito superior
+
 
     // Removido: posicionamento quando a imagem fica pronta
 
@@ -646,18 +613,18 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         if (selectedUf) {
             const ngPreset = await getNgByCity(selectedUf, city);
             const loc = `${city} - ${selectedUf}`;
-            onUpdate({ location: loc, ng: ngPreset });
-            // Atualiza lat/lon detectados (sem posicionar marcador)
-            try {
-                const byUf = CITY_COORDS_OVERRIDES[selectedUf.toUpperCase()] || {};
-                const override = byUf[city] || null;
-                if (override) {
-                    setCoordsForCity(override);
-                } else {
-                    const fetched = await geocodeCityWithOSM(city, selectedUf);
-                    setCoordsForCity(fetched || null);
-                }
-            } catch (_) {}
+            // Se coordenadas já forem conhecidas localmente (override), atualiza global também
+            const byUf = CITY_COORDS_OVERRIDES[selectedUf.toUpperCase()] || {};
+            const cityName = city.trim();
+            const foundKey = Object.keys(byUf).find(k => k.toLowerCase() === cityName.toLowerCase());
+            const override = foundKey ? byUf[foundKey] : null;
+
+            onUpdate({ 
+                location: loc, 
+                ng: ngPreset,
+                lat: override?.lat || data.lat,
+                lon: override?.lon || data.lon
+            });
         }
     };
 
@@ -750,10 +717,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                     <CardHeader className="py-3 px-4">
                         <CardTitle>Descargas Atmosféricas (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4 p-4">
+                    <CardContent className="space-y-2.5 p-4">
                         {/* Controles de calibração removidos: a detecção agora é automática e robusta */}
-                        <div>
-                           <Label>Região para Visualização no Mapa</Label>
+                        <div className="space-y-1">
+                           <Label className="pl-0.5">Região para Visualização no Mapa</Label>
                             <Select value={mapRegion} onValueChange={handleRegionChange} placeholder="Selecione uma região..." options={regionOptions}>
                                 <SelectTrigger>
                                     <SelectValue />
@@ -762,12 +729,9 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                     {regionOptions.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
                             </Select>
-                            {/* Aplicação automática do endereço da Etapa 1: botão removido */}
                         </div>
 
-                        {/* Removido bloco de exibição de "Localização da Estrutura" conforme solicitação */}
-
-                        <div className="grid grid-cols-[4.5rem,1fr] gap-3 items-end">
+                        <div className="grid grid-cols-[4.5rem,1fr] gap-2 items-end">
                            <div className="w-[4.5rem] justify-self-start">
                                 <AutocompleteInput
                                     id="ufInput"
@@ -795,17 +759,16 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                    suggestions={availableCities}
                                    placeholder="Digite a cidade"
                                    autoComplete="off"
-                                   // Não comitar no blur para evitar completar antes de terminar a digitação
+                                   onBlur={() => commitCity(cityInput)}
                                    onCommit={(val) => commitCity(val)}
                                />
                            </div>
                         </div>
 
-                        {/* Contêiner comum: coordenadas e NG com a mesma largura */}
-                        <div className="mx-auto w-fit">
+                        <div className="mx-auto w-fit space-y-2">
                             {/* Coordenadas (w-full para igualar largura) */}
                             <div
-                                className="w-full mt-2 px-4 py-3 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base md:text-lg font-bold shadow-sm"
+                                className="w-full px-4 py-2.5 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base md:text-lg font-bold shadow-sm"
                                 aria-label="Coordenadas da cidade selecionada"
                             >
                                 <div className="grid grid-cols-[auto_1fr] gap-x-3">
@@ -813,23 +776,23 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                         <MapPin className="h-6 w-6 text-slate-300" aria-hidden="true" />
                                     </div>
                                     <div className="flex items-baseline justify-between">
-                                        <span className="font-mono whitespace-pre tracking-wide">Lat.  Y:</span>
+                                        <span className="font-mono whitespace-pre tracking-wide text-xs opacity-70">Lat.  Y:</span>
                                         <span className="font-mono tabular-nums text-right text-lg md:text-xl">{coordsForCity ? coordsForCity.lat.toFixed(2) : '--'}</span>
                                     </div>
                                     <div className="flex items-baseline justify-between">
-                                        <span className="font-mono whitespace-pre tracking-wide">Long. X:</span>
+                                        <span className="font-mono whitespace-pre tracking-wide text-xs opacity-70">Long. X:</span>
                                         <span className="font-mono tabular-nums text-right text-lg md:text-xl">{coordsForCity ? coordsForCity.lon.toFixed(2) : '--'}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mt-2 text-xs text-slate-300/80">
-                                Posicione o marcador manualmente no mapa. A localização não é aplicada automaticamente.
+                            <div className="text-[10.5px] text-slate-300/80 leading-tight">
+                                Posicione o marcador manualmente no mapa.
                             </div>
 
                             {/* NG (w-full para igualar largura) */}
                             <div
-                                className="w-full mt-2 px-4 py-3 rounded-xl text-white text-2xl md:text-3xl font-extrabold shadow-lg border-2"
+                                className="w-full px-4 py-2.5 rounded-xl text-white text-2xl md:text-3xl font-extrabold shadow-lg border-2"
                                 style={{ backgroundColor: ngBgRgba, borderColor: ngColorHex }}
                                 aria-label="Valor NG atual"
                             >
@@ -842,7 +805,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                 </div>
                             </div>
 
-                            <Label className="mt-2 block w-full whitespace-nowrap text-center text-xs md:text-sm text-slate-200 font-semibold">(Ng) Dens. Desc. (raios/km²/ano)</Label>
+                            <Label className="block w-full whitespace-nowrap text-center text-[10px] md:text-[11px] text-slate-300 font-bold tracking-wider uppercase opacity-80">(Ng) Dens. Desc. (raios/km²/ano)</Label>
                         </div>
 
                         {/* Campo redundante de NG removido para priorizar captura por clique */}

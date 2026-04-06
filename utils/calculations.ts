@@ -43,7 +43,6 @@ export function calculateEvents(data: Pick<AnalysisData,
         line_sections_1.forEach(section => {
             if (!section) return;
             const ll = Number(section.ll) || 0;
-            const ci = Number(section.ci) || 0;
             const ce = Number(section.ce) || 0;
             const ct = Number(section.ct) || 0;
             
@@ -51,8 +50,9 @@ export function calculateEvents(data: Pick<AnalysisData,
             const ai_section = 4000 * ll;
             al1_total += al_section;
             ai1_total += ai_section;
-            nl1_base += safeNg > 0 ? safeNg * al_section * ci * ce * ct * 1e-6 : 0;
-            ni1_base += safeNg > 0 ? safeNg * ai_section * ci * ce * ct * 1e-6 : 0;
+            // NBR 5419: Nl and Ni do NOT use Ci (it belongs only to loss/consequence in some cases or is implied 1 for network)
+            nl1_base += safeNg > 0 ? safeNg * al_section * ce * ct * 1e-6 : 0;
+            ni1_base += safeNg > 0 ? safeNg * ai_section * ce * ct * 1e-6 : 0;
         });
     }
 
@@ -66,7 +66,6 @@ export function calculateEvents(data: Pick<AnalysisData,
         line_sections_2.forEach(section => {
             if (!section) return;
             const ll = Number(section.ll) || 0;
-            const ci = Number(section.ci) || 0;
             const ce = Number(section.ce) || 0;
             const ct = Number(section.ct) || 0;
             
@@ -74,8 +73,8 @@ export function calculateEvents(data: Pick<AnalysisData,
             const ai_section = 4000 * ll;
             al2_total += al_section;
             ai2_total += ai_section;
-            nl2_base += safeNg > 0 ? safeNg * al_section * ci * ce * ct * 1e-6 : 0;
-            ni2_base += safeNg > 0 ? safeNg * ai_section * ci * ce * ct * 1e-6 : 0;
+            nl2_base += safeNg > 0 ? safeNg * al_section * ce * ct * 1e-6 : 0;
+            ni2_base += safeNg > 0 ? safeNg * ai_section * ce * ct * 1e-6 : 0;
         });
     }
 
@@ -132,8 +131,8 @@ export function calculateEvents(data: Pick<AnalysisData,
         nm: Number(nm) || 0,
         nl_electric: Number(nl1_base + nadj_electric) || 0,
         nl_data: Number(nl2_base + nadj_data) || 0,
-        ni_electric: Number(ni1_base) || 0, // Per correction, nim_adj is removed
-        ni_data: Number(ni2_base) || 0,   // Per correction, nim_adj is removed
+        ni_electric: Number(ni1_base) || 0, 
+        ni_data: Number(ni2_base) || 0,   
         nadj_electric: Number(nadj_electric) || 0, 
         nadj_data: Number(nadj_data) || 0,
         ad_adj_1: Number(ad_adj_1) || 0, 
@@ -246,22 +245,17 @@ export function calculateProbabilities(
         PWT = safeValues.PSPD_data * safeValues.PLD_data_ext * safeValues.CLD_data_ext;
         PZT = safeValues.PSPD_data * safeValues.CLI_data_ext * Pli_data_ext;
 
-        // These probabilities relate to the failure of INTERNAL systems.
-        // They are only calculated if the user wants to analyze the internal data line.
         if (analyzeDataLineProbs) {
             PCT = safeValues.PSPD_data * safeValues.CLD_data_int;
             Pmst = Math.pow(Ks1 * Ks2 * safeValues.Ks3_data_int * Ks4_data_int, 2);
             PMT = safeValues.PSPD_data * Pmst;
         }
 
-        // Se a análise da linha de dados estiver desativada para a zona, zere também os externos
         if (!analyzeDataLineProbs) {
             PUT = 0; PVT = 0; PWT = 0; PZT = 0; PCT = 0; PMT = 0;
         }
     }
     
-    // Se a análise da linha elétrica estiver desativada para a zona,
-    // zere internos (PC, PM) e externos (PU, PV, PW, PZ)
     if (!analyzeElectricLineProbs) {
         PC = 0; PM = 0; PU = 0; PV = 0; PW = 0; PZ = 0;
     }
@@ -300,7 +294,6 @@ export function calculateProbabilities(
 export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const losses: { [key: string]: any } = {};
     const ld = zone?.loss_data;
-    // LT pode ser configurável pelo usuário (padrão 0,01)
 
     if (!ld) return {};
     
@@ -338,7 +331,7 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const safeRf = Number(ld.rf) || 0;
     const safeLf3 = Number(ld.lf3) || 0;
     const safeCz = Number(ld.cz) || 0;
-    losses.LB3 = safeRp * safeRf * safeLf3 * (safeCz / ct_cultural); // Corrected: rs removed
+    losses.LB3 = safeRp * safeRf * safeLf3 * (safeCz / ct_cultural); 
     losses.LV3 = losses.LB3;
 
     // R4 Losses
@@ -347,8 +340,8 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const economic_sum = (ld.ca ?? 0) + (ld.cb ?? 0) + (ld.cc ?? 0) + (ld.cs ?? 0);
     losses.LB4 = (ld.rs ?? 1) * (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.lf4 ?? 0) * (economic_sum / ct_economic);
     losses.LC4 = (ld.lo4 ?? 0) * ((ld.cs ?? 0) / ct_economic);
-    const le4 = 0; // Lfe4 * (ce / ct) - ce is usually 0
-    losses.LFT4 = (ld.lf4 ?? 0) + le4; // Used in some versions
+    const le4 = 0; 
+    losses.LFT4 = (ld.lf4 ?? 0) + le4; 
     
     losses.LU4 = losses.LA4;
     losses.LV4 = losses.LB4;
@@ -370,16 +363,12 @@ export function calculateRisksForZone(
     const p = probCalcs;
     const l = lossCalcs;
 
-    // Combinação de probabilidades para falha de sistemas internos (estrutura e proximidade)
-    // Quando mais de um sistema interno é considerado na zona, aplica-se:
-    // P_total = 1 − (1 − P1) × (1 − P2) × ...
     const PC_total = 1 - ((1 - (p.PC || 0)) * (1 - (p.PCT || 0)));
     const PM_total = 1 - ((1 - (p.PM || 0)) * (1 - (p.PMT || 0)));
 
     // R1 Components
     const RA = nd * (p.PA || 0) * (l.LA || 0);
     const RB = nd * (p.PB || 0) * (l.LB || 0);
-    // Internal system failures use combined probability across systems
     const RC = nd * (PC_total) * (l.LC || 0);
     const RM = nm * (PM_total) * (l.LM || 0);
     const RU = nl_electric * (p.PU || 0) * (l.LU || 0);
@@ -399,7 +388,6 @@ export function calculateRisksForZone(
     // R4 Components
     const RA4 = nd * (p.PA || 0) * (l.LA4 || 0);
     const RB4 = nd * (p.PB || 0) * (l.LB4 || 0);
-    // Internal system failures use combined probability across systems (R4)
     const RC4 = nd * (PC_total) * (l.LC4 || 0);
     const RM4 = nm * (PM_total) * (l.LM4 || 0);
     const RU4 = nl_electric * (p.PU || 0) * (l.LU4 || 0);
@@ -465,19 +453,15 @@ export function calculateFrequencies(
     const numSystems = (has_electric_line ? 1 : 0) + (has_data_line ? 1 : 0);
 
     if (numSystems > 1) {
-        // More than one system (e.g., electric and data lines), apply combination formula.
         PC_total = 1 - ((1 - (p.PC || 0)) * (1 - (p.PCT || 0)));
         PM_total = 1 - ((1 - (p.PM || 0)) * (1 - (p.PMT || 0)));
     } else if (has_electric_line) {
-        // Only electric line.
         PC_total = p.PC || 0;
         PM_total = p.PM || 0;
     } else if (has_data_line) {
-        // Only data line.
         PC_total = p.PCT || 0;
         PM_total = p.PMT || 0;
     } else {
-        // No internal systems considered for this component.
         PC_total = 0;
         PM_total = 0;
     }
@@ -508,8 +492,6 @@ export function mergeZoneProbabilities(
 
 /**
  * Calculate and aggregate frequency components across zones.
- * Only use zone-level aggregation when zones define probability overrides;
- * otherwise, callers should keep using global frequency calculation to avoid duplicating totals.
  */
 export function aggregateFrequenciesForZones(
     zones: Zone[],
@@ -544,19 +526,14 @@ export function aggregateFrequenciesForZones(
 
 /**
  * Calculates the PLD value based on Tabela B.8 from NBR 5419-2.
- * @param rs Shield resistance in Ω/km.
- * @param uw Nominal impulse withstand voltage in kV.
- * @param isShielded Whether the line is shielded or not.
- * @returns The calculated PLD value.
  */
 export function calculatePld(rs: number, uw: number, isShielded: boolean): number {
     if (!isShielded) {
-        return 1.0; // "Linha... não blindada..."
+        return 1.0; 
     }
 
     const numericUw = Number(uw);
 
-    // Faixa de resistência: Rs ≤ 1 Ω/km
     if (rs <= 1) {
         if (numericUw === 6.0) return 0.02;
         if (numericUw === 4.0) return 0.04;
@@ -568,7 +545,6 @@ export function calculatePld(rs: number, uw: number, isShielded: boolean): numbe
         return 1.0;
     }
 
-    // Faixa de resistência: 1 < Rs ≤ 5 Ω/km
     if (rs > 1 && rs <= 5) {
         if (numericUw === 6.0) return 0.1;
         if (numericUw === 4.0) return 0.3;
@@ -580,7 +556,6 @@ export function calculatePld(rs: number, uw: number, isShielded: boolean): numbe
         return 1.0;
     }
 
-    // Faixa de resistência: 5 < Rs ≤ 20 Ω/km
     if (rs > 5 && rs <= 20) {
         if (numericUw === 6.0) return 0.8;
         if (numericUw === 4.0) return 0.9;
@@ -592,6 +567,5 @@ export function calculatePld(rs: number, uw: number, isShielded: boolean): numbe
         return 1.0;
     }
 
-    // Para Rs > 20, o valor é sempre 1.0.
     return 1.0;
 }

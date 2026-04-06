@@ -321,38 +321,18 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         return { zone, risk: r };
     }) : [];
 
-    // Navegação entre Global e Zonas
-    const [activeViewId, setActiveViewId] = React.useState<string>(data.last_active_view_id || 'GLOBAL');
-    React.useEffect(() => {
-        const desired = data.last_active_view_id || 'GLOBAL';
-        if (desired !== activeViewId) setActiveViewId(desired);
-    }, [data.last_active_view_id]);
-    // Persistir sempre que a visão ativa mudar (Global ou Zona)
-    React.useEffect(() => {
-        if (activeViewId) {
-            try { onUpdate({ last_active_view_id: activeViewId } as any); } catch { /* noop */ }
-        }
-    }, [activeViewId]);
+    const activeViewId = data.last_active_view_id || 'GLOBAL';
     const zoneIds = (data.zones || []).map(z => z.id);
     const viewOrder = ['GLOBAL', ...zoneIds];
     const currentViewIndex = Math.max(0, viewOrder.indexOf(activeViewId));
     const goPrevView = () => {
         const nextView = viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length];
-        setActiveViewId(nextView);
-        try { onUpdate({ last_active_view_id: nextView } as any); } catch { /* noop */ }
+        onUpdate({ last_active_view_id: nextView });
     };
     const goNextView = () => {
         const nextView = viewOrder[(currentViewIndex + 1) % viewOrder.length];
-        setActiveViewId(nextView);
-        try { onUpdate({ last_active_view_id: nextView } as any); } catch { /* noop */ }
+        onUpdate({ last_active_view_id: nextView });
     };
-
-    // Em caso de zona única, sempre usar visão Global
-    React.useEffect(() => {
-        if (!multipleZones && activeViewId !== 'GLOBAL') {
-            setActiveViewId('GLOBAL');
-        }
-    }, [multipleZones]);
 
     const activeZoneIndex = activeViewId === 'GLOBAL' ? -1 : zoneIds.indexOf(activeViewId);
     const activeZone = activeZoneIndex >= 0 ? data.zones[activeZoneIndex] : undefined;

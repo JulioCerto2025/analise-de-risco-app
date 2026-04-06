@@ -387,40 +387,20 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         return components.join(' + ');
     }
 
-    // Navegação entre Global e Zonas
-    const [activeViewId, setActiveViewId] = React.useState<string>(data.last_active_view_id || 'GLOBAL');
-    React.useEffect(() => {
-        // Usar a última visão persistida (GLOBAL ou zona)
-        const desired = data.last_active_view_id || 'GLOBAL';
-        if (desired !== activeViewId) setActiveViewId(desired);
-    }, [data.last_active_view_id]);
-    // Sempre que a visão ativa mudar (Global ou Zona), persistir
-    React.useEffect(() => {
-        if (activeViewId) {
-            try { onUpdate({ last_active_view_id: activeViewId } as any); } catch { /* noop */ }
-        }
-    }, [activeViewId]);
+    const activeViewId = data.last_active_view_id || 'GLOBAL';
     const zoneIds = (data.zones || []).map((z, idx) => z.id || z.name || String(idx));
     const multipleZones = zoneIds.length > 1;
     const viewOrder = ['GLOBAL', ...zoneIds];
     const currentViewIndex = Math.max(0, viewOrder.indexOf(activeViewId));
     const goPrevView = () => {
         const nextView = viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length];
-        setActiveViewId(nextView);
-        try { onUpdate({ last_active_view_id: nextView } as any); } catch { /* noop */ }
+        onUpdate({ last_active_view_id: nextView });
     };
     const goNextView = () => {
         const nextView = viewOrder[(currentViewIndex + 1) % viewOrder.length];
-        setActiveViewId(nextView);
-        try { onUpdate({ last_active_view_id: nextView } as any); } catch { /* noop */ }
+        onUpdate({ last_active_view_id: nextView });
     };
 
-    // Em caso de zona única, sempre manter visão Global
-    React.useEffect(() => {
-        if (!multipleZones && activeViewId !== 'GLOBAL') {
-            setActiveViewId('GLOBAL');
-        }
-    }, [multipleZones]);
     const makeZoneHeading = (zoneName: string | undefined, i: number) => {
         const base = `Zona ${i + 1}`;
         const name = (zoneName || '').trim();
@@ -429,9 +409,11 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
         if (norm(name) === norm(base)) return base;
         return `${base} (${name})`;
     };
+
     const activeZoneIndex = activeViewId === 'GLOBAL' ? -1 : zoneIds.indexOf(activeViewId);
     const activeZone = activeZoneIndex >= 0 ? (data.zones || [])[activeZoneIndex] : undefined;
     const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, activeZoneIndex);
+    
     let zoneFr: any = null;
     let zoneChart: { name: string; value: number }[] = [];
     let zoneMaxDomain = 0;

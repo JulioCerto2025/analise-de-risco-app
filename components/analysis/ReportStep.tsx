@@ -1,577 +1,379 @@
 import React, { useMemo, useState } from 'react';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '../ui';
-import { FileText, Copy, Loader2, Sparkles, X, AlertTriangle, CheckCircle } from "lucide-react";
-import { AnalysisData, ZoneCalculations } from '../../types';
-import { generateFullReportText } from '../../lib/reportBuilder';
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Layers, BoxIcon, CheckCircle, AlertTriangle, Loader2, X, FileDown } from 'lucide-react';
+import { Button, Card, CardHeader, CardTitle, CardContent } from '../ui';
+import { AnalysisData } from '../../types';
 import { 
-    calculateEvents,
-    calculateProbabilities,
-    calculateLossesForZone,
-    calculateRisksForZone,
+    calculateEvents, 
+    mergeZoneProbabilities, 
+    calculateRisksForZone, 
     aggregateRiskResults,
-    mergeZoneProbabilities
+    calculateLossesForZone 
 } from '../../utils/calculations';
+import { generateFullReportText } from '../../lib/reportBuilder';
+
+// Enhanced markdown to HTML converter for professional preview
+export const markdownToHtml = (md: string, prefs: any) => {
+    const isWord = prefs.isWord || false;
+    const textColor = isWord ? '#000000' : '#f8fafc';
+    const headerColor = isWord ? '#000000' : '#3b82f6';
+    const subheaderColor = isWord ? '#1e3a8a' : '#60a5fa';
+    const borderColor = isWord ? '#000000' : 'rgba(148,163,184,0.15)';
+    const bgHeader = isWord ? '#f1f5f9' : 'rgba(59,130,246,0.05)';
+
+    let html = md
+        .replace(/^# (.*$)/gm, `<h1 style="font-size: 2rem; font-weight: 900; color: ${headerColor}; margin-bottom: 1rem; text-align: center; border-bottom: 4px solid ${headerColor}; padding-bottom: 0.5rem;">$1</h1>`)
+        .replace(/^## (.*$)/gm, `<h2 style="font-size: ${prefs.h2FontSizeRem}rem; font-weight: 800; color: ${subheaderColor}; margin-top: ${prefs.h2MarginTopPx}px; margin-bottom: ${prefs.h2MarginBottomPx}px; border-left: 6px solid ${isWord ? '#1e3a8a' : '#3b82f6'}; padding-left: 0.75rem; background: ${bgHeader};">$1</h2>`)
+        .replace(/^### (.*$)/gm, `<h3 style="font-size: 1.25rem; font-weight: 700; color: ${isWord ? '#334155' : '#94a3b8'}; margin-top: 1.5rem; margin-bottom: 0.75rem;">$1</h3>`)
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: inherit;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/!\[(.*?)\]\((.*?)\)/g, '<div style="text-align: center; margin: 20px 0;"><img src="$2" alt="$1" style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px;" /></div>')
+        .replace(/^\| (.*) \|$/gm, (match) => {
+            const cells = match.split('|').filter(c => c.trim() !== '').map(c => `<td style="border: 1px solid ${borderColor}; padding: 4px 6px; text-align: left; color: ${textColor};">${c.trim()}</td>`).join('');
+            return `<table style="width: 100%; border-collapse: collapse; margin-bottom: 1rem; border: 1px solid ${borderColor};"><tr style="background: ${isWord ? '#f8fafc' : 'rgba(15,23,42,0.3)'};">${cells}</tr></table>`;
+        })
+        .replace(/<div class="status-box danger">([\s\S]*?)<\/div>/g, '<div style="background: rgba(239,68,68,0.1); border: 2px solid #ef4444; border-radius: 1rem; padding: 1.5rem; margin: 2rem 0; color: #ef4444;">$1</div>')
+        
+        // Markdown elements
+        .replace(/^\d\. (.*$)/gm, `<li style="margin-bottom: 0.2rem; color: ${prefs.isWord ? '#000' : '#cbd5e1'}; font-size: 0.9rem;">$1</li>`)
+        .replace(/\*\*(.*?)\*\*/g, `<strong style="color: ${prefs.isWord ? '#1e40af' : '#60a5fa'}; font-weight: 700;">$1</strong>`)
+        .replace(/^- (.*$)/gm, `<li style="margin-left: 0.75rem; margin-bottom: 0.15rem; color: ${prefs.isWord ? '#000' : '#94a3b8'}; font-size: 0.9rem;">$1</li>`)
+        .replace(/^> (.*$)/gm, `<blockquote style="border-left: 4px solid #3b82f6; padding: 0.5rem 1rem; margin: 1rem 0; background: rgba(59,130,246,0.05); font-style: italic; color: ${prefs.isWord ? '#1e293b' : '#94a3b8'};">$1</blockquote>`);
+    
+    // Cleanup redundant newlines - extremely aggressive
+    const cleanHtml = html
+        .replace(/<\/h[1-3]>\n+/g, ' ') 
+        .replace(/\n+<table/g, '<table') 
+        .replace(/<\/table>\n+/g, '</table>')
+        .replace(/\n\s*\n/g, '<div style="margin-bottom: 4px;"></div>')
+        .replace(/\n/g, ' ');
+
+    return `<div class="prose-styles" style="font-family: 'Inter', sans-serif; line-height: 1.35;">${cleanHtml}</div>`;
+};
 
 interface ReportStepProps {
     data: AnalysisData;
-    onUpdate: (newData: Partial<AnalysisData>) => void;
 }
 
-const escapeHtml = (str: string) => str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-// Preferências de formatação configuráveis
-interface FormatPrefs {
-    paragraphFontSizePt: number;
-    paragraphLineHeight: number;
-    paragraphMarginTopPx: number;
-    paragraphMarginBottomPx: number;
-    listItemMarginTopPx: number;
-    listItemMarginBottomPx: number;
-    listItemExtraMarginBottomPx: number; // usado em itens com "Resultado:" ou "Cálculo:"
-    blockMarginBetweenItemsPx: number; // espaço entre blocos (Ad, Adf, Am, etc.)
-    listMarginTopPx: number;
-    listMarginBottomPx: number;
-    listPaddingLeftPx: number;
-    h2FontSizeRem: number;
-    h2MarginTopPx: number;
-    h2MarginBottomPx: number;
-    h3FontSizeRem: number;
-    h3MarginTopPx: number;
-    h3MarginBottomPx: number;
-    figureMarginTopPx: number;
-    figureMarginBottomPx: number;
-    emptyLineHeightPx: number; // altura de espaçamento quando há linha em branco
-}
-
-const defaultFormatPrefs: FormatPrefs = {
-    paragraphFontSizePt: 11,
-    paragraphLineHeight: 1.35,
-    paragraphMarginTopPx: 6,
-    paragraphMarginBottomPx: 8,
-    listItemMarginTopPx: 4,
-    listItemMarginBottomPx: 4,
-    listItemExtraMarginBottomPx: 10, // margem mais discreta sob rótulos
-    blockMarginBetweenItemsPx: 20, // separação visual entre blocos individuais (bem destacado)
-    listMarginTopPx: 8,
-    listMarginBottomPx: 12,
-    listPaddingLeftPx: 18,
-    h2FontSizeRem: 1.25,
-    h2MarginTopPx: 14,
-    h2MarginBottomPx: 10,
-    h3FontSizeRem: 1.1,
-    h3MarginTopPx: 10,
-    h3MarginBottomPx: 8,
-    figureMarginTopPx: 10,
-    figureMarginBottomPx: 10,
-    emptyLineHeightPx: 20,
-};
-
-const markdownToHtml = (markdown: string, prefs: FormatPrefs): string => {
-    if (!markdown) return '';
-    const text = markdown.replace(/\\n/g, '\n');
-
-    const lines = text.split('\n');
-    let html = '';
-    let inList = false;
-
-    for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-
-        // Espaço manual: linha em branco cria espaçamento visual
-        if (line.trim() === '') {
-            if (inList) {
-                html += `<li style="list-style:none;margin:${prefs.listItemMarginTopPx}px 0 ${prefs.listItemMarginBottomPx}px"><span style="display:inline-block;height:${prefs.emptyLineHeightPx}px"></span></li>\n`;
-            } else {
-                html += `<p style="margin:${prefs.emptyLineHeightPx}px 0 ${prefs.emptyLineHeightPx}px;font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">&nbsp;</p>\n`;
-            }
-            continue;
-        }
-
-        // Remover linhas compostas apenas por asteriscos ("*", "**" etc.) e seus espaços
-        // Essas linhas não têm conteúdo semântico e estavam aparecendo como símbolos soltos.
-        if (/^\s*\*+\s*$/.test(line)) {
-            continue;
-        }
-
-        const processInline = (str: string) => {
-            let s = escapeHtml(str);
-            // Bold **...**
-            s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            // Italic *...* (avoid matching list markers and bold)
-            s = s.replace(/(^|[^*])\*(?!\*)([^*]+?)\*(?!\*)/g, (_m, p1, p2) => `${p1}<em>${p2}</em>`);
-            // Remover quaisquer asteriscos remanescentes para evitar símbolos soltos no output
-            s = s.replace(/\*/g, '');
-            return s;
-        };
-
-        // Horizontal rule ---
-        if (line.trim() === '---') {
-            if (inList) { html += '</ul>\n'; inList = false; }
-            html += '<hr style="border:0;border-top:1px solid #cbd5e1;margin:12px 0"/>\n';
-            continue;
-        }
-
-        // Image markdown with optional caption handling
-        const imgMatch = line.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
-        if (imgMatch) {
-            const [, alt, src] = imgMatch;
-            if (inList) { html += '</ul>\n'; inList = false; }
-
-            // Check if next or previous textual line is a caption (e.g., "Figura 3.1: Nome")
-            const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
-            const prevLine = i - 1 >= 0 ? lines[i - 1].trim() : '';
-            const captionRegex = /^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/;
-            let captionText: string | null = null;
-
-            // Prefer caption on the next line (below image), else previous line, else use alt
-            const nextCap = nextLine.match(captionRegex);
-            const prevCap = prevLine.match(captionRegex);
-            if (nextCap) {
-                captionText = `Figura ${nextCap[2]} — ${nextCap[3]}`.trim();
-                // Skip the next line as it's consumed as caption
-                i += 1;
-            } else if (prevCap) {
-                // Remove previously added paragraph if it was just appended
-                // A simple approach: do not append previous caption paragraph earlier.
-                // Since we can't remove, we avoid adding it by detecting in its branch below.
-                captionText = `Figura ${prevCap[2]} — ${prevCap[3]}`.trim();
-            } else if (alt && alt.trim().length > 0) {
-                captionText = alt.trim();
-            }
-
-            const figCaptionHtml = captionText ? `<figcaption>${processInline(captionText)}</figcaption>` : '';
-            html += `<figure style="margin:${prefs.figureMarginTopPx}px 0 ${prefs.figureMarginBottomPx}px">` +
-                    `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" style="max-width:100%;height:auto;border-radius:4px;border:none;display:inline-block;page-break-inside:avoid"/>` +
-                    `${figCaptionHtml}` +
-                    `</figure>\n`;
-            continue;
-        }
-
-        // Callouts iniciados por "> " viram parágrafos simples (sem caixa)
-        if (line.startsWith('> ')) {
-            if (inList) { html += '</ul>\n'; inList = false; }
-            const content = processInline(line.substring(2));
-            html += `<p style="margin:${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px;font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${content}</p>\n`;
-            continue;
-        }
-
-        if (line.startsWith('## ')) {
-            if (inList) { html += '</ul>\n'; inList = false; }
-            html += `<h2 style="font-size:${prefs.h2FontSizeRem}rem;line-height:1.6;font-weight:700;margin:${prefs.h2MarginTopPx}px 0 ${prefs.h2MarginBottomPx}px;">${processInline(line.substring(3))}</h2>\n`;
-            continue;
-        }
-        if (line.startsWith('### ')) {
-            if (inList) { html += '</ul>\n'; inList = false; }
-            html += `<h3 style="font-size:${prefs.h3FontSizeRem}rem;line-height:1.5;font-weight:700;margin:${prefs.h3MarginTopPx}px 0 ${prefs.h3MarginBottomPx}px;">${processInline(line.substring(4))}</h3>\n`;
-            continue;
-        }
-
-        if (line.trim().startsWith('* ')) {
-            if (!inList) {
-                html += `<ul style="margin:${prefs.listMarginTopPx}px 0 ${prefs.listMarginBottomPx}px;padding-left:${prefs.listPaddingLeftPx}px">\n`;
-                inList = true;
-            }
-            let itemContent = line.trim().substring(2);
-            while (i + 1 < lines.length && lines[i + 1].startsWith('  ')) {
-                itemContent += ' ' + lines[i + 1].trim();
-                i++;
-            }
-            // Detectar "Resultado:", "Cálculo:" e "Fórmula:" (com ou sem acento) e separar em linhas distintas
-            const normItem = itemContent.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-            const isResult = /\bresultado:\b/.test(normItem);
-            const isCalc = /\bcalculo:\b/.test(normItem);
-            const isFormula = /\bformula:\b/.test(normItem);
-            // Cabeçalho de bloco: "**Área de Exposição (Ad):**" e similares
-            const isBlockHeader = /^\*\*[^*]+?\*\*:/.test(itemContent.trim());
-            const liTop = isBlockHeader ? prefs.blockMarginBetweenItemsPx : Math.max(0, prefs.listItemMarginTopPx);
-            const liBottom = (isBlockHeader || isResult || isCalc || isFormula)
-                ? prefs.blockMarginBetweenItemsPx
-                : prefs.listItemMarginBottomPx;
-            const liMargin = `${liTop}px 0 ${liBottom}px`;
-
-            // Quebra automática dentro do item de lista para seguir o modelo: título, Fórmula, Cálculo, Resultado cada em sua linha, com espaçadores
-            const splitRegex = /(F[óo]rmula:|C[áa]lculo:|Resultado:)/gi;
-            const marker = '\u00A7\u00A7';
-            const marked = itemContent.replace(splitRegex, marker + '$1');
-            const parts = marked.split(marker).filter(p => p.trim().length > 0);
-
-            if (parts.length > 1 || /:\s*$/.test(itemContent.trim())) {
-                let inner = '';
-                for (const part of parts) {
-                    const normPart = part.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-                    const isResSeg = /\bresultado:\b/.test(normPart);
-                    const isCalcSeg = /\bcalculo:\b/.test(normPart);
-                    const isFormSeg = /\bformula:\b/.test(normPart);
-                    const pMarginSeg = (isResSeg || isCalcSeg || isFormSeg)
-                        ? `${prefs.paragraphMarginTopPx}px 0 ${prefs.listItemExtraMarginBottomPx}px`
-                        : `${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px`;
-                    inner += `<p style="margin:${pMarginSeg};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(part)}</p>`;
-                    // Linha em branco após "Resultado:" para destacá-lo visualmente
-                    if (isResSeg) {
-                        inner += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>`;
-                    }
-                    // Spacer em branco abaixo de cada linha para melhorar legibilidade ao copiar para Word
-                    // Removido espaçador extra para manter ergonomia (apenas margem padrão abaixo de cada linha)
-                }
-                html += `<li style="margin:${liMargin};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${inner}</li>\n`;
-            } else {
-                html += `<li style="margin:${liMargin};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(itemContent)}</li>\n`;
-            }
-            continue;
-        }
-
-        if (inList) {
-            html += '</ul>\n';
-            inList = false;
-        }
-
-        if (line.trim()) {
-            // Avoid emitting caption lines as paragraphs when followed by an image
-            const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
-            const isCaptionAhead = /^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/.test(line.trim()) && /^!\[(.*?)\]\((.*?)\)$/.test(nextLine);
-            if (!isCaptionAhead) {
-                // Dividir a linha em múltiplos parágrafos quando contiver rótulos
-                // "Fórmula:", "Cálculo:" ou "Resultado:" para garantir quebra em linhas separadas.
-                const splitRegex = /(F[óo]rmula:|C[áa]lculo:|Resultado:)/gi;
-                const marker = '\u00A7\u00A7';
-                const marked = line.replace(splitRegex, marker + '$1');
-                const parts = marked.split(marker).filter(p => p.trim().length > 0);
-
-                if (parts.length > 1) {
-                    for (const part of parts) {
-                        const normPart = part.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-                        const isResultSeg = /\bresultado:\b/.test(normPart);
-                        const isCalcSeg = /\bcalculo:\b/.test(normPart);
-                        const isFormulaSeg = /\bformula:\b/.test(normPart);
-                        const pMarginSeg = (isResultSeg || isCalcSeg || isFormulaSeg)
-                            ? `${prefs.paragraphMarginTopPx}px 0 ${prefs.listItemExtraMarginBottomPx}px`
-                            : `${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px`;
-                        html += `<p style="margin:${pMarginSeg};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(part)}</p>\n`;
-                        // Linha em branco após "Resultado:" em parágrafos segmentados
-                        if (isResultSeg) {
-                            html += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>\n`;
-                        }
-                    }
-                } else {
-                    const normLine = line.replace(/\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-                    const isResultP = /\bresultado:\b/.test(normLine);
-                    const isCalcP = /\bcalculo:\b/.test(normLine);
-                    const isFormulaP = /\bformula:\b/.test(normLine);
-                    const pMargin = (isResultP || isCalcP || isFormulaP)
-                        ? `${prefs.paragraphMarginTopPx}px 0 ${prefs.listItemExtraMarginBottomPx}px`
-                        : `${prefs.paragraphMarginTopPx}px 0 ${prefs.paragraphMarginBottomPx}px`;
-                    html += `<p style="margin:${pMargin};font-size:${prefs.paragraphFontSizePt}pt;line-height:${prefs.paragraphLineHeight}">${processInline(line)}</p>\n`;
-                    // Linha em branco após "Resultado:" em parágrafo único
-                    if (isResultP) {
-                        html += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>\n`;
-                    }
-                    // Se o próximo conteúdo iniciar um novo item de lista (novo bloco), adiciona linha em branco
-                    const nextIsNewListItem = (i + 1 < lines.length) && lines[i + 1].trim().startsWith('* ');
-                    if (!isResultP && nextIsNewListItem) {
-                        html += `<p style="margin:0;height:${prefs.emptyLineHeightPx}px;line-height:0">&nbsp;</p>\n`;
-                    }
-                }
-            }
-        }
-    }
-
-    if (inList) {
-        html += '</ul>\n';
-    }
-
-    return html;
-};
-
-
-export function ReportStep({ data, onUpdate }: ReportStepProps) {
+export const ReportStep: React.FC<ReportStepProps> = ({ data }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [reportText, setReportText] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
-    // Configurações ergonômicas e comuns para impressão
-    // Preset "Amplo" como padrão
-    const [pageMarginTB, setPageMarginTB] = useState<number>(22); // mm (topo/base)
-    const [pageMarginLR, setPageMarginLR] = useState<number>(15); // mm (laterais)
-    // Usamos estes dois pares como "zona segura topo/base" (altura + padding)
-    const [headerHeight, setHeaderHeight] = useState<number>(22); // mm (zona segura topo – altura)
-    const [headerPadding, setHeaderPadding] = useState<number>(6); // mm (zona segura topo – padding)
-    const [footerHeight, setFooterHeight] = useState<number>(22); // mm (zona segura base – altura)
-    const [footerPadding, setFooterPadding] = useState<number>(6); // mm (zona segura base – padding)
+    const [generationStep, setGenerationStep] = useState('');
 
-    // Preferências de formatação (salvas localmente)
-    const FORMAT_STORAGE_KEY = 'report_format_prefs';
-    const loadFormatPrefs = (): FormatPrefs => {
-        try {
-            const raw = localStorage.getItem(FORMAT_STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                return { ...defaultFormatPrefs, ...parsed } as FormatPrefs;
-            }
-        } catch {}
-        return defaultFormatPrefs;
+    // Configurações de impressão (em mm)
+    const pageMarginLR = 15;
+    const pageMarginTB = 15;
+    
+    const formatPrefs = {
+        h2FontSizeRem: 1.5,
+        h2MarginTopPx: 12,
+        h2MarginBottomPx: 4,
+        h3FontSizeRem: 1.15,
+        h3MarginTopPx: 8,
+        h3MarginBottomPx: 2,
     };
-    const [formatPrefs] = useState<FormatPrefs>(loadFormatPrefs());
 
     const handleGenerateReport = async () => {
         setIsGenerating(true);
-        setReportText('');
         try {
-            const text = await generateFullReportText(data);
-            setReportText(text);
+            setGenerationStep('Iniciando análise normativa NBR 5419-2:2026...');
+            await new Promise(r => setTimeout(r, 600));
+            setGenerationStep('Processando dados de densidade (Ng) e áreas (Ad, Am)...');
+            await new Promise(r => setTimeout(r, 600));
+            setGenerationStep('Calculando componentes de probabilidade e perdas...');
+            await new Promise(r => setTimeout(r, 600));
+            setGenerationStep('Consolidando resultados e gerando parecer técnico...');
+            await new Promise(r => setTimeout(r, 600));
+            setGenerationStep('Formatando relatório executivo premium...');
+            
+            const fullReport = await generateFullReportText(data);
+            setReportText(fullReport);
+        } catch (error) {
+            console.error('Erro ao gerar relatório:', error);
         } finally {
             setIsGenerating(false);
+            setGenerationStep('');
         }
     };
 
-    const copyToClipboard = async () => {
-        if (!reportText) return;
-
-        // Convert Markdown to HTML to copy with formatting
-        const html = markdownToHtml(reportText, formatPrefs);
-
-        // Generate readable plain text as fallback
-        const plainText = reportText
-            .replace(/\!\[[^\]]*\]\([^\)]*\)/g, '') // remove image markdown
-            .replace(/^###\s+/gm, '')
-            .replace(/^##\s+/gm, '')
-            .replace(/\*\*(.*?)\*\*/g, '$1')
-            .replace(/^>\s+/gm, '')
-            .replace(/\n\n+/g, '\n\n');
-
+    const handleDownloadWord = async () => {
+        setIsGenerating(true);
         try {
-            if (typeof (window as any).ClipboardItem !== 'undefined') {
-                const item = new (window as any).ClipboardItem({
-                    'text/html': new Blob([html], { type: 'text/html' }),
-                    'text/plain': new Blob([plainText], { type: 'text/plain' }),
-                });
-                await navigator.clipboard.write([item]);
-            } else {
-                await navigator.clipboard.writeText(plainText);
+            setGenerationStep('Gerando versão de alta compatibilidade para Microsoft Word...');
+            // Gera o texto do relatório com o tema de alta visibilidade/contraste (isWord = true)
+            const wordReportText = await generateFullReportText(data, true);
+            const htmlContent = markdownToHtml(wordReportText, { ...formatPrefs, isWord: true });
+            const defaultName = `RELATORIO_SPDA_${(data.clientName || 'PROJETO').replace(/\s+/g, '_').toUpperCase()}.doc`;
+            
+            // Estilo CSS base para o Word (força bordas sólidas e cores padrão)
+            const wordHtml = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>Relatório SPDA - NBR 5419-2:2026</title>
+                    <style>
+                        body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #000000; }
+                        h1 { color: #000000; font-size: 18pt; text-align: center; }
+                        h2 { color: #1e3a8a; font-size: 14pt; border-bottom: 0.5pt solid #1e3a8a; padding-bottom: 2pt; margin-top: 15pt; }
+                        h3 { color: #334155; font-size: 12pt; margin-top: 10pt; }
+                        table { border-collapse: collapse; width: 100%; margin-bottom: 10pt; border: 1pt solid #000000; }
+                        td, th { border: 1pt solid #000000; padding: 4pt; font-size: 10pt; color: #000000; }
+                        .status-box { padding: 10pt; border: 1.5pt solid #000000; margin: 10pt 0; background-color: #f8fafc; }
+                        b, strong { color: #000000; }
+                    </style>
+                </head>
+                <body>
+                    ${htmlContent}
+                    <div style="margin-top: 30pt; font-size: 8pt; color: #666666; text-align: center;">
+                        Documento gerado automaticamente via Plataforma SPDA NBR 5419-2:2026 em ${new Date().toLocaleDateString('pt-BR')}
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            // Tenta usar a File System Access API (Salvar Como)
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await (window as any).showSaveFilePicker({
+                        suggestedName: defaultName,
+                        types: [{
+                            description: 'Relatório Microsoft Word (.doc)',
+                            accept: { 'application/msword': ['.doc'] },
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write('\ufeff' + wordHtml);
+                    await writable.close();
+                    return;
+                } catch (err: any) {
+                    if (err.name === 'AbortError') return;
+                }
             }
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
-        } catch (err) {
-            try { await navigator.clipboard.writeText(plainText); } catch {}
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
+
+            const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = defaultName;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Erro ao baixar Word:', error);
+        } finally {
+            setIsGenerating(false);
+            setGenerationStep('');
         }
     };
 
-    // Calcular resultados atuais do app para comparação (espelhando hooks)
-    const eventCalculations = useMemo(() => calculateEvents(data), [
-        data.h, data.l, data.w, data.hp, data.ng, data.cd, 
-        data.has_electric_line, data.line_sections_1, data.use_adj_structure_1, data.l_adj_1, data.w_adj_1, data.h_adj_1, data.hp_adj_1, data.cd_adj_1,
-        data.has_data_line, data.line_sections_2, data.use_adj_structure_2, data.l_adj_2, data.w_adj_2, data.h_adj_2, data.hp_adj_2, data.cd_adj_2
-    ]);
-    const probabilityCalculations = useMemo(() => calculateProbabilities(
-        data.probability_data,
-        data.analyze_data_line_probabilities,
-        data.has_data_line,
-        data.analyze_electric_line_probabilities
-    ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line, data.analyze_electric_line_probabilities]);
-    const zoneCalculations: ZoneCalculations[] = useMemo(() => {
-        return data.zones.map(zone => {
-            const lossCalculations = calculateLossesForZone(zone);
-            const zoneBaseProbCalcs = calculateProbabilities(
-                (zone.probability_data || data.probability_data),
-                (zone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
-                data.has_data_line,
-                (zone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
-            );
-            const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
-            const riskCalculations = calculateRisksForZone(
-                eventCalculations,
-                zoneProbCalcs,
-                lossCalculations,
-                data.selected_risk_components
-            );
-            return { zone, lossCalculations, riskCalculations };
-        });
-    }, [data.zones, eventCalculations, data.selected_risk_components, data.has_data_line, data.probability_data]);
-    const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
+    const copyToClipboard = () => {
+        try {
+            const tempElement = document.createElement('div');
+            tempElement.innerHTML = markdownToHtml(reportText, formatPrefs);
+            const blob = new Blob([tempElement.innerHTML], { type: 'text/html' });
+            const dataTransfer = [new (window as any).ClipboardItem({ 'text/html': blob })];
+            (navigator.clipboard as any).write(dataTransfer).then(() => {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            });
+        } catch (e) {
+            navigator.clipboard.writeText(reportText).then(() => {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            });
+        }
+    };
 
-    // Removido: lógica de comparação com exemplo NBR 5419-2:2015
-    
+    const handlePrint = () => {
+        // HTML specifically for high-quality print - Clean and High Contrast
+        const printableHtml = reportText
+            .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+            .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+            .replace(/\| (.*) \|/g, (match) => {
+                if (match.includes('---')) return '';
+                const cells = match.split('|').filter(c => c.trim() !== '').map(c => `<td>${c.trim()}</td>`).join('');
+                return `<tr>${cells}</tr>`;
+            })
+            .replace(/(<tr>.*?<\/tr>)+/g, (match) => `<table class="print-table">${match}</table>`)
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^- (.*$)/gm, '<li>$1</li>')
+            .replace(/^\d\. (.*$)/gm, '<li>$1</li>')
+            .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
+            .replace(/!\[(.*?)\]\((.*?)\)/g, '<div class="chart-container"><img src="$2" /></div>');
+
+        const win = window.open('', '_blank');
+        if (!win) return;
+        win.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>LAUDO TECNICO SPDA - NBR 5419-2</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+            <style>
+                @page { size: A4; margin: 15mm; }
+                body { font-family: 'Inter', -apple-system, sans-serif; color: #000 !important; background: #fff !important; line-height: 1.4; padding: 0; margin: 0; }
+                
+                /* GLOBAL OVERRIDES FOR PRINT PURITY */
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                
+                /* OVERRIDE INLINE STYLES FROM CALCULATOR */
+                div[style*="background"], div[style*="background-color"] { background: transparent !important; border-color: #000 !important; }
+                span[style*="color"], p[style*="color"], td[style*="color"], b[style*="color"] { color: #000 !important; }
+                td[style*="border"], th[style*="border"], table[style*="border"] { border: 0.5pt solid #000 !important; }
+                
+                .report { max-width: 100%; }
+                h1 { font-size: 20pt; color: #1e3a8a !important; text-align: center; text-transform: uppercase; border-bottom: 2pt solid #1e3a8a !important; padding-bottom: 3mm; margin-bottom: 8mm; font-weight: 900; }
+                h2 { font-size: 14pt; color: #1e40af !important; border-left: 5pt solid #1e40af !important; padding-left: 3mm; margin-top: 10mm; margin-bottom: 4mm; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 2mm; text-transform: uppercase; }
+                h3 { font-size: 11pt; color: #1e293b !important; border-bottom: 0.5pt solid #cbd5e1 !important; margin-top: 6mm; padding-bottom: 1mm; font-weight: 700; text-transform: uppercase; }
+                
+                p, li { font-size: 10pt; text-align: justify; margin-bottom: 3pt; color: #000 !important; }
+                
+                table { width: 100%; border-collapse: collapse; margin: 4mm 0; table-layout: fixed; border: 1px solid #000 !important; }
+                td, th { border: 0.5pt solid #000 !important; padding: 2mm; font-size: 9pt; color: #000 !important; }
+                th, tr[style*="background: rgba(15,23,42,0.5)"] { background: #f1f5f9 !important; color: #000 !important; font-weight: bold; }
+                
+                /* STATUS COLORS - THE ONLY COLORS ALLOWED */
+                .status-box { border: 2pt solid #000 !important; padding: 5mm; margin: 6mm 0; page-break-inside: avoid; border-radius: 4px; }
+                .status-box.safe { border-color: #059669 !important; background: #f0fdf4 !important; }
+                .status-box.safe h3, .status-box.safe p { color: #065f46 !important; }
+                .status-box.danger { border-color: #dc2626 !important; background: #fef2f2 !important; }
+                .status-box.danger h3, .status-box.danger p { color: #991b1b !important; }
+
+                /* FORCE OK/CRITICAL COLORS */
+                td[style*="color: #10b981"] { color: #059669 !important; font-weight: bold; }
+                td[style*="color: #ef4444"] { color: #dc2626 !important; font-weight: bold; }
+                
+                .chart-container { text-align: center; margin: 5mm 0; page-break-inside: avoid; }
+                .chart-container img { max-width: 130mm; }
+                
+                .footer { margin-top: 10mm; border-top: 0.5pt solid #e2e8f0; padding-top: 3mm; font-size: 7.5pt; color: #64748b !important; text-align: center; }
+                
+                @media print {
+                    .no-print { display: none; }
+                }
+            </style></head><body>
+            <div class="report">
+                ${printableHtml}
+                <div class="footer">
+                    LAUDO TÉCNICO GERADO CONFORME NBR 5419-2:2026 — SISTEMA AUTOMATIZADO PROFISSIONAL<br/>
+                    Data de Emissão: ${new Date().toLocaleDateString('pt-BR')} — Página 1 de 1
+                </div>
+            </div>
+            </body></html>`);
+        win.document.close();
+        
+        setTimeout(() => {
+            win.focus();
+            win.print();
+        }, 800);
+    };
+
     return (
-        <div>
-            <Card>
-                 <CardHeader className="p-3">
-                    <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <FileText className="w-5 h-5 text-slate-100" />
-                            Relatório Técnico Detalhado
-                        </div>
-                        {(reportText && !isGenerating) && (
-                            <Button variant="outline" size="icon" onClick={() => setReportText('')} className="h-8 w-8 flex-shrink-0">
-                                <X className="w-4 h-4" />
+        <div className="space-y-4">
+            {/* Ação Central: Relatório Técnico */}
+            <div className="flex flex-col items-center gap-4">
+                <AnimatePresence mode="wait">
+                    {!reportText ? (
+                        <motion.div
+                            key="gen-btn"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full"
+                        >
+                            <Button
+                                onClick={handleGenerateReport}
+                                disabled={isGenerating}
+                                className="w-full h-20 bg-blue-600 hover:bg-blue-500 text-white rounded-3xl shadow-[0_10px_40px_-5px_rgba(37,99,235,0.4)] transition-all flex items-center justify-center gap-4 group"
+                            >
+                                {isGenerating ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex items-center gap-4 mb-2">
+                                            <Loader2 className="w-8 h-8 animate-spin" />
+                                            <span className="text-xl font-black tracking-widest uppercase">Gerando Relatório Gerencial...</span>
+                                        </div>
+                                        <p className="text-[10px] text-blue-300 font-bold uppercase tracking-[0.3em] animate-pulse">
+                                            {generationStep}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <FileText className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                                        <span className="text-xl font-black tracking-widest uppercase">Gerar Relatório Técnico Gerencial</span>
+                                    </>
+                                )}
                             </Button>
-                        )}
-                    </CardTitle>
-                </CardHeader>
-                {/* Barra de ações abaixo do título, alinhada à direita */}
-                {reportText && !isGenerating && (
-                    <div className="flex justify-end gap-2 px-2 pb-0">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                                const html = markdownToHtml(reportText, formatPrefs);
-                                const win = window.open('', '_blank');
-                                if (!win) return;
-                                const padTop = Math.max(4, headerPadding);
-                                const padBottom = Math.max(4, footerPadding);
-                                win.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title></title><style>
-@page{margin:${pageMarginTB}mm ${pageMarginLR}mm;}
-*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:#ffffff; color:#111827; margin:0; line-height:1.6;}
-main{padding:${padTop}mm ${pageMarginLR}mm ${padBottom}mm; overflow:visible;}
-h2{font-size:${formatPrefs.h2FontSizeRem}rem; line-height:1.6; color:#0f172a; font-weight:700; margin:${formatPrefs.h2MarginTopPx}px 0 ${formatPrefs.h2MarginBottomPx}px; break-inside:avoid; break-after:avoid-page;}
-h3{font-size:${formatPrefs.h3FontSizeRem}rem; line-height:1.5; color:#1f2937; font-weight:700; margin:${formatPrefs.h3MarginTopPx}px 0 ${formatPrefs.h3MarginBottomPx}px; break-inside:avoid; break-after:avoid-page;}
-ul{margin:${formatPrefs.listMarginTopPx}px 0 ${formatPrefs.listMarginBottomPx}px; padding-left:${formatPrefs.listPaddingLeftPx}px; break-inside:avoid;}
-li{break-inside:avoid; font-size:${formatPrefs.paragraphFontSizePt}pt; line-height:${formatPrefs.paragraphLineHeight};}
-p{margin:${formatPrefs.paragraphMarginTopPx}px 0 ${formatPrefs.paragraphMarginBottomPx}px; break-inside:avoid; font-size:${formatPrefs.paragraphFontSizePt}pt; line-height:${formatPrefs.paragraphLineHeight};}
-img{max-width:100%; height:auto; display:block; page-break-inside:avoid; break-inside:avoid;}
-blockquote{margin:8px 0; padding:10px 12px; border-left:3px solid #3b82f6; background:transparent; color:#0f172a; border-radius:6px; break-inside:avoid;}
-hr{border:0; border-top:1px solid #cbd5e1; margin:12px 0; break-inside:avoid;}
-</style></head><body><main>${html}</main>
-<script>
-(function(){
-  const mmPerPx = 25.4/96;
-  const pxPerMm = 1/mmPerPx;
-  const main = document.querySelector('main');
-  if(!main) return;
-  const first = main.querySelector('img, table, canvas');
-  if(!first) return;
-  const rect = first.getBoundingClientRect();
-  const hPx = rect.height;
-  const extraTopMm = Math.min(Math.max((hPx*mmPerPx)*0.06, 4), 18);
-  const extraBottomMm = Math.min(Math.max((hPx*mmPerPx)*0.04, 4), 14);
-  const computed = getComputedStyle(main);
-  const curTopPx = parseFloat(computed.paddingTop)||0;
-  const curBottomPx = parseFloat(computed.paddingBottom)||0;
-  main.style.paddingTop = (curTopPx + extraTopMm*pxPerMm) + 'px';
-  main.style.paddingBottom = (curBottomPx + extraBottomMm*pxPerMm) + 'px';
-  try { document.title = ''; } catch {}
-})();
-</script></body></html>`);
-                                win.document.close();
-                                win.focus();
-                                setTimeout(() => { try { win.print(); } catch {} }, 300);
-                            }}
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="report-view"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-full bg-slate-900/95 border border-slate-700/40 rounded-3xl p-5 shadow-2xl"
                         >
-                            Gerar PDF
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={copyToClipboard}
-                        >
-                            <Copy className="w-4 h-4 mr-2" />
-                            {copySuccess ? 'Texto copiado!' : 'Copiar para Word (formatado)'}
-                        </Button>
-                    </div>
-                )}
-                <CardContent className="text-center px-3 pt-0 pb-3">
-                    <AnimatePresence mode="wait">
-                        {isGenerating ? (
-                            <motion.div
-                                key="loading"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="flex flex-col items-center justify-center min-h-[10rem]"
-                            >
-                                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
-                                <p className="mt-3 text-slate-300">Gerando Relatório...</p>
-                            </motion.div>
-                ) : reportText ? (
-                    <motion.div
-                        key="report"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-left pt-4 relative"
-                    >
-                        <div
-                            className="w-full h-[30rem] overflow-y-auto p-5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-[17px] leading-loose tracking-[0.02em] text-slate-100 focus:outline-none prose-styles"
-                            dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
-                        />
-                        {/* Configurações removidas: impressão agora usa valores ergonômicos automáticos */}
-                        {/* Barra de ações movida para fora da caixa */}
-                    </motion.div>
-                ) : (
-                            <motion.div
-                                key="initial"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                            >
-                                <Button
-                                    onClick={handleGenerateReport}
-                                    disabled={isGenerating}
-                                    className="w-full max-w-sm mx-auto my-3"
-                                >
-                                    <FileText className="w-4 h-4 mr-2" />
-                                    Gerar Relatório Técnico da Análise de Risco
-                                </Button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </CardContent>
-            </Card>
-            {/* Barra externa removida: ações agora ficam abaixo do título dentro do Card */}
-            {/* Card de comparação removido conforme solicitado */}
-            {/* Responsabilidade Técnica e Suporte */}
-            <Card className="mt-4 bg-slate-900/80 border-slate-600/60">
-                <CardHeader className="p-3">
-                    <CardTitle className="flex items-start gap-2">
-                        <span className="flex items-start gap-2">
-                            {/* Ícone verde garantido no mobile */}
-                            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
-                            <span className="text-slate-100 text-sm sm:text-base leading-relaxed text-justify">
-                                Responsabilidade Técnica e Conferência Final do Relatório
-                            </span>
-                        </span>
-                        <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 space-y-4 text-sm text-slate-200">
-                    <div className="space-y-2">
-                        <p>
-                            A <strong>NBR 5419:2025</strong> deve ser utilizada como <strong>fonte principal</strong> para validação dos dados e referência normativa do relatório.
-                        </p>
-                        <p>
-                            Este aplicativo atua <strong>exclusivamente como uma ferramenta de apoio</strong> para cálculos e emissão de relatórios, <strong>não isentando o usuário</strong> de sua responsabilidade legal e técnica quanto à <strong>veracidade</strong>, <strong>precisão</strong> e <strong>adequação</strong> das informações fornecidas.
-                        </p>
-                    </div>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="w-6 h-6 text-blue-400" />
+                                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">Preview do Relatório Gerencial</h3>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" onClick={handleDownloadWord} className="h-10 px-4 bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-600/20 flex items-center gap-2">
+                                        <FileDown className="w-4 h-4" />
+                                        Exportar Word
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={handlePrint} className="h-10 px-4">Gerar PDF</Button>
+                                    <Button variant="outline" size="sm" onClick={copyToClipboard} className="h-10 px-4">
+                                        {copySuccess ? 'Copiado' : 'Copiar Texto'}
+                                    </Button>
+                                    <Button variant="outline" size="icon" onClick={() => setReportText('')} className="h-10 w-10">
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                            <div 
+                                className="bg-slate-950/80 p-8 rounded-2xl border border-slate-800 shadow-inner max-h-[600px] overflow-y-auto"
+                                dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
 
-                    
-
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-slate-100">🤝 Informações de Contato para Negócios com Eng° Júlio Certo</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="rounded-md border border-slate-700 p-3 bg-slate-800/60">
-                                <div className="text-xs text-slate-400">Autor do Aplicativo</div>
-                                <div className="font-medium">Engº Júlio César Certo</div>
+            {/* Rodapé: Responsabilidade Técnica - Só aparece se NÃO houver relatório gerado */}
+            {!reportText && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                >
+                    <Card className="bg-slate-950/60 border-slate-800 shadow-xl rounded-3xl overflow-hidden mt-6">
+                        <CardHeader className="bg-slate-900/40 border-b border-slate-800 p-4">
+                            <CardTitle className="flex items-center gap-2 text-slate-200 text-sm uppercase font-black tracking-widest">
+                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                Confirmação Técnica
+                                <AlertTriangle className="w-4 h-4 text-amber-500 ml-auto opacity-50" />
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-5 space-y-4">
+                            <p className="text-slate-300 leading-relaxed text-xs italic border-l-4 border-emerald-500/30 pl-4 py-1">
+                                "Este relatório automatizado é uma ferramenta de apoio para cálculos da NBR 5419:2026. A conferência final e a responsabilidade técnica integral pelo projeto cabem exclusivamente ao profissional habilitado."
+                            </p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 group hover:border-blue-500/30 transition-colors text-center">
+                                    <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1 leading-none">Autor da Ferramenta</span>
+                                    <span className="text-slate-100 font-bold text-xs">Engº Júlio César Certo</span>
+                                    <span className="text-[8px] text-slate-500 block mt-1 leading-none italic">(Não é o Resp. Técnico pela análise)</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 group hover:border-emerald-500/30 transition-colors text-center">
+                                    <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1 font-black">WhatsApp Apoio</span>
+                                    <span className="text-slate-100 font-bold text-xs">(35) 9 8811-3746</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 group hover:border-slate-700 transition-colors text-center">
+                                    <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1 font-black">E-mail Suporte</span>
+                                    <span className="text-slate-200 font-medium text-[10px]">julio.certo@hotmail.com</span>
+                                </div>
                             </div>
-                            <div className="rounded-md border border-slate-700 p-3 bg-slate-800/60">
-                                <div className="text-xs text-slate-400">Contato (WhatsApp)</div>
-                                <div className="font-medium">(35) 9 8811-3746</div>
-                            </div>
-                            <div className="rounded-md border border-slate-700 p-3 bg-slate-800/60">
-                                <div className="text-xs text-slate-400">E-mail</div>
-                                <div className="font-medium">julio.certo@hotmail.com</div>
-                            </div>
-                        </div>
-                        <p className="text-sm text-slate-300">
-                            Ao utilizar este aplicativo em estudos ou projetos, cite a fonte: Engº Júlio César Certo — Ferramenta de Análise de Risco SPDA NBR 5419.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
         </div>
     );
-}
+};

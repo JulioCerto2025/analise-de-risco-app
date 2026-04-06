@@ -65,7 +65,8 @@ export const STEPS = [
     "Perda Consequente",
     "Riscos Calculados",
     "Frequência de Danos",
-    "Conclusão e Relatório"
+    "Conclusão e Relatório",
+    "Caixa de Ferramentas"
 ];
 
 // Options for Probability and Loss Steps, centralized for reuse in ReportStep simulator
@@ -160,7 +161,7 @@ export const RF_OPTIONS = [
 export const HZ_OPTIONS = [{ value: 1, label: "Nenhum 1" }, { value: 2, label: "Baixo 2" }, { value: 5, label: "Médio 5" }, { value: 10, label: "Alto 10" }];
 export const LF_OPTIONS = [
     { value: 0, label: 'Sem risco 0' },
-    { value: 0.1, label: 'Hospital, hotel, escola, edifício cívico 0,1' },
+    { value: 0.1, label: 'Hospital, hotel, school, edifício cívico 0,1' },
     { value: 0.1, label: 'Risco de explosão 0,1' },
     { value: 0.05, label: 'Entretenimento público, igreja, museu 0,05' },
     { value: 0.02, label: 'Industrial, comercial 0,02' },

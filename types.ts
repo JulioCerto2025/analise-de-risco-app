@@ -170,6 +170,8 @@ export interface AnalysisInputData {
   // Rascunhos de UF/Cidade para persistir digitação antes do commit
   ufDraft?: string;
   cityDraft?: string;
+  lat?: number;
+  lon?: number;
   cd: number;
   has_electric_line: boolean;
   line_sections_1: LineSection[];

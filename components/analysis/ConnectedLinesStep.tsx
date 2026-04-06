@@ -26,10 +26,10 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const displayValue = formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 });
 
     const content = (
-        <div className={`p-4 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
-            <div className={`font-bold text-2xl ${text}`}>{displayValue}</div>
+        <div className={`p-3 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
+            <div className={`font-bold text-xl ${text}`}>{displayValue}</div>
             {!hideInfo && (
-                <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
+                <div className={`font-semibold text-[10px] text-slate-200 mt-0.5 flex items-center justify-center gap-1`}>
                     {label}
                     <span>({unit})</span>
                 </div>
@@ -156,12 +156,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
             <div className="grid md:grid-cols-2 gap-3 items-start">
                 {/* Card: Linha Elétrica com toggle embutido */}
                 <Card>
-                    <CardHeader className="py-3 md:py-4">
+                    <CardHeader className="py-2 px-4">
                         <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5 text-slate-100"/>Linha Elétrica</CardTitle>
+                            <CardTitle className="flex items-center gap-2"><Zap className="w-4 h-4 text-slate-100"/>Linha Elétrica</CardTitle>
                             <div className="flex items-center gap-2">
                                 <Checkbox id="has_electric_line" checked={data.has_electric_line} onCheckedChange={(c) => onUpdate({ has_electric_line: !!c })} />
-                                <Label htmlFor="has_electric_line" className="cursor-pointer text-slate-200 text-xs md:text-sm">Analisar</Label>
+                                <Label htmlFor="has_electric_line" className="cursor-pointer text-slate-200 text-[10px] md:text-xs">Analisar</Label>
                             </div>
                         </div>
                     </CardHeader>
@@ -174,9 +174,9 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                 animate="visible"
                                 exit="exit"
                             >
-                                <CardContent className="space-y-2 md:space-y-3 flex-grow">
+                                <CardContent className="space-y-1.5 flex-grow">
                                     {data.line_sections_1.map((section, index) => (
-                                        <div key={section.id} className="p-1 md:p-2 border border-slate-600 rounded-lg space-y-1 md:space-y-2 relative bg-slate-800/50">
+                                        <div key={section.id} className="p-1 border border-slate-600 rounded-lg space-y-1 relative bg-slate-800/50">
                                             {data.line_sections_1.length > 1 && (
                                                 <div className="flex justify-between items-center mb-1">
                                                     <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
@@ -239,12 +239,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
                 {/* Card: Linha de Dados com toggle embutido */}
                 <Card>
-                    <CardHeader className="py-3 md:py-4">
+                    <CardHeader className="py-2 px-4">
                         <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center gap-2"><Server className="w-5 h-5 text-slate-100"/>Linha de Dados</CardTitle>
+                            <CardTitle className="flex items-center gap-2"><Server className="w-4 h-4 text-slate-100"/>Linha de Dados</CardTitle>
                             <div className="flex items-center gap-2">
                                 <Checkbox id="has_data_line" checked={data.has_data_line} onCheckedChange={(c) => onUpdate({ has_data_line: !!c })} />
-                                <Label htmlFor="has_data_line" className="cursor-pointer text-slate-200 text-xs md:text-sm">Analisar</Label>
+                                <Label htmlFor="has_data_line" className="cursor-pointer text-slate-200 text-[10px] md:text-xs">Analisar</Label>
                             </div>
                         </div>
                     </CardHeader>
@@ -257,9 +257,9 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                 animate="visible"
                                 exit="exit"
                             >
-                                <CardContent className="space-y-2 md:space-y-3 flex-grow">
+                                <CardContent className="space-y-1.5 flex-grow">
                                     {data.line_sections_2.map((section, index) => (
-                                        <div key={section.id} className="p-1 md:p-2 border border-slate-600 rounded-lg space-y-1 md:space-y-2 relative bg-slate-800/50">
+                                        <div key={section.id} className="p-1 border border-slate-600 rounded-lg space-y-1 relative bg-slate-800/50">
                                             {data.line_sections_2.length > 1 && (
                                                 <div className="flex justify-between items-center mb-1">
                                                     <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
@@ -325,8 +325,8 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 }
 
 const SelectField = ({ label, value, options, onChange }: { label: string; value: number; options: {value: number, label: string}[], onChange: (val: string) => void }) => (
-    <div className="space-y-2">
-        <Label className="text-sm sm:text-base">{label}</Label>
+    <div className="space-y-1">
+        <Label className="text-xs">{label}</Label>
         <Select value={String(value)} onValueChange={onChange} options={options}>
             <SelectTrigger className="w-full sm:min-w-[260px] truncate text-left"><SelectValue /></SelectTrigger>
             <SelectContent className="w-[min(90vw,640px)]">

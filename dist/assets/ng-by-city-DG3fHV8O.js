@@ -1,0 +1,1 @@
+const o={"Rio Branco":8,"Cruzeiro do Sul":6},n={Curitiba:10,Londrina:12},t={"São Paulo":16,Campinas:18},a={"Porto Alegre":12},r={AC:o,PR:n,SP:t,RS:a};export{o as AC,n as PR,a as RS,t as SP,r as default};

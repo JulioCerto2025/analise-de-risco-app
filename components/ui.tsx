@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { formatSmartNumber } from '../lib/format';
-import { ChevronDown, Check, Loader2 } from 'lucide-react';
+import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
 import { correctText } from '../lib/geminiService';
 
 // Button
@@ -28,16 +28,16 @@ Button.displayName = "Button";
 
 // Card
 export const Card = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col rounded-xl border bg-slate-900/60 text-slate-200 shadow-2xl border-slate-500/50 ${className}`} {...props} />
+  <div className={`flex flex-col rounded-xl border bg-slate-900/60 text-slate-200 shadow-2xl border-slate-500/30 ${className}`} {...props} />
 ));
 export const CardHeader = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col space-y-1.5 p-6 bg-slate-900/80 text-white rounded-t-xl ${className}`} {...props} />
+  <div className={`flex flex-col space-y-1 p-4 py-3 bg-slate-900/80 text-white rounded-t-xl border-b border-slate-700/50 ${className}`} {...props} />
 ));
 export const CardTitle = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h3 className={`text-lg font-semibold leading-none tracking-tight text-slate-100 ${className}`} {...props} />
 ));
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`p-6 ${className}`} {...props} />
+  <div className={`p-4 ${className}`} {...props} />
 );
 
 // Progress
@@ -435,7 +435,7 @@ export const AutoCorrectingInput = ({ id, label, value, onUpdate, placeholder, c
     };
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-1">
             <Label htmlFor={id}>{label}</Label>
             <div className="relative w-full">
                 <Input
@@ -593,7 +593,7 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, sugges
     };
 
     return (
-        <div className="space-y-2" ref={containerRef}>
+        <div className="space-y-1" ref={containerRef}>
             <Label htmlFor={id}>{label}</Label>
             <div className="relative w-full">
                 <Input
@@ -726,14 +726,14 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
     const renderFormulaWithValues = (formula: string): React.ReactNode => {
         if (!values || Object.keys(values).length === 0) return null;
         const varKeys = Object.keys(values);
-        const normalize = (s: string) => s
+        const normFunc = (s: string) => s
             .replace(/\*/g, ' × ')
             .replace(/×/g, ' × ')
             .replace(/\+/g, ' + ')
             .replace(/\)\(/g, ') × (')
             .replace(/([0-9])\(/g, '$1 × (')
             .replace(/\)([0-9A-Za-zπ])/g, ') × $1');
-        const normalized = normalize(formula);
+        const normalized = normFunc(formula);
         const segments = normalized.split(/\s*\+\s*/);
         const renderSegment = (seg: string, segIdx: number) => {
             const scanRegex = new RegExp(`\\b(${varKeys.join('|')})\\b`, 'g');
@@ -746,7 +746,8 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
                 if (start > lastIndex) {
                     localParts.push(<span key={`t-${segIdx}-${lastIndex}`}>{seg.slice(lastIndex, start)}</span>);
                 }
-                localParts.push(<span key={`v-${segIdx}-${start}`}>{formatNumberNode(values[varName])}</span>);
+                const val = (values as any)[varName];
+                localParts.push(<span key={`v-${segIdx}-${start}`}>{formatNumberNode(val)}</span>);
                 lastIndex = start + varName.length;
             }
             if (lastIndex < seg.length) {
@@ -764,15 +765,14 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
 
     // Renderiza a fórmula crua em segmentos que só quebram entre '+'
     const renderPlainFormulaSegments = (formula: string): React.ReactNode => {
-        const normalized = (
-            formula
-                .replace(/\*/g, ' × ')
-                .replace(/×/g, ' × ')
-                .replace(/\+/g, ' + ')
-                .replace(/\)\(/g, ') × (')
-                .replace(/([0-9])\(/g, '$1 × (')
-                .replace(/\)([0-9A-Za-zπ])/g, ') × $1')
-        );
+        const normFunc = (s: string) => s
+            .replace(/\*/g, ' × ')
+            .replace(/×/g, ' × ')
+            .replace(/\+/g, ' + ')
+            .replace(/\)\(/g, ') × (')
+            .replace(/([0-9])\(/g, '$1 × (')
+            .replace(/\)([0-9A-Za-zπ])/g, ') × $1');
+        const normalized = normFunc(formula);
         const segs = normalized.split(/\s*\+\s*/);
         const nodes: React.ReactNode[] = [];
         segs.forEach((seg, idx) => {
@@ -799,7 +799,8 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
                     <ul className="space-y-4">
                         {Object.entries(formulas).map(([key, formula]) => {
                             const populated = renderFormulaWithValues(formula);
-                            const valueNode = values && key in (values || {}) ? formatNumberNode(Number((values as any)[key]) || 0) : null;
+                            const valValue = (values as any)?.[key];
+                            const valueNode = values && key in (values || {}) ? formatNumberNode(Number(valValue) || 0) : null;
                             return (
                                 <li key={key} className="space-y-2">
                                     {/* Valor */}
@@ -842,4 +843,35 @@ export const useIsMobile = (): boolean => {
         return () => window.removeEventListener('resize', check);
     }, []);
     return isMobile;
+};
+export const InfoTooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [style, setStyle] = useState<React.CSSProperties>({});
+    const triggerRef = useRef<HTMLDivElement>(null);
+
+    const updatePosition = () => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        setStyle({
+            position: 'fixed',
+            top: rect.bottom + 8,
+            left: Math.max(8, Math.min(rect.left, window.innerWidth - 288)),
+            zIndex: 1000,
+        });
+    };
+
+    return (
+        <div className="relative inline-block" ref={triggerRef} onMouseEnter={() => { updatePosition(); setIsOpen(true); }} onMouseLeave={() => setIsOpen(false)}>
+            {children}
+            {isOpen && createPortal(
+                <div style={style} className="w-72 p-3 bg-slate-900/95 border border-slate-700 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] text-xs leading-relaxed text-slate-200 backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-200 ring-1 ring-white/10">
+                    <p className="font-semibold text-blue-400 mb-1 flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
+                        <Info className="w-3.5 h-3.5" /> Informação Técnica
+                    </p>
+                    {text}
+                </div>,
+                document.body
+            )}
+        </div>
+    );
 };

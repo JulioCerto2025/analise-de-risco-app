@@ -1,6 +1,6 @@
 import React from 'react';
-import { Label, Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, Input, Button } from '../ui';
-import { Building, PlusCircle, XCircle } from "lucide-react";
+import { Label, Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, Input, Button, InfoTooltip } from '../ui';
+import { Building, PlusCircle, XCircle, Info } from "lucide-react";
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData } from '../../types';
 import { CD_OPTIONS } from '../../constants';
@@ -47,7 +47,7 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     return content;
 };
 
-const DimensionInput = ({ icon, label, id, value, onUpdate, color }: { icon: string; label: string; id: keyof AnalysisData; value: number; onUpdate: (val: number) => void; color: string }) => {
+const DimensionInput = ({ icon, label, id, value, onUpdate, color, tooltipText }: { icon: string; label: string; id: keyof AnalysisData; value: number; onUpdate: (val: number) => void; color: string; tooltipText?: string }) => {
     const colorClasses: { [key: string]: { bg: string, text: string } } = {
         blue: { bg: "bg-blue-500", text: "text-blue-500" },
         green: { bg: "bg-green-500", text: "text-green-500" },
@@ -57,8 +57,15 @@ const DimensionInput = ({ icon, label, id, value, onUpdate, color }: { icon: str
     const { bg } = colorClasses[color] || colorClasses.blue;
 
     return (
-        <div className="space-y-2">
-            <Label htmlFor={String(id)}>{label}</Label>
+        <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+                <Label htmlFor={String(id)}>{label}</Label>
+                {tooltipText && (
+                    <InfoTooltip text={tooltipText}>
+                        <Info className="w-3 h-3 text-slate-400 hover:text-blue-400 cursor-help transition-colors" />
+                    </InfoTooltip>
+                )}
+            </div>
             <div className="flex items-center gap-2">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${bg}`}>
                     {icon}
@@ -121,11 +128,11 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                 <CardContent className="space-y-4">
                     <div className="space-y-1">
                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Dimensões da Estrutura</span>
-                        <div className="grid grid-cols-2 gap-3 mt-1 p-3 rounded-lg bg-blue-950/30 border border-slate-700">
+                        <div className="grid grid-cols-2 gap-2 mt-0.5 p-2.5 rounded-lg bg-blue-950/30 border border-slate-700">
                             <DimensionInput icon="L" label="Comprimento" id="l" value={data.l} onUpdate={val => onUpdate({ l: val })} color="blue" />
                             <DimensionInput icon="W" label="Largura" id="w" value={data.w} onUpdate={val => onUpdate({ w: val })} color="green" />
                             <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
-                            <DimensionInput icon="Hp" label="Altura de Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" />
+                            <DimensionInput icon="Hp" label="Altura de Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" tooltipText="Refere-se a caixas d'água, chaminés ou torres. IMPORTANTE: Meça sempre do nível do solo (chão) até o topo da estrutura, mesmo que ela esteja sobre o telhado ou na lateral da edificação. Insira o valor total acumulado do chão ao topo." />
                         </div>
                     </div>
                     <div className="hidden sm:block space-y-1">

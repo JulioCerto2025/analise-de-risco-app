@@ -1,0 +1,308 @@
+import{r as S,j as i,A as at,m as je}from"./motion-CZTIYVKD.js";import{P as ot,t as qe,w as Ae,K as nt,v as it,I as st,R as rt,J as lt,M as ct,N as mt,O as dt,Q as pt,r as Oe,E as ut,s as xt,G as gt,V as ht,C as Ve,a as We,b as Ue,B as Se,e as Ze}from"./index-CiwiS7bU.js";import{F as He,X as $t,n as Pt,L as ft,l as Rt,T as Ft}from"./icons-ggQqh8om.js";import"./react-Bzgz95E1.js";import"./charts-wPg4HxFZ.js";function v(e,t){const a=e.find(F=>String(F.value)===String(t));return a?a.label:`Valor ${t}`}function _t(e){var D,B,y,_,E,A,N,j,z,p,U,q,O,Z,C,b,w,J,ne,Ne,le,ce,me,de,pe,ue,xe,ge,he,$e,Pe,fe,Re,Fe,_e,Ce,l,f,R;const{calculations:t,probability_calculations:a,loss_calculations:F,risk_results:c,frequency_results:m,probability_data:n,zones:x,selected_risk_components:L}=e,s=((D=x[0])==null?void 0:D.loss_data)||{};let r="";r+=`### Etapa — Probabilidade (P)
+
+`,r+=`> Resumo: PC_total = 1 − (1−PC) × (1−PCT); PM_total = 1 − (1−PM) × (1−PMT). Probabilidades nas linhas utilizam PTU/PV/PW/PZ combinadas com PEB/CLD/PLD conforme NBR 5419.
+
+`,r+=`**PA - Danos a seres vivos por choque (Descarga na Estrutura)**
+* *Fórmula:* PA = PTA × PB
+* *Variáveis:*
+    * PTA: **${n.PTA}** (${v(ot,n.PTA)})
+    * PB: **${n.PB}** (${v(qe,n.PB)})
+* *Cálculo:* PA = ${n.PTA} × ${n.PB}
+* *Resultado:* **PA = ${(B=a.PA)==null?void 0:B.toExponential(3)}**
+
+`,r+=`**PB - Danos físicos (Descarga na Estrutura)**
+* *Fórmula:* PB = PB
+* *Variáveis:*
+    * PB (Nível do SPDA): **${n.PB}** (${v(qe,n.PB)})
+* *Resultado:* **PB = ${(y=a.PB)==null?void 0:y.toExponential(3)}**
+
+`,e.has_electric_line&&(r+=`**PC - Falha de sistemas (Descarga na Estrutura, Linha Elétrica)**
+* *Fórmula:* PC = PSPDₑ × CLDₑ
+* *Variáveis:*
+    * PSPDₑ: **${n.PSPD_electric}** (${v(Ae,n.PSPD_electric)})
+    * CLDₑ_int: **${n.CLD_electric_int}**
+    * CLDₑ_ext: **${n.CLD_electric_ext}**
+* *Cálculo:* PC = ${n.PSPD_electric} × (CLDₑ conforme configuração)
+* *Resultado:* **PC = ${(_=a.PC)==null?void 0:_.toExponential(3)}**
+
+`),e.has_data_line&&(r+=`**PCT - Falha de sistemas (Descarga na Estrutura, Linha de Dados)**
+* *Fórmula:* PCT = PSPDₐ × CLDₐ
+* *Variáveis:*
+    * PSPDₐ: **${n.PSPD_data}** (${v(Ae,n.PSPD_data)})
+    * CLDₐ_int: **${n.CLD_data_int}**
+    * CLDₐ_ext: **${n.CLD_data_ext}**
+* *Cálculo:* PCT = ${n.PSPD_data} × (CLDₐ conforme configuração)
+* *Resultado:* **PCT = ${(E=a.PCT)==null?void 0:E.toExponential(3)}**
+
+`),e.has_electric_line&&(r+=`**PM - Falha de sistemas (Descarga Próxima, Linha Elétrica)**
+* *Fórmula:* PM = PSPDₑ × (Ks1 × Ks2 × Ks3ₑ × Ks4ₑ)²
+* *Variáveis:*
+    * PSPDₑ: **${n.PSPD_electric}** (${v(Ae,n.PSPD_electric)})
+    * Ks1 (Malha wm1=${n.wm1}m): **${(A=a.Ks1)==null?void 0:A.toFixed(3)}**
+    * Ks2 (Malha wm2=${n.wm2}m): **${(N=a.Ks2)==null?void 0:N.toFixed(3)}**
+    * Ks3ₑ: **${n.Ks3_electric_int}** (${v(nt,n.Ks3_electric_int)})
+    * Ks4ₑ (Uw=${n.Uw_electric_int}kV): **${(j=a.Ks4_electric)==null?void 0:j.toFixed(3)}**
+* *Cálculo:* PM = ${n.PSPD_electric} × (${(z=a.Ks1)==null?void 0:z.toFixed(3)} × ${(p=a.Ks2)==null?void 0:p.toFixed(3)} × ${n.Ks3_electric_int} × ${(U=a.Ks4_electric)==null?void 0:U.toFixed(3)})²
+* *Resultado:* **PM = ${(q=a.PM)==null?void 0:q.toExponential(3)}**
+
+`),e.has_electric_line&&(r+=`**PU - Danos a seres vivos por choque (Descarga na Linha Elétrica)**
+* *Fórmula:* PU = PTU × PEB × PLD × CLD
+* *Variáveis:*
+    * PTU: **${n.PTU_electric}** (${v(it,n.PTU_electric)})
+    * PEB: **${n.PEB_electric}** (${v(Ae,n.PEB_electric)})
+    * PLD (ext): **${(O=n.PLD_electric_ext)==null?void 0:O.toFixed(2)}**
+    * CLD (ext): **${n.CLD_electric_ext}**
+* *Cálculo:* PU = ${n.PTU_electric} × ${n.PEB_electric} × ${(Z=n.PLD_electric_ext)==null?void 0:Z.toFixed(2)} × ${n.CLD_electric_ext}
+* *Resultado:* **PU = ${(C=a.PU)==null?void 0:C.toExponential(3)}**
+
+`),r+=`### Etapa — Perdas Consequentes (L) — ${(b=x[0])==null?void 0:b.name}
+
+`,r+=`> Resumo: LA (choque), LB (incêndio/pânico) e LC (falha de sistemas) usam fatores normativos (rt, rp, rf, hz, LO) e a fração de tempo/pessoas na zona (tz, nz/nt). Demais perdas usam equivalências LU=LA, LV=LB, LM=LW=LZ=LC.
+
+`,r+=`**LA - Perda por choque elétrico**
+* *Fórmula:* LA = rt × 0.01 × (nz / nt) × (tz / 8760) × rs
+* *Variáveis:*
+    * rt (Resist. Piso): **${s.rt}** (${v(st,s.rt)})
+    * nz (Pessoas na Zona): **${s.nz}**
+    * nt (Pessoas Total): **${s.nt}**
+    * tz (Tempo na Zona): **${s.tz}** h/ano
+    * rs (Tipo Estrutura): **${s.rs}** (${s.rs===1?"Robusta":"Simples"})
+* *Cálculo:* LA = ${s.rt} × 0.01 × (${s.nz} / ${s.nt}) × (${s.tz} / 8760) × ${s.rs}
+* *Resultado:* **LA = ${(w=F.LA)==null?void 0:w.toExponential(3)}**
+
+`,r+=`**LB - Perda por danos físicos (incêndio)**
+* *Fórmula:* LB = rs × rp × rf × hz × LF × (nz / nt) × (tz / 8760)
+* *Variáveis:*
+    * rs (Tipo Estrutura): **${s.rs}** (${s.rs===1?"Robusta":"Simples"})
+    * rp (Prot. Incêndio): **${s.rp}** (${v(rt,s.rp)})
+    * rf (Risco Incêndio): **${s.rf}** (${v(lt,s.rf)})
+    * hz (Pânico): **${s.hz}** (${v(ct,s.hz)})
+    * LF (Tipo Dano): **${s.LF}** (${v(mt,s.LF)})
+    * nz, nt, tz: **${s.nz}**, **${s.nt}**, **${s.tz}**
+* *Cálculo:* LB = ${s.rs} × ${s.rp} × ${s.rf} × ${s.hz} × ${s.LF} × (${s.nz} / ${s.nt}) × (${s.tz} / 8760)
+* *Resultado:* **LB = ${(J=F.LB)==null?void 0:J.toExponential(3)}**
+
+`,r+=`**LC - Perda por falha de sistemas**
+* *Fórmula:* LC = LO × (nz / nt) × (tz / 8760) × rs
+* *Variáveis:*
+    * LO (Tipo Falha): **${s.LO}** (${v(dt,s.LO)})
+    * nz, nt, tz, rs: **${s.nz}**, **${s.nt}**, **${s.tz}**, **${s.rs}**
+* *Cálculo:* LC = ${s.LO} × (${s.nz} / ${s.nt}) × (${s.tz} / 8760) × ${s.rs}
+* *Resultado:* **LC = ${(ne=F.LC)==null?void 0:ne.toExponential(3)}**
+
+`,r+=`**Demais Perdas:** LU=LA, LV=LB, LM=LW=LZ=LC.
+
+`,r+=`### Etapa — Componentes de Risco (R)
+
+`;const M=Object.entries(L).filter(([,g])=>g).map(([g])=>{const o={RA:"RA = Nd × PA × LA",RB:"RB = Nd × PB × LB",RC:"RC = Nd × PC × LC",RM:"RM = Nm × PM × LM",RU:"RU = Nl × PU × LU",RV:"RV = Nl × PV × LV",RW:"RW = Nl × PW × LW",RZ:"RZ = Ni × PZ × LZ"},V=c[g];return`* **${g}:** ${o[g]||"N/A"} -> Resultado: **${V==null?void 0:V.toExponential(3)}**`}).join(`
+`);r+=M+`
+
+`,r+=`### Etapa — Frequência de Danos a Sistemas (F)
+
+`,r+=`> Resumo: F = FB + FC + FM + FV + FW + FZ (quando aplicável), com combinação de sistemas internos via PC_total e PM_total.
+
+`,m.FB&&e.frequency_config.has_equipment_in_ZPR0A&&(r+=`**FB - Danos por descarga na estrutura (Equip. ZPR0A)**
+* *Fórmula:* FB = Nd × PB
+* *Cálculo:* FB = ${(Ne=t.nd)==null?void 0:Ne.toExponential(3)} × ${a.PB}
+* *Resultado:* **FB = ${(le=m.FB)==null?void 0:le.toExponential(3)}**
+
+`),m.FC&&(r+=`**FC - Danos por descarga na estrutura (Sistemas Internos)**
+* *Fórmula:* FC = Nd × PC_total
+* *Cálculo:* FC = ${(ce=t.nd)==null?void 0:ce.toExponential(3)} × ${(1-(1-(a.PC||0))*(1-(a.PCT||0))).toFixed(3)}
+* *Resultado:* **FC = ${(me=m.FC)==null?void 0:me.toExponential(3)}**
+
+`),m.FM&&(r+=`**FM - Danos por descarga próxima (Sistemas Internos)**
+* *Fórmula:* FM = Nm × PM_total
+* *Cálculo:* FM = ${(de=t.nm)==null?void 0:de.toExponential(3)} × ${(1-(1-(a.PM||0))*(1-(a.PMT||0))).toFixed(3)}
+* *Resultado:* **FM = ${(pe=m.FM)==null?void 0:pe.toExponential(3)}**
+
+`),m.FV&&(r+=`**FV - Danos por descarga na linha**
+* *Fórmula:* FV = Nlₑ × PEBₑ + Nlₐ × PEBₐ
+* *Cálculo:* FV = (${(ue=t.nl_electric)==null?void 0:ue.toExponential(3)} × ${a.PEB_electric}) + (${(xe=t.nl_data)==null?void 0:xe.toExponential(3)} × ${a.PEB_data})
+* *Resultado:* **FV = ${(ge=m.FV)==null?void 0:ge.toExponential(3)}**
+
+`),m.FW&&(r+=`**FW - Danos por surto na linha**
+* *Fórmula:* FW = Nlₑ × PW + Nlₐ × PWT
+* *Cálculo:* FW = (${(he=t.nl_electric)==null?void 0:he.toExponential(3)} × ${($e=a.PW)==null?void 0:$e.toExponential(3)}) + (${(Pe=t.nl_data)==null?void 0:Pe.toExponential(3)} × ${(fe=a.PWT)==null?void 0:fe.toExponential(3)})
+* *Resultado:* **FW = ${(Re=m.FW)==null?void 0:Re.toExponential(3)}**
+
+`),m.FZ&&(r+=`**FZ - Danos por surto induzido na linha**
+* *Fórmula:* FZ = Niₑ × PZ + Niₐ × PZT
+* *Cálculo:* FZ = (${(Fe=t.ni_electric)==null?void 0:Fe.toExponential(3)} × ${(_e=a.PZ)==null?void 0:_e.toExponential(3)}) + (${(Ce=t.ni_data)==null?void 0:Ce.toExponential(3)} × ${(l=a.PZT)==null?void 0:l.toExponential(3)})
+* *Resultado:* **FZ = ${(f=m.FZ)==null?void 0:f.toExponential(3)}**
+
+`);const T=[];return e.frequency_config.has_equipment_in_ZPR0A&&T.push("FB"),T.push("FC","FM","FV","FW","FZ"),r+=`**F - Frequência Total de Danos**
+* *Fórmula:* F = ${T.join(" + ")}
+* *Cálculo:* F = ${T.map(g=>{var o;return((o=m[g])==null?void 0:o.toExponential(3))||0}).join(" + ")}
+* *Resultado:* **F = ${(R=m.F)==null?void 0:R.toExponential(3)}**
+
+`,r}async function Ct(e){var le,ce,me,de,pe,ue,xe,ge,he,$e,Pe,fe,Re,Fe,_e,Ce;const{calculations:t,risk_results:a,frequency_results:F}=e,c={dados:1,parametros:2,calculos:3,resultados:4,parecer:5},m=_t(e),n=l=>{var te,Y;const f=Object.entries(l.risks_to_analyze).filter(([,u])=>u).map(([u])=>u),R={R1:1e-5,R3:.001,R4:.001},g=[];f.forEach(u=>{const k=l.risk_results[u]||0,I=R[u];k>I&&g.push(u)});const o=l.frequency_config.is_critical_system?.1:1,V=(((te=l.frequency_results)==null?void 0:te.F)||0)>o,W=["RA","RB","RC","RM","RU","RV","RW","RZ"].map(u=>({k:u,v:l.risk_results[u]||0})).sort((u,k)=>k.v-u.v).slice(0,2).map(u=>{var k;return`${String(u.k)} (${(k=u.v)==null?void 0:k.toExponential(2)})`}).join(", "),H=`Este parecer foi elaborado com base na NBR 5419, considerando os riscos selecionados (${f.join(", ")||"nenhum"}) e a frequência de danos aos sistemas.`,be=`Frequência de Danos (F): **${(((Y=l.frequency_results)==null?void 0:Y.F)||0).toExponential(3)}**; Limite (FT): **${o.toFixed(1)}** → ${V?"**NÃO ACEITÁVEL**":"**ACEITÁVEL**"}.`,G=f.length?`Riscos totais: ${f.map(u=>`**${u}=${(l.risk_results[u]||0).toExponential(3)}** (RT=${R[u].toExponential(1)})`).join("; ")}.`:"Nenhum risco foi selecionado para análise próxima.",K=`Componentes dominantes observados: ${W}.`,se=`Recomendações prioritárias:
+* Adequar o nível do SPDA (captores, descidas, aterramento) para reduzir PA/PB e efeitos de descargas na estrutura.
+* Coordenar DPS (classes I/II/III) em entradas e quadros, nas linhas elétrica e de dados, para reduzir PC/PM e perdas associadas (RC, RM, FC, FM).
+* Reforçar malhas de aterramento e equipotencialização, interligando elementos metálicos e melhorando conexões, reduzindo tensões de passo/toque (impacto em LA/LC).
+* Otimizar blindagens/roteamento de cabos e separação física, diminuindo acoplamentos (RW/RZ).
+* Revisar parâmetros de ocupação e medidas internas (rf, hz, LO) e rotinas operacionais em zonas críticas.`,X=g.length||V?`Conclusão: Há itens **NÃO ACEITÁVEIS** (${[...g,V?"F":null].filter(Boolean).join(", ")}). Recomenda-se implementar as medidas acima e reprocessar a análise para verificar a redução dos componentes dominantes e a conformidade com os limites.`:"Conclusão: Todos os itens analisados estão **ACEITÁVEIS** frente aos limites. Recomenda-se manter as medidas propostas, documentação e manutenção periódica do sistema.";return[H,be,G,K,se,X].join(`
+
+`)},x=Object.entries(e.risks_to_analyze).filter(([,l])=>l).map(([l],f)=>{var G,K,se,X,te,Y,u,k,I;const R=a[l]||0,g={R1:1e-5,R3:.001,R4:.001}[l]||0,o=R<=g,V={R1:"Perda de Vidas Humanas",R3:"Perda de Patrimônio Cultural",R4:"Perda de Valor Econômico"}[l],ie=o?"🟢 ✅":"🔴 ❌",P=e.selected_risk_components;let W="",H="";if(l==="R1"){const h=[],d=[];P.RA&&(h.push("RA"),d.push(`${(G=a.RA)==null?void 0:G.toExponential(3)}`)),P.RB&&(h.push("RB"),d.push(`${(K=a.RB)==null?void 0:K.toExponential(3)}`)),P.RC&&(h.push("RC"),d.push(`${(se=a.RC)==null?void 0:se.toExponential(3)}`)),P.RM&&(h.push("RM"),d.push(`${(X=a.RM)==null?void 0:X.toExponential(3)}`)),P.RU&&(h.push("RU"),d.push(`${((a.RU||0)+(a.RUT||0)).toExponential(3)}`)),P.RV&&(h.push("RV"),d.push(`${((a.RV||0)+(a.RVT||0)).toExponential(3)}`)),P.RW&&(h.push("RW"),d.push(`${((a.RW||0)+(a.RWT||0)).toExponential(3)}`)),P.RZ&&(h.push("RZ"),d.push(`${((a.RZ||0)+(a.RZT||0)).toExponential(3)}`)),W=h.join(" + "),H=`${d.join(" + ")} = ${R.toExponential(3)}`}else if(l==="R3"){const h=[],d=[];P.RB&&(h.push("RB3"),d.push(`${(te=a.RB3)==null?void 0:te.toExponential(3)}`)),P.RV&&(h.push("RV3"),d.push(`${((a.RV3||0)+(a.RVT3||0)).toExponential(3)}`)),W=h.join(" + "),H=`${d.join(" + ")} = ${R.toExponential(3)}`}else if(l==="R4"){const h=[],d=[];P.RA&&(h.push("RA4"),d.push(`${(Y=a.RA4)==null?void 0:Y.toExponential(3)}`)),P.RB&&(h.push("RB4"),d.push(`${(u=a.RB4)==null?void 0:u.toExponential(3)}`)),P.RC&&(h.push("RC4"),d.push(`${(k=a.RC4)==null?void 0:k.toExponential(3)}`)),P.RM&&(h.push("RM4"),d.push(`${(I=a.RM4)==null?void 0:I.toExponential(3)}`)),P.RU&&(h.push("RU4"),d.push(`${((a.RU4||0)+(a.RUT4||0)).toExponential(3)}`)),P.RV&&(h.push("RV4"),d.push(`${((a.RV4||0)+(a.RVT4||0)).toExponential(3)}`)),P.RW&&(h.push("RW4"),d.push(`${((a.RW4||0)+(a.RWT4||0)).toExponential(3)}`)),P.RZ&&(h.push("RZ4"),d.push(`${((a.RZ4||0)+(a.RZT4||0)).toExponential(3)}`)),W=h.join(" + "),H=`${d.join(" + ")} = ${R.toExponential(3)}`}const be=W?`
+* *Composição (${l}):* ${W}
+* *Cálculo:* ${H}`:"";return`### ${c.resultados}.${f+1}. Risco ${l} - ${V}
+* **Risco Total Calculado (${l}):** **${R.toExponential(3)}**
+* **Risco Tolerável (RT):** **${g.toExponential(1)}**
+* **Resultado:** ${ie} O risco ${l} é **${o?"ACEITÁVEL":"NÃO ACEITÁVEL"}**.${be}`}).join(`
+
+`),L=e.frequency_config.is_critical_system?.1:1,s=(F.F||0)<=L,r=s?"🟢 ✅":"🔴 ❌",M=l=>{try{return btoa(unescape(encodeURIComponent(l)))}catch{return""}},T=(l,f,R=720,g=300,o)=>{const ie=o!=null&&o.showLegend?72:48,P=44,W=8,H=f.length,be=R-80,G=g-ie-P,K=Math.max(10,Math.floor((be-(H-1)*W)/H)),se=typeof(o==null?void 0:o.toleranceLine)=="number"?Math.max(o.toleranceLine,0):0,X=$=>Math.log10(Math.max($,1e-12)),te=[...f.map($=>$.value),se].filter($=>$>0),Y=Math.max(...te.map($=>X($))),u=Math.min(...f.map($=>X($.value))),k=(o==null?void 0:o.barColor)||"#60A5FA",I=o==null?void 0:o.barColors,h=(o==null?void 0:o.bg)||"#FFFFFF",d="#111827",Ke="#475569",ze=typeof(o==null?void 0:o.labelAngle)=="number"?o.labelAngle:-35,Xe=`
+  <defs>
+    <filter id="glowGreen" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#10B981" flood-opacity="0.45"/>
+    </filter>
+    <filter id="glowRed" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#EF4444" flood-opacity="0.45"/>
+    </filter>
+  </defs>`;let Te="";f.forEach(($,re)=>{const ae=40+re*(K+W),Ee=(X($.value)-u)/Math.max(Y-u,1e-6),oe=Math.max(2,Math.floor(Ee*G)),Q=ie+(G-oe),Le=$.value.toExponential(2),ee=I?I[re%I.length]:k,Be=g-P+18,ye=ae+K/2,ve=ee==="#CBD5E1",Me=$.name==="R Total"||$.name==="F Total",Ye=ve?' stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 2" fill-opacity="0.25"':Me?` stroke="${ee==="#10B981"?"#065f46":ee==="#EF4444"?"#7f1d1d":"#334155"}" stroke-width="3"`:"",Qe=Me?5:3,et=Me?12:10,tt=Me?"700":"400";Te+=`
+  <rect x="${ae}" y="${Q}" width="${K}" height="${oe}" fill="${ee}" rx="${Qe}"${Ye}${Me?ee==="#10B981"?' filter="url(#glowGreen)"':' filter="url(#glowRed)"':""} />`,Te+=`
+  <text x="${ye}" y="${Be}" fill="${d}" font-size="11" text-anchor="${ze<0?"end":ze>0?"start":"middle"}" transform="rotate(${ze} ${ye} ${Be})">${$.name}</text>`,Te+=`
+  <text x="${ae+K/2}" y="${Q-6}" fill="${d}" font-size="${et}" font-weight="${tt}" text-anchor="middle">${Le}</text>`});let Ie="";if(typeof(o==null?void 0:o.toleranceLine)=="number"){const $=Math.max(o.toleranceLine,1e-12),re=(X($)-u)/Math.max(Y-u,1e-6),ae=Math.min(1,Math.max(0,re)),Ee=Math.max(2,Math.floor(ae*G)),oe=ie+(G-Ee);Ie=`
+  <line x1="40" y1="${oe}" x2="${R-40}" y2="${oe}" stroke="#ef4444" stroke-width="2" stroke-dasharray="3 3" />`}let De="";if(!!(o!=null&&o.showLegend)&&I&&f.length){const $=typeof(o==null?void 0:o.legendBoxSize)=="number"?Math.max(6,o.legendBoxSize):10,re=typeof(o==null?void 0:o.legendColGap)=="number"?Math.max(2,o.legendColGap):8,ae=typeof(o==null?void 0:o.legendRowGap)=="number"?Math.max(2,o.legendRowGap):8,Ee=typeof(o==null?void 0:o.legendFontSize)=="number"?Math.max(8,o.legendFontSize):11,oe=Math.min(R-40,Math.max(120,(o==null?void 0:o.legendMaxWidth)||R-40));let Q=40,Le=46;f.forEach((ee,Be)=>{const ye=I[Be%I.length],ve=Math.min(160,Math.max(40,ee.name.length*7));Q+$+4+ve>oe&&(Q=40,Le+=$+ae),De+=`
+  <rect x="${Q}" y="${Le}" width="${$}" height="${$}" fill="${ye}" rx="2" />`,De+=`
+  <text x="${Q+$+6}" y="${Le+$-1}" fill="${d}" font-size="${Ee}">${ee.name}</text>`,Q+=$+6+ve+re})}const Je=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${R}" height="${g}" viewBox="0 0 ${R} ${g}">
+  ${Xe}
+  <rect x="0" y="0" width="${R}" height="${g}" fill="${h}"/>
+  <text x="40" y="24" fill="${d}" font-size="14" font-weight="bold">${l}</text>
+  ${De}
+  <line x1="40" y1="${g-P}" x2="${R-40}" y2="${g-P}" stroke="${Ke}" stroke-width="1"/>
+  ${Ie}
+  ${Te}
+</svg>`;return`data:image/svg+xml;base64,${M(Je)}`},B=["RA","RB","RC","RM","RU","RV","RW","RZ"].map(l=>({name:l,value:e.risk_results[l]||1e-12,active:!!e.selected_risk_components[l]})),y=e.risks_to_analyze.R1?"R1":e.risks_to_analyze.R3?"R3":e.risks_to_analyze.R4?"R4":"R1",_=e.risk_results[y]||0,E=[...B.map(l=>({name:l.name,value:l.value})),{name:"R Total",value:_}],A=Object.entries(e.frequency_results||{}).filter(([l])=>l!=="F").map(([l,f])=>({name:l,value:f||0})),N=["#60A5FA","#A78BFA","#F472B6","#FB7185","#F59E0B","#34D399","#22D3EE","#93C5FD"],j="#CBD5E1",z=e.risks_to_analyze.R1?1e-5:e.risks_to_analyze.R3||e.risks_to_analyze.R4?.001:1e-5,U=_<=z?"#10B981":"#EF4444",q=E.map((l,f)=>{var g;return l.name==="R Total"?U:((g=B[f])==null?void 0:g.active)?N[f%N.length]:j}),O=["#F87171","#60A5FA","#A78BFA","#34D399","#F59E0B","#FB7185","#64748B"],Z=T("Componentes de Risco — Global",E,720,300,{barColors:q,labelAngle:-30,legendMaxWidth:420,toleranceLine:z}),C=[...A,{name:"F Total",value:((le=e.frequency_results)==null?void 0:le.F)||0}],b=(((ce=e.frequency_results)==null?void 0:ce.F)||0)<=L,w="#CBD5E1",J=C.map((l,f)=>{if(l.name==="F Total")return b?"#10B981":"#EF4444";const R=O[f%O.length];return(l.value||0)>0?R:w}),ne=T("Frequência de Danos — Global",C,720,280,{barColors:J,labelAngle:-40,legendFontSize:10,legendMaxWidth:500,toleranceLine:L});return`
+**ASSUNTO:** Memorial de Cálculo — Análise de Risco (NBR 5419)
+
+---
+
+## ${c.dados}. DADOS DO PROJETO
+* **Projeto/Cliente:** ${e.clientName}
+* **Endereço:** ${e.clientAddress}
+* **Descrição:** ${e.projectName}
+* **Data:** ${e.projectDate}
+* **Responsável Técnico:** ${e.technicalManagerName} (${e.licenseNumber})
+
+## ${c.parametros}. PARÂMETROS GERAIS DA ANÁLISE
+* **Localização (Cidade/UF):** ${e.location}
+* **Densidade de Descargas (Ng):** **${e.ng}** descargas/km²/ano
+* **Geometria da Estrutura:** **${e.l}**m (C) × **${e.w}**m (L) × **${e.h}**m (A)
+* **Fator de Localização (Cd):** **${e.cd}**
+
+## ${c.calculos}. CÁLCULOS DETALHADOS
+
+### ${c.calculos}.1. Áreas de Exposição Equivalentes
+* **Área de Exposição (Ad):**
+  * *Fórmula:* Ad = L×W + 2×(3H)×(L+W) + π×(3H)²
+  * *Cálculo:* Ad = ${e.l}×${e.w} + 2×(3×${e.h})×(${e.l}+${e.w}) + π×(3×${e.h})²
+  * *Resultado:* **Ad = ${(me=t.ad)==null?void 0:me.toFixed(2)} m²**
+* **Área de Exposição Final (Adf):**
+  * *Resultado:* **Adf = ${(de=t.adf)==null?void 0:de.toFixed(2)} m²** (Considerando protrusões)
+* **Área de Exposição Próxima (Am):**
+  * *Fórmula:* Am = 2×500×(L+W) + π×500²
+  * *Cálculo:* Am = 2×500×(${e.l}+${e.w}) + π×500²
+  * *Resultado:* **Am = ${(pe=t.am)==null?void 0:pe.toFixed(2)} m²**
+* **Linha Elétrica (Al1, Ai1):** **Al1 = ${(ue=t.al1)==null?void 0:ue.toFixed(2)} m²**, **Ai1 = ${(xe=t.ai1)==null?void 0:xe.toFixed(2)} m²**
+* **Linha de Dados (Al2, Ai2):** **Al2 = ${(ge=t.al2)==null?void 0:ge.toFixed(2)} m²**, **Ai2 = ${(he=t.ai2)==null?void 0:he.toFixed(2)} m²**
+
+### ${c.calculos}.2. Frequência Média Anual de Eventos Danosos (N)
+* **Nd:** Nd = Ng × Adf × Cd × 10⁻⁶ → **${($e=t.nd)==null?void 0:$e.toExponential(3)}** eventos/ano
+* **Nm:** Nm = Ng × Am × 10⁻⁶ → **${(Pe=t.nm)==null?void 0:Pe.toExponential(3)}** eventos/ano
+* **Nl/ Ni (Elétrica):** **Nl = ${(fe=t.nl_electric)==null?void 0:fe.toExponential(3)}**, **Ni = ${(Re=t.ni_electric)==null?void 0:Re.toExponential(3)}** eventos/ano
+* **Nl/ Ni (Dados):** **Nl = ${(Fe=t.nl_data)==null?void 0:Fe.toExponential(3)}**, **Ni = ${(_e=t.ni_data)==null?void 0:_e.toExponential(3)}** eventos/ano
+
+${m}
+
+## ${c.resultados}. RESULTADOS E CONCLUSÕES
+
+> As figuras são numeradas conforme ABNT: “Figura N — Título”. Escala logarítmica nos gráficos para melhor comparação entre ordens de grandeza.
+
+${x}
+
+### Figura 1 — Componentes de Risco — Global
+![Componentes de Risco — Global](${Z})
+
+
+### ${c.resultados}.${Object.values(e.risks_to_analyze).filter(l=>l).length+1}. Frequência de Danos aos Sistemas (F)
+* **Frequência Calculada (F):** **${(Ce=F.F)==null?void 0:Ce.toExponential(3)}** danos/ano
+* **Frequência Tolerável (FT):** **${L.toFixed(1)}** danos/ano
+* **Resultado:** ${r} A frequência F é **${s?"ACEITÁVEL":"NÃO ACEITÁVEL"}**.
+
+### Figura 2 — Frequência de Danos — Global
+![Frequência de Danos — Global](${ne})
+
+## ${c.parecer}. PARECER TÉCNICO
+${n(e)}
+
+---
+
+## ✅ Responsabilidade Técnica e Conferência Final do Relatório
+A **NBR 5419:2025** deve ser utilizada como **fonte principal** para validação dos dados e referência normativa do relatório.
+
+Este aplicativo atua **exclusivamente como ferramenta de apoio** para cálculos e emissão de relatórios, **não isentando o usuário** de sua responsabilidade legal e técnica quanto à **veracidade**, **precisão** e **adequação** das informações fornecidas.
+
+### 🤝 Informações de Contato
+* **Autor do Aplicativo:** Engº Júlio César Certo
+* **Contato (WhatsApp):** (35) 9 8811-3746
+* **E-mail:** julio.certo@hotmail.com
+
+> Ao utilizar este aplicativo, cite a fonte: **Engº Júlio César Certo — Ferramenta de Análise de Risco SPDA NBR 5419**.
+`.trim()}const we=e=>e.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"),Ge={paragraphFontSizePt:11,paragraphLineHeight:1.35,paragraphMarginTopPx:6,paragraphMarginBottomPx:8,listItemMarginTopPx:4,listItemMarginBottomPx:4,listItemExtraMarginBottomPx:10,blockMarginBetweenItemsPx:12,listMarginTopPx:8,listMarginBottomPx:12,listPaddingLeftPx:18,h2FontSizeRem:1.25,h2MarginTopPx:14,h2MarginBottomPx:10,h3FontSizeRem:1.1,h3MarginTopPx:10,h3MarginBottomPx:8,figureMarginTopPx:10,figureMarginBottomPx:10,emptyLineHeightPx:8},ke=(e,t)=>{if(!e)return"";const F=e.replace(/\\n/g,`
+`).split(`
+`);let c="",m=!1;for(let n=0;n<F.length;n++){let x=F[n];if(x.trim()===""){m?c+=`<li style="list-style:none;margin:${t.listItemMarginTopPx}px 0 ${t.listItemMarginBottomPx}px"><span style="display:inline-block;height:${t.emptyLineHeightPx}px"></span></li>
+`:c+=`<p style="margin:${t.emptyLineHeightPx}px 0 ${t.emptyLineHeightPx}px;font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">&nbsp;</p>
+`;continue}const L=r=>{let M=we(r);return M=M.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>"),M=M.replace(/(^|[^*])\*(?!\*)([^*]+?)\*(?!\*)/g,(T,D,B)=>`${D}<em>${B}</em>`),M};if(x.trim()==="---"){m&&(c+=`</ul>
+`,m=!1),c+=`<hr style="border:0;border-top:1px solid #cbd5e1;margin:12px 0"/>
+`;continue}const s=x.trim().match(/^!\[(.*?)\]\((.*?)\)$/);if(s){const[,r,M]=s;m&&(c+=`</ul>
+`,m=!1);const T=n+1<F.length?F[n+1].trim():"",D=n-1>=0?F[n-1].trim():"",B=/^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/;let y=null;const _=T.match(B),E=D.match(B);_?(y=`Figura ${_[2]} — ${_[3]}`.trim(),n+=1):E?y=`Figura ${E[2]} — ${E[3]}`.trim():r&&r.trim().length>0&&(y=r.trim());const A=y?`<figcaption>${L(y)}</figcaption>`:"";c+=`<figure style="margin:${t.figureMarginTopPx}px 0 ${t.figureMarginBottomPx}px"><img src="${we(M)}" alt="${we(r)}" style="max-width:100%;height:auto;border-radius:4px;border:none;display:inline-block;page-break-inside:avoid"/>${A}</figure>
+`;continue}if(x.startsWith("> ")){m&&(c+=`</ul>
+`,m=!1);const r=L(x.substring(2));c+=`<p style="margin:${t.paragraphMarginTopPx}px 0 ${t.paragraphMarginBottomPx}px;font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">${r}</p>
+`;continue}if(x.startsWith("## ")){m&&(c+=`</ul>
+`,m=!1),c+=`<h2 style="font-size:${t.h2FontSizeRem}rem;line-height:1.6;font-weight:700;margin:${t.h2MarginTopPx}px 0 ${t.h2MarginBottomPx}px;">${L(x.substring(3))}</h2>
+`;continue}if(x.startsWith("### ")){m&&(c+=`</ul>
+`,m=!1),c+=`<h3 style="font-size:${t.h3FontSizeRem}rem;line-height:1.5;font-weight:700;margin:${t.h3MarginTopPx}px 0 ${t.h3MarginBottomPx}px;">${L(x.substring(4))}</h3>
+`;continue}if(x.trim().startsWith("* ")){m||(c+=`<ul style="margin:${t.listMarginTopPx}px 0 ${t.listMarginBottomPx}px;padding-left:${t.listPaddingLeftPx}px">
+`,m=!0);let r=x.trim().substring(2);for(;n+1<F.length&&F[n+1].startsWith("  ");)r+=" "+F[n+1].trim(),n++;const M=r.replace(/\*/g,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),T=/\bresultado:\b/.test(M),D=/\bcalculo:\b/.test(M),B=/\bformula:\b/.test(M),_=/^\*\*[^*]+?\*\*:/.test(r.trim())||T||D||B?t.blockMarginBetweenItemsPx:t.listItemMarginBottomPx,E=`${Math.max(0,t.listItemMarginTopPx)}px 0 ${_}px`,A=/(F[óo]rmula:|C[áa]lculo:|Resultado:)/gi,N="§§",z=r.replace(A,N+"$1").split(N).filter(p=>p.trim().length>0);if(z.length>1||/:\s*$/.test(r.trim())){let p="";for(const U of z){const q=U.replace(/\*/g,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),O=/\bresultado:\b/.test(q),Z=/\bcalculo:\b/.test(q),C=/\bformula:\b/.test(q),b=O||Z||C?`${t.paragraphMarginTopPx}px 0 ${t.listItemExtraMarginBottomPx}px`:`${t.paragraphMarginTopPx}px 0 ${t.paragraphMarginBottomPx}px`;p+=`<p style="margin:${b};font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">${L(U)}</p>`}c+=`<li style="margin:${E};font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">${p}</li>
+`}else c+=`<li style="margin:${E};font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">${L(r)}</li>
+`;continue}if(m&&(c+=`</ul>
+`,m=!1),x.trim()){const r=n+1<F.length?F[n+1].trim():"";if(!(/^(Figura|FIGURA)\s*([0-9]+(?:\.[0-9]+)*)[\.:\-]\s*(.*)$/.test(x.trim())&&/^!\[(.*?)\]\((.*?)\)$/.test(r))){const T=/(F[óo]rmula:|C[áa]lculo:|Resultado:)/gi,y=x.replace(T,"§§$1").split("§§").filter(_=>_.trim().length>0);if(y.length>1)for(const _ of y){const E=_.replace(/\*/g,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),A=/\bresultado:\b/.test(E),N=/\bcalculo:\b/.test(E),j=/\bformula:\b/.test(E),z=A||N||j?`${t.paragraphMarginTopPx}px 0 ${t.listItemExtraMarginBottomPx}px`:`${t.paragraphMarginTopPx}px 0 ${t.paragraphMarginBottomPx}px`;c+=`<p style="margin:${z};font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">${L(_)}</p>
+`}else{const _=x.replace(/\*/g,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(),E=/\bresultado:\b/.test(_),A=/\bcalculo:\b/.test(_),N=/\bformula:\b/.test(_),j=E||A||N?`${t.paragraphMarginTopPx}px 0 ${t.listItemExtraMarginBottomPx}px`:`${t.paragraphMarginTopPx}px 0 ${t.paragraphMarginBottomPx}px`;c+=`<p style="margin:${j};font-size:${t.paragraphFontSizePt}pt;line-height:${t.paragraphLineHeight}">${L(x)}</p>
+`}}}}return m&&(c+=`</ul>
+`),c};function At({data:e,onUpdate:t}){const[a,F]=S.useState(!1),[c,m]=S.useState(""),[n,x]=S.useState(!1),[L,s]=S.useState(22),[r,M]=S.useState(15),[T,D]=S.useState(22),[B,y]=S.useState(6),[_,E]=S.useState(22),[A,N]=S.useState(6),j="report_format_prefs",z=()=>{try{const C=localStorage.getItem(j);if(C){const b=JSON.parse(C);return{...Ge,...b}}}catch{}return Ge},[p]=S.useState(z()),U=async()=>{F(!0),m("");try{const C=await Ct(e);m(C)}finally{F(!1)}},q=async()=>{if(!c)return;const C=ke(c,p),b=c.replace(/\!\[[^\]]*\]\([^\)]*\)/g,"").replace(/^###\s+/gm,"").replace(/^##\s+/gm,"").replace(/\*\*(.*?)\*\*/g,"$1").replace(/^>\s+/gm,"").replace(/\n\n+/g,`
+
+`);try{if(typeof window.ClipboardItem<"u"){const w=new window.ClipboardItem({"text/html":new Blob([C],{type:"text/html"}),"text/plain":new Blob([b],{type:"text/plain"})});await navigator.clipboard.write([w])}else await navigator.clipboard.writeText(b);x(!0),setTimeout(()=>x(!1),2e3)}catch{try{await navigator.clipboard.writeText(b)}catch{}x(!0),setTimeout(()=>x(!1),2e3)}},O=S.useMemo(()=>pt(e),[e.h,e.l,e.w,e.hp,e.ng,e.cd,e.has_electric_line,e.line_sections_1,e.use_adj_structure_1,e.l_adj_1,e.w_adj_1,e.h_adj_1,e.hp_adj_1,e.cd_adj_1,e.has_data_line,e.line_sections_2,e.use_adj_structure_2,e.l_adj_2,e.w_adj_2,e.h_adj_2,e.hp_adj_2,e.cd_adj_2]);S.useMemo(()=>Oe(e.probability_data,e.analyze_data_line_probabilities,e.has_data_line),[e.probability_data,e.analyze_data_line_probabilities,e.has_data_line]);const Z=S.useMemo(()=>e.zones.map(C=>{const b=ut(C),w=Oe(C.probability_data||e.probability_data,e.analyze_data_line_probabilities,e.has_data_line),J=xt(w,C),ne=gt(O,J,b,e.selected_risk_components);return{zone:C,lossCalculations:b,riskCalculations:ne}}),[e.zones,O,e.selected_risk_components,e.analyze_data_line_probabilities,e.has_data_line,e.probability_data]);return S.useMemo(()=>ht(Z),[Z]),i.jsxs("div",{children:[i.jsxs(Ve,{children:[i.jsx(We,{className:"p-3",children:i.jsxs(Ue,{className:"flex items-center justify-between",children:[i.jsxs("div",{className:"flex items-center gap-2",children:[i.jsx(He,{className:"w-5 h-5 text-slate-100"}),"Relatório Técnico Detalhado"]}),c&&!a&&i.jsx(Se,{variant:"outline",size:"icon",onClick:()=>m(""),className:"h-8 w-8 flex-shrink-0",children:i.jsx($t,{className:"w-4 h-4"})})]})}),c&&!a&&i.jsxs("div",{className:"flex justify-end gap-2 px-2 pb-0",children:[i.jsx(Se,{variant:"secondary",size:"sm",onClick:()=>{const C=ke(c,p),b=window.open("","_blank");if(!b)return;const w=Math.max(4,B),J=Math.max(4,A);b.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title></title><style>
+@page{margin:${L}mm ${r}mm;}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:#ffffff; color:#111827; margin:0; line-height:1.6;}
+main{padding:${w}mm ${r}mm ${J}mm; overflow:visible;}
+h2{font-size:${p.h2FontSizeRem}rem; line-height:1.6; color:#0f172a; font-weight:700; margin:${p.h2MarginTopPx}px 0 ${p.h2MarginBottomPx}px; break-inside:avoid; break-after:avoid-page;}
+h3{font-size:${p.h3FontSizeRem}rem; line-height:1.5; color:#1f2937; font-weight:700; margin:${p.h3MarginTopPx}px 0 ${p.h3MarginBottomPx}px; break-inside:avoid; break-after:avoid-page;}
+ul{margin:${p.listMarginTopPx}px 0 ${p.listMarginBottomPx}px; padding-left:${p.listPaddingLeftPx}px; break-inside:avoid;}
+li{break-inside:avoid; font-size:${p.paragraphFontSizePt}pt; line-height:${p.paragraphLineHeight};}
+p{margin:${p.paragraphMarginTopPx}px 0 ${p.paragraphMarginBottomPx}px; break-inside:avoid; font-size:${p.paragraphFontSizePt}pt; line-height:${p.paragraphLineHeight};}
+img{max-width:100%; height:auto; display:block; page-break-inside:avoid; break-inside:avoid;}
+blockquote{margin:8px 0; padding:10px 12px; border-left:3px solid #3b82f6; background:transparent; color:#0f172a; border-radius:6px; break-inside:avoid;}
+hr{border:0; border-top:1px solid #cbd5e1; margin:12px 0; break-inside:avoid;}
+</style></head><body><main>${C}</main>
+<script>
+(function(){
+  const mmPerPx = 25.4/96;
+  const pxPerMm = 1/mmPerPx;
+  const main = document.querySelector('main');
+  if(!main) return;
+  const first = main.querySelector('img, table, canvas');
+  if(!first) return;
+  const rect = first.getBoundingClientRect();
+  const hPx = rect.height;
+  const extraTopMm = Math.min(Math.max((hPx*mmPerPx)*0.06, 4), 18);
+  const extraBottomMm = Math.min(Math.max((hPx*mmPerPx)*0.04, 4), 14);
+  const computed = getComputedStyle(main);
+  const curTopPx = parseFloat(computed.paddingTop)||0;
+  const curBottomPx = parseFloat(computed.paddingBottom)||0;
+  main.style.paddingTop = (curTopPx + extraTopMm*pxPerMm) + 'px';
+  main.style.paddingBottom = (curBottomPx + extraBottomMm*pxPerMm) + 'px';
+  try { document.title = ''; } catch {}
+})();
+<\/script></body></html>`),b.document.close(),b.focus(),setTimeout(()=>{try{b.print()}catch{}},300)},children:"Gerar PDF"}),i.jsxs(Se,{variant:"secondary",size:"sm",onClick:q,children:[i.jsx(Pt,{className:"w-4 h-4 mr-2"}),n?"Texto copiado!":"Copiar para Word (formatado)"]})]}),i.jsx(Ze,{className:"text-center px-3 pt-0 pb-3",children:i.jsx(at,{mode:"wait",children:a?i.jsxs(je.div,{initial:{opacity:0,scale:.9},animate:{opacity:1,scale:1},exit:{opacity:0,scale:.9},className:"flex flex-col items-center justify-center min-h-[10rem]",children:[i.jsx(ft,{className:"w-6 h-6 animate-spin text-blue-400"}),i.jsx("p",{className:"mt-3 text-slate-300",children:"Gerando Relatório..."})]},"loading"):c?i.jsx(je.div,{initial:{opacity:0,height:0},animate:{opacity:1,height:"auto"},exit:{opacity:0,height:0},className:"text-left pt-4 relative",children:i.jsx("div",{className:"w-full h-[30rem] overflow-y-auto p-5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-[17px] leading-loose tracking-[0.02em] text-slate-100 focus:outline-none prose-styles",dangerouslySetInnerHTML:{__html:ke(c,p)}})},"report"):i.jsx(je.div,{initial:{opacity:0,scale:.9},animate:{opacity:1,scale:1},exit:{opacity:0,scale:.9},children:i.jsxs(Se,{onClick:U,disabled:a,className:"w-full max-w-sm mx-auto my-3",children:[i.jsx(He,{className:"w-4 h-4 mr-2"}),"Gerar Relatório Técnico da Análise de Risco"]})},"initial")})})]}),i.jsxs(Ve,{className:"mt-4 bg-slate-900/80 border-slate-600/60",children:[i.jsx(We,{className:"p-3",children:i.jsxs(Ue,{className:"flex items-start gap-2",children:[i.jsxs("span",{className:"flex items-start gap-2",children:[i.jsx(Rt,{className:"w-5 h-5 text-green-400 flex-shrink-0"}),i.jsx("span",{className:"text-slate-100 text-sm sm:text-base leading-relaxed text-justify",children:"Responsabilidade Técnica e Conferência Final do Relatório"})]}),i.jsx(Ft,{className:"w-5 h-5 text-yellow-400 flex-shrink-0"})]})}),i.jsxs(Ze,{className:"p-4 space-y-4 text-sm text-slate-200",children:[i.jsxs("div",{className:"space-y-2",children:[i.jsxs("p",{children:["A ",i.jsx("strong",{children:"NBR 5419:2025"})," deve ser utilizada como ",i.jsx("strong",{children:"fonte principal"})," para validação dos dados e referência normativa do relatório."]}),i.jsxs("p",{children:["Este aplicativo atua ",i.jsx("strong",{children:"exclusivamente como uma ferramenta de apoio"})," para cálculos e emissão de relatórios, ",i.jsx("strong",{children:"não isentando o usuário"})," de sua responsabilidade legal e técnica quanto à ",i.jsx("strong",{children:"veracidade"}),", ",i.jsx("strong",{children:"precisão"})," e ",i.jsx("strong",{children:"adequação"})," das informações fornecidas."]})]}),i.jsxs("div",{className:"space-y-3",children:[i.jsx("h3",{className:"font-semibold text-slate-100",children:"🤝 Informações de Contato para Negócios com Eng° Júlio Certo"}),i.jsxs("div",{className:"grid grid-cols-1 sm:grid-cols-3 gap-3",children:[i.jsxs("div",{className:"rounded-md border border-slate-700 p-3 bg-slate-800/60",children:[i.jsx("div",{className:"text-xs text-slate-400",children:"Autor do Aplicativo"}),i.jsx("div",{className:"font-medium",children:"Engº Júlio César Certo"})]}),i.jsxs("div",{className:"rounded-md border border-slate-700 p-3 bg-slate-800/60",children:[i.jsx("div",{className:"text-xs text-slate-400",children:"Contato (WhatsApp)"}),i.jsx("div",{className:"font-medium",children:"(35) 9 8811-3746"})]}),i.jsxs("div",{className:"rounded-md border border-slate-700 p-3 bg-slate-800/60",children:[i.jsx("div",{className:"text-xs text-slate-400",children:"E-mail"}),i.jsx("div",{className:"font-medium",children:"julio.certo@hotmail.com"})]})]}),i.jsx("p",{className:"text-sm text-slate-300",children:"Ao utilizar este aplicativo em estudos ou projetos, cite a fonte: Engº Júlio César Certo — Ferramenta de Análise de Risco SPDA NBR 5419."})]})]})]})]})}export{At as ReportStep};
