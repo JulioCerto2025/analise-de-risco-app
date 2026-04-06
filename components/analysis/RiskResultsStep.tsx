@@ -375,9 +375,9 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* Cards lado a lado quando R3 e R4 presentes (e R1, se ativo) */}
-            <div className={`grid grid-cols-1 ${gridColsClass} gap-6 items-stretch`}>
+            <div className={`grid grid-cols-1 ${gridColsClass} gap-4 items-stretch`}>
 
                 <Card className="h-full">
                     <CardHeader>
@@ -398,7 +398,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             )}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="space-y-4 pt-1 pb-4 px-4">
                         <div>
                             <Label className="text-base font-semibold text-slate-200">Nível do SPDA (PB)</Label>
                             <Select
@@ -425,7 +425,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
                                 wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-2' : 'relative mt-2'}
                             >
-                                <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {PB_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
@@ -440,7 +440,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
                                 wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-2' : 'relative mt-2'}
                             >
-                                <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
@@ -468,7 +468,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 onOpenChange={(open) => setOpenSelect(open ? 'pspd' : null)}
                                 wrapperClassName={openSelect === 'pspd' ? 'relative z-20 mt-2' : 'relative mt-2'}
                             >
-                                <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {PSPD_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
@@ -497,12 +497,12 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                             {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="text-center p-6">
-                                        <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-bold mb-2 whitespace-nowrap ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
+                                    <CardContent className="text-center p-4">
+                                        <div className="text-2xl font-bold mb-1 whitespace-nowrap ${isAcceptable ? 'text-green-400' : 'text-red-400'}">
                                             <ScientificNotation value={currentTotalRiskValue} />
                                         </div>
-                                        <div className={`${compact ? 'text-xs' : 'text-sm'} text-slate-400 mb-3`}>Limite: <ScientificNotation value={riskTolerance} precision={2} /></div>
-                                        <div className={`rounded-md ${compact ? 'py-2 px-3 text-sm' : 'py-3 px-4 text-base'} font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
+                                        <div className="text-[10px] text-slate-400 mb-2">Limite: <ScientificNotation value={riskTolerance} precision={2} /></div>
+                                        <div className="rounded-md py-1.5 px-3 text-xs font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}">
                                             {isAcceptable ? 'Risco Aceitável' : 'Risco Não Aceitável'}
                                         </div>
                                     </CardContent>
@@ -519,7 +519,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
 
             <Card>
                 <CardHeader><CardTitle>{`Componentes de Risco — ${activeHeading}`}</CardTitle></CardHeader>
-                <CardContent className="h-[16.25rem]">
+                <CardContent className="h-[13.5rem] pt-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={activeZone ? activeZoneChart : chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />

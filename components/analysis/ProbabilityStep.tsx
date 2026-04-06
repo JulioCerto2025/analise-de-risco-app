@@ -557,81 +557,6 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             if (z.id !== (currentZone?.id || activeZoneId)) return z;
             const nextOverrides = { ...(z.probability_overrides || {}) };
             nextOverrides[key] = clampedValue;
-            return { ...z, probability_overrides: nextOverrides };
-        });
-        onChange({ zones: updatedZones });
-    };
-
-    const handleRemoveProbOverride = (key: string) => {
-        const updatedZones = zones.map(z => {
-            if (z.id !== (currentZone?.id || activeZoneId)) return z;
-            const next = { ...(z.probability_overrides || {}) };
-            delete next[key];
-            return { ...z, probability_overrides: next };
-        });
-        onChange({ zones: updatedZones });
-    };
-
-    // Heading helper para nome da zona ativa
-    const currentZoneIndex = zones.findIndex(z => z.id === (currentZone?.id || activeZoneId));
-    const makeZoneHeading = (zoneName: string | undefined, idx: number) => {
-        const base = `Zona ${idx + 1}`;
-        const name = (zoneName || '').trim();
-        if (!name) return base;
-        const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-        if (norm(name) === norm(base)) return base;
-        return `${base} (${name})`;
-    };
-    const zoneHeading = makeZoneHeading(currentZone?.name, Math.max(0, currentZoneIndex));
-    const multipleZones = zones.length > 1;
-    const activeHeading = zoneHeading;
-
-
-    // Removido conceito Global na etapa 7 — usamos apenas cálculos da zona ativa
-
-    return (
-        <div className="grid grid-cols-1 gap-6">
-            {/* Configuração/Resultados — Aba Global + Zonas no mesmo card */}
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{`Ajuste de Probabilidades — ${activeHeading}`}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {multipleZones && (
-                            <div className="flex space-x-1 p-1 bg-slate-800/70 rounded-lg">
-                                {zones.map(zone => (
-                                    <TabButton 
-                                        key={zone.id} 
-                                        isActive={activeZoneId === zone.id} 
-                                        onClick={() => {
-                                            setActiveZoneId(zone.id);
-                                            // Persistir última zona ativa
-                                            try { onChange({ last_active_zone_id: zone.id } as any); } catch { /* noop */ }
-                                        }}
-                                    >
-                                        {zone.name}
-                                    </TabButton>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="flex space-x-2 p-1 bg-slate-800/70 rounded-lg">
-                            <TabButton isActive={activeTab === 'structure'} onClick={() => setActiveTab('structure')}>Estrutura</TabButton>
-                            {data.has_electric_line && <TabButton isActive={activeTab === 'electric'} onClick={() => setActiveTab('electric')}>Linha Elétrica</TabButton>}
-                            {data.has_data_line && <TabButton isActive={activeTab === 'data'} onClick={() => setActiveTab('data')}>Linha de Dados</TabButton>}
-                        </div>
-
-                        {activeTab === 'structure' && (
-                            <div className="grid md:grid-cols-2 gap-4 pt-2">
-                                <div>
-                                    <SelectInput label="PTA - Medidas de Proteção" value={prob.PTA} options={PTA_OPTIONS} onUpdate={v => handleProbabilityChangeForZone(activeZoneId, { PTA: v })} />
-                                </div>
-                                <div>
-                                    <SelectInput 
-                                        label="PB - Nível do SPDA" 
-                                        value={currentZone?.probability_overrides?.PB ?? prob.PB} 
-                                        options={PB_OPTIONS} 
                                         onUpdate={(v) => {
                                             // Atualiza PB e remove override em UM patch para evitar corrida de estado
                                             const updatedZones = zones.map(z => {
@@ -670,7 +595,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                         )}
 
                         {activeTab === 'electric' && (
-                            <div className="space-y-4 pt-2">
+                            <div className="space-y-3 pt-1">
                                 <div className="flex items-center space-x-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                     <Checkbox
                                         id={`analyze_electric_line_probs_active`}
@@ -809,7 +734,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                         )}
 
                         {activeTab === 'data' && (
-                            <div className="space-y-4 pt-2">
+                            <div className="space-y-3 pt-1">
                                 <div className="flex items-center space-x-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                     <Checkbox
                                         id={`analyze_data_line_probs_active`}
@@ -967,7 +892,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     </div>
                 </div>
             </CardHeader>
-                    <CardContent className="h-[15rem]">
+                    <CardContent className="h-[13.5rem]">
                         <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
@@ -1001,7 +926,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
 const SelectInput = ({ label, value, options, onUpdate }: { label: string, value: number, options: {value: number, label: string}[], onUpdate: (val: number) => void }) => {
     return (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
             <Label>{label}</Label>
             <Select 
                 value={String(value)} 

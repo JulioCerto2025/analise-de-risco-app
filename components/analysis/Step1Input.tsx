@@ -19,9 +19,9 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const { bg, text } = colorClasses[color] || colorClasses.blue;
 
     const content = (
-        <div className={`p-4 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
-            <div className={`font-bold text-2xl md:text-3xl ${text}`}>{value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
-            <div className={`font-semibold text-xs text-slate-200 mt-1 flex items-center justify-center gap-1`}>
+        <div className={`p-3 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
+            <div className={`font-bold text-xl md:text-2xl ${text}`}>{value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
+            <div className={`font-semibold text-[10px] text-slate-200 mt-0.5 flex items-center justify-center gap-1`}>
                 {label} <span>({unit})</span>
             </div>
         </div>
@@ -112,8 +112,8 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <div className="flex flex-col gap-4">
             <Card>
                 <CardHeader className="py-3">
                     <CardTitle className="flex items-start gap-3">
@@ -125,7 +125,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                         </div>
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 pt-1">
                     <div className="space-y-1">
                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Dimensões da Estrutura</span>
                         <div className="grid grid-cols-2 gap-2 mt-0.5 p-2.5 rounded-lg bg-blue-950/30 border border-slate-700">
@@ -137,7 +137,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                     </div>
                     <div className="hidden sm:block space-y-1">
                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados da Área de Exposição</span>
-                        <div className="grid grid-cols-2 gap-2 mt-1 p-3 rounded-lg bg-slate-900/40 border border-slate-700">
+                        <div className="grid grid-cols-2 gap-2 mt-0.5 p-2 rounded-lg bg-slate-900/40 border border-slate-700">
                             <ResultBox 
                                 label={<span>A<sub>df</sub></span>} 
                                 value={adf} unit="m² (max)" color="blue" 
