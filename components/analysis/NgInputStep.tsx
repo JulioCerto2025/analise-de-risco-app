@@ -8,6 +8,7 @@ const MapViewerLazy = React.lazy(() => import('./MapViewer').then(m => ({ defaul
 import { getUfs, getCitiesByUf, getNgByCity, toUfCode, getUfSuggestions } from '../../data/ngByCity';
 import { geocodeCityWithOSM } from '../../lib/osmGeocoding';
 import { extractCityAndUf } from '../../utils/addressParser';
+import { getRegionFromState } from '../../utils/geoUtils';
 
 interface NgInputStepProps {
     data: AnalysisData;
@@ -223,15 +224,7 @@ const findClosestColorIndex = (targetHex: string | null): number => {
 };
 
 
-const getRegionFromState = (stateUF: string = ''): string => {
-    const uf = stateUF.toUpperCase();
-    if (['GO', 'MT', 'MS', 'DF'].includes(uf)) return 'centro-oeste';
-    if (['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'].includes(uf)) return 'nordeste';
-    if (['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'].includes(uf)) return 'norte';
-    if (['ES', 'MG', 'RJ', 'SP'].includes(uf)) return 'sudeste';
-    if (['PR', 'RS', 'SC'].includes(uf)) return 'sul';
-    return 'sudeste'; // Default fallback
-};
+// getRegionFromState moved to utils/geoUtils.ts
 
 export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const { mapRegion = 'brasil', clientAddress = '', location = '' } = data || {};
@@ -633,24 +626,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         const textLoc = (data.location || '').toString().trim();
         const textAddr = (data.clientAddress || '').toString().trim();
 
-        const extractCityUf = (raw: string): { city: string; uf: string } | null => {
-            if (!raw) return null;
-            // Padrões suportados: "Cidade/UF", "Cidade - UF", "Cidade, UF", "Cidade UF"
-            const mSlash = raw.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
-            const mHyphen = raw.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
-            const mComma = raw.match(/^(.*),\s*([A-Za-z]{2})$/i);
-            const mSpace = raw.match(/^(.*)\s([A-Za-z]{2})$/i);
-            let city = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
-            let uf = ((mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '')).toUpperCase();
-            if (!city || !uf) return null;
-            // Remove prefixos comuns como "Centro", "Bairro ...", etc.
-            city = city.replace(/^(centro|bairro\s+\S+|distrito\s+\S+|zona\s+\S+)\s+/i, '').trim();
-            // Normaliza UF para código
-            uf = toUfCode(uf) || uf;
-            return { city, uf };
-        };
-
-        const parsed = extractCityUf(textLoc) || extractCityUf(textAddr);
+        const parsed = extractCityAndUf(textLoc) || extractCityAndUf(textAddr);
         if (!parsed) {
             console.log('Não foi possível extrair Cidade/UF do endereço.');
             return;

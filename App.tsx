@@ -79,17 +79,7 @@ const SidebarNav = ({ currentStep, setStep }: { currentStep: number; setStep: (s
     );
 };
 
-const getRegionFromState = (stateUF: string = ''): string => {
-    const uf = stateUF.toUpperCase();
-    if (['GO', 'MT', 'MS', 'DF'].includes(uf)) return 'centro-oeste';
-    if (['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'].includes(uf)) return 'nordeste';
-    if (['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'].includes(uf)) return 'norte';
-    if (['ES', 'MG', 'RJ', 'SP'].includes(uf)) return 'sudeste';
-    if (['PR', 'RS', 'SC'].includes(uf)) return 'sul';
-    return 'sudeste'; // Default fallback
-};
-
-
+import { getRegionFromState } from './utils/geoUtils';
 import VisitorCounter from './components/VisitorCounter';
 
 // Função base para geração de senhas determinísticas
@@ -204,50 +194,9 @@ export default function App() {
                 return;
             }
 
+            // Steps logic
             if (currentStep === 1) {
-                const address = data.clientAddress || '';
-                const parsed = extractCityAndUf(address);
-
-                if (parsed) {
-                    const { city: parsedCity, uf: parsedUf } = parsed;
-
-                    // Resolver cidade ignorando bairro, usando lista oficial de cidades do UF para garantir precisão
-                    const normalize = (s: string) => (s || '')
-                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                        .toLowerCase().replace(/[.,/]/g, ' ')
-                        .replace(/\s+/g, ' ').trim();
-                    
-                    let city = (parsedCity || '').trim();
-                    try {
-                        const cities = await getCitiesByUf(parsedUf);
-                        const rawNorm = normalize(parsedCity);
-                        let best: string | null = null;
-                        for (const c of cities) {
-                            const cn = normalize(c);
-                            // Verificação de match exato ou parcial para suportar variações na digitação
-                            if (rawNorm === cn || rawNorm.endsWith(cn) || rawNorm.includes(' ' + cn) || rawNorm.startsWith(cn + ' ')) {
-                                if (!best || normalize(best).length < cn.length) best = c;
-                            }
-                        }
-                        if (best) city = best;
-                    } catch (_) {
-                        // mantém o que foi extraído originalmente se falhar o carregamento
-                    }
-
-                    // Buscar Ng pela cidade/UF e preencher a etapa de densidade de descarga
-                    let nextNg = (typeof data.ng === 'number' && data.ng > 0) ? data.ng : 18; 
-                    try {
-                        const preset = await getNgByCity(parsedUf, city);
-                        if (typeof preset === 'number' && preset > 0) {
-                            nextNg = preset;
-                        }
-                    } catch (_) { /* fallback safe */ }
-
-                    updateData({
-                        location: `${city} - ${parsedUf}`,
-                        ng: nextNg
-                    });
-                }
+                // Address sync is now handled reactively in useAnalysisData.ts
             }
 
             // Garantir que dados necessários estejam inicializados para a etapa 3 (NgInputStep)

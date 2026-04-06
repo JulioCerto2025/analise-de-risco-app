@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnalysisData, AnalysisInputData, ZoneCalculations, Zone } from '../types';
 import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
+import { getRegionFromState } from '../utils/geoUtils';
  import { 
      calculateEvents, 
      calculateProbabilities, 
@@ -12,6 +13,7 @@ import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
      mergeZoneProbabilities,
      calculatePld
   } from '../utils/calculations';
+import { extractCityAndUf } from '../utils/addressParser';
 
 const STORAGE_KEY = 'spda-analysis-data';
 
@@ -29,7 +31,7 @@ const initialInputData: AnalysisInputData = {
         loss_data: { 
             // R1
             nz: 120, nt: 120, tz: 6903, te: 0,
-            rt: 0.001, lt: 0.01, rp: 0.2, rf: 0.001, hz: 5, 
+            rt: 0.001, rp: 0.2, rf: 0.001, hz: 5, 
             rs: 1,
             LF: 0.1, LO: 0.001,
             // R3
@@ -119,41 +121,6 @@ const initialInputData: AnalysisInputData = {
     fireRiskAiError: null,
 };
 
-const getRegionFromState = (stateUF: string = ''): string => {
-    const uf = stateUF.toUpperCase();
-    if (['GO', 'MT', 'MS', 'DF'].includes(uf)) return 'centro-oeste';
-    if (['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'].includes(uf)) return 'nordeste';
-    if (['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'].includes(uf)) return 'norte';
-    if (['ES', 'MG', 'RJ', 'SP'].includes(uf)) return 'sudeste';
-    if (['PR', 'RS', 'SC'].includes(uf)) return 'sul';
-    return 'sudeste';
-};
-
-const extractCityAndUf = (address: string): { city: string; uf: string } | null => {
-    if (!address) return null;
-    const cleanAddress = address.trim();
-    const segments = cleanAddress.split(/[,/;]|-/).map(s => s.trim()).filter(Boolean);
-    if (segments.length < 2) return null;
-    
-    // Tenta encontrar UF de 2 letras no final
-    for (let i = segments.length - 1; i >= 0; i--) {
-        const seg = segments[i].trim();
-        if (seg.length === 2 && /^[A-Z]{2}$/i.test(seg)) {
-            const city = i > 0 ? segments[i-1] : segments[0];
-            return { city, uf: seg.toUpperCase() };
-        }
-        // Tenta encontrar dentro do segmento (ex: "São Paulo SP")
-        const words = seg.split(/\s+/);
-        if (words.length >= 2) {
-            const lastWord = words[words.length - 1];
-            if (lastWord.length === 2 && /^[A-Z]{2}$/i.test(lastWord)) {
-                return { city: words.slice(0, -1).join(' '), uf: lastWord.toUpperCase() };
-            }
-        }
-    }
-    return null;
-};
-
 export function useAnalysisData() {
     const sanitizeZones = (zs: any): Zone[] => {
         const defaultZoneTemplate: Zone = {
@@ -172,11 +139,13 @@ export function useAnalysisData() {
             const loss = { ...defaultZoneTemplate.loss_data, ...(z && z.loss_data ? z.loss_data : {}) };
             if (loss.LO == null) (loss as any).LO = 0.001;
             if (loss.lt == null) (loss as any).lt = 0.01;
+            const probability_data = (z && z.probability_data && typeof z.probability_data === 'object') ? z.probability_data : undefined;
             const probability_overrides = (z && z.probability_overrides && typeof z.probability_overrides === 'object') ? z.probability_overrides : {};
             const homogeneous_type = (z && (z.homogeneous_type === 'P' || z.homogeneous_type === 'L')) ? z.homogeneous_type : 'L';
             const analyze_data_line_probabilities = (typeof z?.analyze_data_line_probabilities === 'boolean') ? z.analyze_data_line_probabilities : defaultZoneTemplate.analyze_data_line_probabilities!;
             const analyze_electric_line_probabilities = (typeof z?.analyze_electric_line_probabilities === 'boolean') ? z.analyze_electric_line_probabilities : defaultZoneTemplate.analyze_electric_line_probabilities!;
-            return { id, name, loss_data: loss, probability_overrides, homogeneous_type, analyze_data_line_probabilities, analyze_electric_line_probabilities } as Zone;
+
+            return { id, name, loss_data: loss, probability_data, probability_overrides, homogeneous_type, analyze_data_line_probabilities, analyze_electric_line_probabilities } as Zone;
         });
     };
 

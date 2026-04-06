@@ -4,7 +4,7 @@ import { formatSmartNumber } from '../../lib/format';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { AlertTriangle, CheckCircle, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnalysisData, ProbabilityData, LossData, Zone } from '../../types';
-import { RISK_COMPONENTS_DEFS, TOLERABLE_RISKS, PB_OPTIONS, RP_OPTIONS } from '../../constants';
+import { RISK_COMPONENTS_DEFS, TOLERABLE_RISKS, PB_OPTIONS, RP_OPTIONS, PSPD_OPTIONS } from '../../constants';
 import { calculateLossesForZone, calculateProbabilities, mergeZoneProbabilities, calculateRisksForZone } from '../../utils/calculations';
 
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
@@ -443,6 +443,34 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-base font-semibold text-slate-200">Proteção contra Surtos (MPS)</Label>
+                            <Select
+                                value={String(activeZone ? (activeZone.probability_data?.PSPD_electric ?? data.probability_data.PSPD_electric) : data.probability_data.PSPD_electric)}
+                                onValueChange={(val) => {
+                                    const v = parseFloat(val);
+                                    if (activeZone) {
+                                        const newZones = data.zones.map(z => {
+                                            if (z.id !== activeZone.id) return z;
+                                            const baseProb = (z.probability_data || data.probability_data);
+                                            // Atualiza PSPD_electric e sincroniza PSPD_data
+                                            return { ...z, probability_data: { ...baseProb, PSPD_electric: v, PSPD_data: v } };
+                                        });
+                                        onUpdate({ zones: newZones });
+                                    } else {
+                                        handleSimulatorUpdate('PSPD_electric', v);
+                                    }
+                                }}
+                                options={PSPD_OPTIONS}
+                                onOpenChange={(open) => setOpenSelect(open ? 'pspd' : null)}
+                                wrapperClassName={openSelect === 'pspd' ? 'relative z-20 mt-2' : 'relative mt-2'}
+                            >
+                                <SelectTrigger className={compact ? 'h-8 text-sm' : 'h-9'}><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {PSPD_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
                             </Select>
                         </div>

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Layers, BoxIcon, CheckCircle, AlertTriangle, Loader2, X, FileDown } from 'lucide-react';
+import { FileText, Layers, BoxIcon, CheckCircle, AlertTriangle, Loader2, X, FileDown, FolderOpen } from 'lucide-react';
 import { Button, Card, CardHeader, CardTitle, CardContent } from '../ui';
 import { AnalysisData } from '../../types';
 import { 
@@ -53,9 +53,10 @@ export const markdownToHtml = (md: string, prefs: any) => {
 
 interface ReportStepProps {
     data: AnalysisData;
+    onUpdate?: (newData: Partial<AnalysisData>) => void;
 }
 
-export const ReportStep: React.FC<ReportStepProps> = ({ data }) => {
+export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [reportText, setReportText] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
@@ -374,6 +375,97 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data }) => {
                     </Card>
                 </motion.div>
             )}
+
+            {/* Gerenciamento de Arquivos - Card Final */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+            >
+                <div className="p-6 bg-slate-950/50 backdrop-blur-xl border border-blue-500/20 rounded-[2rem] shadow-[0_0_50px_-10px_rgba(59,130,246,0.3)] space-y-4">
+                    <div className="flex items-center gap-3 px-2">
+                        <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
+                            <FolderOpen className="w-6 h-6 text-blue-400" />
+                        </div>
+                        <h4 className="text-sm font-black text-blue-400 uppercase tracking-[0.2em] leading-none">Gerenciamento de Arquivos</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Button 
+                            variant="outline" 
+                            onClick={async () => {
+                                const json = JSON.stringify(data, null, 2);
+                                const defaultName = `PROJETO_SPDA_${(data.clientName || 'PROJETO').replace(/\s+/g, '_').toUpperCase()}.spda`;
+                                
+                                if ('showSaveFilePicker' in window) {
+                                    try {
+                                        const handle = await (window as any).showSaveFilePicker({
+                                            suggestedName: defaultName,
+                                            types: [{
+                                                description: 'Arquivo de Projeto SPDA',
+                                                accept: { 'application/json': ['.spda'] },
+                                            }],
+                                        });
+                                        const writable = await handle.createWritable();
+                                        await writable.write(json);
+                                        await writable.close();
+                                        return;
+                                    } catch (err: any) {
+                                        if (err.name === 'AbortError') return;
+                                    }
+                                }
+
+                                const blob = new Blob([json], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = defaultName;
+                                link.click();
+                                URL.revokeObjectURL(url);
+                             }}
+                             className="h-16 rounded-2xl flex flex-col items-center justify-center gap-1 border-blue-500/30 bg-blue-500/5 hover:bg-blue-600/20 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 group ring-1 ring-blue-400/20"
+                         >
+                             <div className="flex items-center gap-3">
+                                <FileDown className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+                                <span>Salvar Projeto</span>
+                             </div>
+                         </Button>
+                         
+                         <div className="relative group">
+                             <input 
+                                 type="file" 
+                                 accept=".spda,.json"
+                                 onChange={(e) => {
+                                     const file = e.target.files?.[0];
+                                     if (!file) return;
+                                     const reader = new FileReader();
+                                     reader.onload = (event) => {
+                                         try {
+                                             const json = JSON.parse(event.target?.result as string);
+                                             onUpdate?.(json);
+                                             alert('Projeto carregado com sucesso!');
+                                         } catch (err) {
+                                             alert('Erro ao abrir o arquivo. Certifique-se de que é um arquivo .spda válido.');
+                                         }
+                                     };
+                                     reader.readAsText(file);
+                                 }}
+                                 className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                             />
+                             <Button 
+                                 variant="outline" 
+                                 className="w-full h-16 rounded-2xl flex items-center justify-center gap-3 border-slate-700/50 bg-slate-900/40 hover:bg-slate-800 text-slate-300 font-bold text-sm uppercase tracking-widest pointer-events-none transition-all shadow-lg ring-1 ring-white/5"
+                             >
+                                 <FolderOpen className="w-5 h-5 text-slate-500" />
+                                 Abrir Projeto
+                             </Button>
+                         </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic text-center font-bold tracking-tight opacity-80 pt-1">
+                        Arquivos .spda podem ser salvos e abertos localmente para edição posterior.
+                    </p>
+                </div>
+            </motion.div>
         </div>
     );
 };

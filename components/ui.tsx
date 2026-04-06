@@ -54,7 +54,7 @@ export const Progress = ({ value, className }: { value: number, className?: stri
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, spellCheck, lang, ...props }, ref) => (
     <input
-      className={`flex h-10 w-full rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
       ref={ref}
       spellCheck={spellCheck ?? false}
       lang={lang ?? 'pt-BR'}
@@ -68,7 +68,7 @@ Input.displayName = "Input";
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, spellCheck, lang, ...props }, ref) => (
     <textarea
-      className={`flex min-h-[80px] w-full rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex min-h-[80px] w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
       ref={ref}
       spellCheck={spellCheck ?? false}
       lang={lang ?? 'pt-BR'}

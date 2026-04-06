@@ -108,9 +108,11 @@ function buildFactorsTable(data: AnalysisData, isWord: boolean = false, zoneInde
     const cldCliData = `${p.CLD_data_ext || 0}_${p.CLI_data_ext || 0}`;
     const sectionBg = isWord ? '#e2e8f0' : 'rgba(59,130,246,0.05)';
 
-    const zoneNamePrefix = data.zones.length > 1 ? `[${zone?.name || `Zona ${zoneIndex + 1}`}] ` : '';
+    const zoneNamePrefix = data.zones.length > 1 ? ` — [${zone?.name || `Zona ${zoneIndex + 1}`}]` : '';
+    const Ks1 = Math.min(1, (p.wm1 || 5) * 0.12);
+    const Ks2 = Math.min(1, (p.wm2 || 5) * 0.12);
 
-    return `### 2.3. PARÂMETROS TÉCNICOS E PREMISSAS — ${zoneNamePrefix}ZONA ATIVA
+    return `### 2.3. PARÂMETROS TÉCNICOS E PREMISSAS DE PROJETO (ESTRUTURA E LINHAS)${zoneNamePrefix}
 <table style="${tableStyle}">
   <thead>
     <tr style="border-bottom: ${isWord ? '1.5pt solid black' : '2px solid #0f172a'};">
@@ -124,6 +126,8 @@ function buildFactorsTable(data: AnalysisData, isWord: boolean = false, zoneInde
     <tr style="background: ${sectionBg};"><td colspan="4" style="padding: 3px 6px; font-weight: bold; border: 1px solid ${borderColor}; color: ${isWord ? '#000' : 'inherit'};">A. PROTEÇÃO CONTRA DESCARGAS NA ESTRUTURA (S1 / S2)</td></tr>
     <tr><td style="${cellStyleLeft}">PB</td><td style="${cellStyleLeft}">Eficácia do SPDA</td><td style="${cellStyleLeft}"><b>${p.PB}</b></td><td style="${cellStyleLeft}">${getOptionLabel(PB_OPTIONS, p.PB)}</td></tr>
     <tr><td style="${cellStyleLeft}">PTA</td><td style="${cellStyleLeft}">Controle de Choque</td><td style="${cellStyleLeft}"><b>${p.PTA}</b></td><td style="${cellStyleLeft}">${getOptionLabel(PTA_OPTIONS, p.PTA)}</td></tr>
+    <tr><td style="${cellStyleLeft}">Ks1</td><td style="${cellStyleLeft}">Blindagem (L. Malha wm1)</td><td style="${cellStyleLeft}"><b>${Ks1.toFixed(2)}</b></td><td style="${cellStyleLeft}">Malha de ${p.wm1 || 5}m (Calculado Ks1)</td></tr>
+    <tr><td style="${cellStyleLeft}">Ks2</td><td style="${cellStyleLeft}">Blindagem (L. Malha wm2)</td><td style="${cellStyleLeft}"><b>${Ks2.toFixed(2)}</b></td><td style="${cellStyleLeft}">Malha de ${p.wm2 || 5}m (Calculado Ks2)</td></tr>
     <tr><td style="${cellStyleLeft}">Rf</td><td style="${cellStyleLeft}">Risco de Incêndio</td><td style="${cellStyleLeft}"><b>${lz.rf ?? 'N/A'}</b></td><td style="${cellStyleLeft}">${getOptionLabel(RF_OPTIONS, lz.rf)}</td></tr>
     <tr><td style="${cellStyleLeft}">Rp</td><td style="${cellStyleLeft}">Combate ao Fogo</td><td style="${cellStyleLeft}"><b>${lz.rp ?? 'N/A'}</b></td><td style="${cellStyleLeft}">${getOptionLabel(RP_OPTIONS, lz.rp)}</td></tr>
     
@@ -253,11 +257,11 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
   <tr><td style="${cellFormula}"><b>Ni (S4)</b>: Somatório das induções laterais na rede</td><td style="${cellResult}">${formatScientific(niTotal)} ev./ano</td></tr>
 </table>
 
-<div style="${headerSection}">3.2. PROBABILIDADES DE DANO RESIDUAL (P) — MÉDIA PONDERADA</div>
+<div style="${headerSection}">3.2. PROBABILIDADES DE DANO RESIDUAL (P) — MÉDIA DOS RESULTADOS</div>
 <table style="${tableStyle}">
-  <tr><td style="${cellFormula}"><b>PA (Choque)</b>: Medida PTA x Nível PB</td><td style="${cellResult}">${formatScientific(pc.PA)}</td></tr>
-  <tr><td style="${cellFormula}"><b>PB (Físico)</b>: Eficácia SPDA GLOBAL</td><td style="${cellResult}">${formatScientific(pc.PB)}</td></tr>
-  <tr><td style="${cellFormula}"><b>PC (Sistemas)</b>: Eficácia DPS GLOBAL</td><td style="${cellResult}">${formatScientific(pc.PC)}</td></tr>
+  <tr><td style="${cellFormula}"><b>PA (Shock)</b>: Medida PTA x Nível PB (Result. Combinado)</td><td style="${cellResult}">${formatScientific((r.RA && c.nd) ? r.RA / (c.nd * (lz.LA || 1)) : pc.PA)}</td></tr>
+  <tr><td style="${cellFormula}"><b>PB (Physical)</b>: Eficácia SPDA GLOBAL ADOTADA</td><td style="${cellResult}">${formatScientific(pc.PB)}</td></tr>
+  <tr><td style="${cellFormula}"><b>PC (Failure)</b>: Eficácia MPS (DPS) GLOBAL ADOTADA</td><td style="${cellResult}">${formatScientific(pc.PC)}</td></tr>
 </table>
 
 ${riskComponentsSection}

@@ -52,23 +52,29 @@ export function extractCityAndUf(address: string): { city: string; uf: string } 
     }
     
     if (cityCandidate) {
+      // Validate that city is not accidentally another UF (e.g. "MG - PI")
+      const cityAsUf = toUfCode(cityCandidate);
+      if (cityAsUf && ufList.includes(cityAsUf)) {
+          // If the candidate is a UF, try one segment further back
+          if (ufIndex > 1) {
+              cityCandidate = segments[ufIndex - 2];
+          }
+      }
+
       // Clean city candidate from common prefixes/noise
-      // Remove things like "CEP 12345-678", "Bairro", etc.
       let city = cityCandidate
         .replace(/\b(rua|av\.?|avenida|rodovia|estrada|logradouro|praça|praca|alameda|quadra|qd\.|lote|lt\.|bairro|setor|centro|cep\s*[0-9-]*|cidade|municipio|município)\b/gi, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
       
-      // If city is empty after cleaning (e.g. they only typed "São Paulo - SP" and it was split),
-      // we might need to be less aggressive.
-      if (!city) city = cityCandidate.trim();
+      // If city is empty or just a UF code after cleaning, fallback
+      if (!city || (city.length === 2 && ufList.includes(city.toUpperCase()))) city = cityCandidate.trim();
 
       return { city, uf };
     }
   }
 
-  // Fallback: If no UF found at the end, try searching for any UF listed in the string
-  // and take the part before it.
+  // Fallback: search for any UF listed in the string from right to left
   for (let i = segments.length - 1; i >= 0; i--) {
     const seg = segments[i];
     const words = seg.split(/\s+/);
@@ -77,10 +83,16 @@ export function extractCityAndUf(address: string): { city: string; uf: string } 
       if (code && ufList.includes(code)) {
         uf = code;
         // City is either words before UF in the SAME segment or the PREVIOUS segment.
-        cityCandidate = words.slice(0, j).join(' ') || (i > 0 ? segments[i-1] : '');
-        if (cityCandidate && uf) {
+        let rawCity = words.slice(0, j).join(' ') || (i > 0 ? segments[i-1] : '');
+        
+        // Final validation: city shouldn't be just a UF
+        if (rawCity && toUfCode(rawCity) && ufList.includes(toUfCode(rawCity))) {
+            rawCity = (i > 1 ? segments[i-2] : '');
+        }
+
+        if (rawCity && uf) {
              return { 
-                 city: cityCandidate.replace(/\b(cep\s*[0-9-]*|bairro|cidade|município)\b/gi, '').trim(), 
+                 city: rawCity.replace(/\b(cep\s*[0-9-]*|bairro|cidade|município)\b/gi, '').trim(), 
                  uf 
              };
         }
