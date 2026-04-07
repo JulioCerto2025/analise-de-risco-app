@@ -4,6 +4,7 @@ import { Building, PlusCircle, XCircle, Info } from "lucide-react";
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData } from '../../types';
 import { CD_OPTIONS } from '../../constants';
+import { formatSmartNumber } from '../../lib/format';
 
 interface Step1InputProps {
     data: AnalysisData;
@@ -20,7 +21,7 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
 
     const content = (
         <div className={`p-3 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
-            <div className={`font-bold text-xl md:text-2xl ${text}`}>{value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
+            <div className={`font-bold text-xl md:text-2xl ${text}`}>{formatSmartNumber(value, { maxDecimals: 2 })}</div>
             <div className={`font-semibold text-[10px] text-slate-200 mt-0.5 flex items-center justify-center gap-1`}>
                 {label} <span>({unit})</span>
             </div>
@@ -87,7 +88,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
         onUpdate({ [field]: parseFloat(value) || 0 });
     };
 
-    const { ad = 0, adp = 0, adf = 0, am = 0 } = data.calculations;
+    const { ad = 0, adp = 0, adf = 0, am = 0, nd = 0, nm = 0 } = data.calculations;
 
     // Handlers de Zonas (manter criação e nome; remover textos informativos)
     const addZone = () => {
@@ -156,6 +157,25 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                 label={<span>A<sub>m</sub></span>} 
                                 value={am} unit="m²" color="green" 
                                 formula="2×500(L+W)+π(500)²" formulaKey="Am" formulaValues={{ L: data.l, W: data.w }}
+                            />
+                        </div>
+                    </div>
+                    <div className="hidden sm:block space-y-1">
+                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência de Eventos (Estrutura)</span>
+                        <div className="grid grid-cols-2 gap-2 mt-0.5 p-2 rounded-lg bg-slate-900/40 border border-slate-700">
+                            <ResultBox 
+                                label={<span>N<sub>d</sub> (Estrutura)</span>} 
+                                value={nd} unit="ev/ano" color="blue" 
+                                formula="Ng × Ad × Cd × 10⁻⁶" 
+                                formulaKey="Nd"
+                                formulaValues={{ Ng: data.ng, Ad: ad, Cd: data.cd }}
+                            />
+                            <ResultBox 
+                                label={<span>N<sub>m</sub> (Estrutura)</span>} 
+                                value={nm} unit="ev/ano" color="green" 
+                                formula="Ng × Am × 10⁻⁶" 
+                                formulaKey="Nm"
+                                formulaValues={{ Ng: data.ng, Am: am }}
                             />
                         </div>
                     </div>
