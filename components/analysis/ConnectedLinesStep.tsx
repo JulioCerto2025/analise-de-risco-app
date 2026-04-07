@@ -207,8 +207,18 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     <div className="hidden sm:block pt-1 md:pt-2">
                                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência da Linha (Energia)</span>
                                         <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
-                                            <ResultBox label={<>N<sub>L</sub> (Energia)</>} value={nl_electric} unit="ev/ano" color="blue" formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" />
-                                            <ResultBox label={<>N<sub>I</sub> (Energia)</>} value={ni_electric} unit="ev/ano" color="green" formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" />
+                                            <ResultBox 
+                                                label={<>N<sub>L</sub> (Energia)</>} value={nl_electric} unit="ev/ano" color="blue" 
+                                                formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
+                                                formulaKey="NL"
+                                                formulaValues={{ Ng: data.ng, Al: al1, sections: data.line_sections_1 }}
+                                            />
+                                            <ResultBox 
+                                                label={<>N<sub>I</sub> (Energia)</>} value={ni_electric} unit="ev/ano" color="green" 
+                                                formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
+                                                formulaKey="NI"
+                                                formulaValues={{ Ng: data.ng, Ai: ai1, sections: data.line_sections_1 }}
+                                            />
                                         </div>
                                     </div>
 
@@ -298,8 +308,18 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     <div className="hidden sm:block pt-1 md:pt-2">
                                         <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência da Linha (Dados)</span>
                                         <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
-                                            <ResultBox label={<>N<sub>L</sub> (Dados)</>} value={nl_data} unit="ev/ano" color="blue" formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" />
-                                            <ResultBox label={<>N<sub>I</sub> (Dados)</>} value={ni_data} unit="ev/ano" color="green" formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" />
+                                            <ResultBox 
+                                                label={<>N<sub>L</sub> (Dados)</>} value={nl_data} unit="ev/ano" color="blue" 
+                                                formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
+                                                formulaKey="NL"
+                                                formulaValues={{ Ng: data.ng, Al: al2, sections: data.line_sections_2 }}
+                                            />
+                                            <ResultBox 
+                                                label={<>N<sub>I</sub> (Dados)</>} value={ni_data} unit="ev/ano" color="green" 
+                                                formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
+                                                formulaKey="NI"
+                                                formulaValues={{ Ng: data.ng, Ai: ai2, sections: data.line_sections_2 }}
+                                            />
                                         </div>
                                     </div>
 
