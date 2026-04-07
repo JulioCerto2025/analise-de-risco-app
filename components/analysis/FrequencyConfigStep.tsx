@@ -516,7 +516,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             <CardContent className="flex flex-col items-center pt-8 pb-6 px-6 relative">
                                 {/* Value Wrapper */}
                                 <div className={`relative z-10 text-6xl mb-6 transition-transform duration-500 group-hover:scale-110 ${isAcceptable ? 'text-green-400 drop-shadow-[0_0_25px_rgba(34,197,94,0.4)]' : 'text-red-400 drop-shadow-[0_0_25px_rgba(239,68,68,0.4)]'}`}>
-                                    <ScientificNotation value={F} precision={3} />
+                                    <ScientificNotation value={F} precision={2} />
                                 </div>
 
                                 <div className={`relative z-10 py-1.5 px-8 rounded-full text-[10px] font-black uppercase tracking-[0.25em] border-2 transition-all duration-500 mb-8 ${
@@ -646,7 +646,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="flex flex-col items-center pt-8 pb-6 px-6 relative">
-                                <div className={`relative z-10 text-6xl mb-6 transition-transform duration-500 group-hover:scale-110 ${zoneAcceptable ? 'text-green-400 drop-shadow-[0_0_25px_rgba(34,197,94,0.4)]' : 'text-red-400 drop-shadow-[0_0_25px_rgba(239,68,68,0.4)]'}`}>{formatSmartNumber(zoneFr?.F || 0, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
+                                <div className={`relative z-10 text-6xl mb-6 transition-transform duration-500 group-hover:scale-110 ${zoneAcceptable ? 'text-green-400 drop-shadow-[0_0_25px_rgba(34,197,94,0.4)]' : 'text-red-400 drop-shadow-[0_0_25px_rgba(239,68,68,0.4)]'}`}>{formatSmartNumber(zoneFr?.F || 0, { maxDecimals: 2, useScientificBelow: 0.001 })}</div>
                                 
                                 <div className={`relative z-10 py-1.5 px-8 rounded-full text-[10px] font-black uppercase tracking-[0.25em] border-2 transition-all duration-500 mb-8 ${
                                     zoneAcceptable 
