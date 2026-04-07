@@ -8,13 +8,17 @@ import { RISK_COMPONENTS_DEFS, TOLERABLE_RISKS, PB_OPTIONS, RP_OPTIONS, PSPD_OPT
 import { calculateLossesForZone, calculateProbabilities, mergeZoneProbabilities, calculateRisksForZone } from '../../utils/calculations';
 
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
-const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
-    if (value === 0 || !isFinite(value)) {
-        return <span>0</span>;
-    }
+const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
+    if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
     const [mantissa, exponent] = value.toExponential(precision).split('e');
+    const expInt = parseInt(exponent);
+    
     return (
-        <span className="font-mono tracking-tight whitespace-nowrap" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+        <span className={`inline-flex items-baseline font-black tracking-tighter ${className}`}>
+            <span>{mantissa.replace('.', ',')}</span>
+            <span className="text-[0.6em] ml-0.5 opacity-80">×10</span>
+            <sup className="text-[0.55em] leading-none -top-[0.8em]">{expInt}</sup>
+        </span>
     );
 };
 
@@ -489,29 +493,60 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             const isAcceptable = currentTotalRiskValue <= riskTolerance;
                             const formula = riskFormulas[riskKey];
                             return (
-                                <Card key={riskKey} className={`relative overflow-hidden border-2 ${isAcceptable ? 'border-green-500/60 bg-green-950/20 shadow-[0_0_15px_-5px_rgba(34,197,94,0.2)]' : 'border-red-500/60 bg-red-950/20 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]'} h-full transition-all duration-300 backdrop-blur-sm group`}>
-                                    <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${isAcceptable ? 'from-green-500/50 via-green-400 to-green-500/50' : 'from-red-500/50 via-red-400 to-red-500/50'} opacity-50`} />
-                                    <CardHeader className="py-2.5 px-4 border-b border-white/5 bg-slate-900/40">
-                                        <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                                <Card key={riskKey} className={`relative overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl h-full transition-all duration-500 group hover:scale-[1.02] hover:shadow-2xl ${isAcceptable ? 'hover:shadow-green-500/10' : 'hover:shadow-red-500/10'}`}>
+                                    {/* Top Glow Bar */}
+                                    <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${isAcceptable ? 'from-green-500 via-emerald-400 to-green-500' : 'from-red-600 via-rose-500 to-red-600'} shadow-[0_0_15px_rgba(255,255,255,0.3)]`} />
+                                    
+                                    <CardHeader className="py-3 px-5 border-b border-white/5 bg-white/[0.02]">
+                                        <CardTitle className="flex items-center justify-between">
                                             {formula ? (
                                                 <FormulaTooltip formulas={{ [riskKey]: formula }} values={activeZone ? (activeZoneRisk || {}) : risk_results}>
-                                                    <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-blue-400 transition-colors">Risk Analysis</span>
+                                                        <span className="text-sm font-black text-white tracking-widest uppercase">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                                    </div>
                                                 </FormulaTooltip>
                                             ) : (
-                                                <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Risk Analysis</span>
+                                                    <span className="text-sm font-black text-white tracking-widest uppercase">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                                </div>
                                             )}
-                                            {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> : <AlertTriangle className="w-5 h-5 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
+                                            <div className={`p-2 rounded-xl ${isAcceptable ? 'bg-green-500/10 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)]' : 'bg-red-500/10 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)]'}`}>
+                                                {isAcceptable ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                                            </div>
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="text-center py-6 px-4">
-                                        <div className={`text-3xl font-black mb-1.5 tracking-tight ${isAcceptable ? 'text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.3)]' : 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.3)]'}`}>
-                                            <ScientificNotation value={currentTotalRiskValue} />
+
+                                    <CardContent className="flex flex-col items-center justify-center py-8 px-6 relative">
+                                        {/* Background Decoration */}
+                                        <div className={`absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center font-black text-9xl ${isAcceptable ? 'text-green-500' : 'text-red-500'}`}>
+                                            {riskKey}
                                         </div>
-                                        <div className="text-[10px] text-slate-500 font-mono mb-2">Limite: <ScientificNotation value={riskTolerance} precision={1} /></div>
-                                        <div className={`py-1 px-4 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border shadow-sm transition-all ${isAcceptable ? 'bg-green-500/10 border-green-500/30 text-green-300 shadow-green-500/10' : 'bg-red-500/10 border-red-500/30 text-red-300 shadow-red-500/10'}`}>
-                                            {isAcceptable ? 'Aceitável' : 'Não Aceitável'}
+
+                                        <div className={`relative z-10 text-5xl md:text-6xl mb-2 transition-transform duration-500 group-hover:scale-110 ${isAcceptable ? 'text-green-400 drop-shadow-[0_0_25px_rgba(34,197,94,0.4)]' : 'text-red-400 drop-shadow-[0_0_25px_rgba(239,68,68,0.4)]'}`}>
+                                            <ScientificNotation value={currentTotalRiskValue} precision={2} />
+                                        </div>
+                                        
+                                        <div className="relative z-10 flex items-center gap-2 mb-6">
+                                            <div className="h-px w-8 bg-slate-700" />
+                                            <div className="text-[11px] text-slate-500 font-black uppercase tracking-widest flex items-center gap-1.5">
+                                                Limite: <ScientificNotation value={riskTolerance} precision={1} className="text-slate-400" />
+                                            </div>
+                                            <div className="h-px w-8 bg-slate-700" />
+                                        </div>
+
+                                        <div className={`relative z-10 py-2 px-8 rounded-full text-[11px] font-black uppercase tracking-[0.25em] border-2 transition-all duration-500 ${
+                                            isAcceptable 
+                                            ? 'bg-green-500/5 border-green-500/20 text-green-400 shadow-[0_0_30px_rgba(34,197,94,0.15)] group-hover:border-green-500/40 group-hover:bg-green-500/10' 
+                                            : 'bg-red-500/5 border-red-500/20 text-red-400 shadow-[0_0_30px_rgba(239,68,68,0.15)] group-hover:border-red-500/40 group-hover:bg-red-500/10'
+                                        }`}>
+                                            {isAcceptable ? 'Resultado Aceitável' : 'Risco Excedido'}
                                         </div>
                                     </CardContent>
+                                    
+                                    {/* Bottom Decorative Edge */}
+                                    <div className={`absolute bottom-0 left-0 w-full h-[1px] ${isAcceptable ? 'bg-green-500/20' : 'bg-red-500/20'}`} />
                                 </Card>
                             );
                         })
