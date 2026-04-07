@@ -7,14 +7,14 @@
     <link rel="apple-touch-icon" href="https://i.imgur.com/siWXsaB.png" />
     <link rel="shortcut icon" href="https://i.imgur.com/siWXsaB.png" />
     <link rel="canonical" href="https://analise-de-risco-app.vercel.app/" />
-    <meta name="description" content="Aplicativo completo de Análise de Risco SPDA conforme NBR 5419:2025, já atualizado com a nova métrica de frequência de dano. Ideal para profissionais que precisam projetar e analisar riscos para proteger edificações contra descargas atmosféricas. Com IA integrada para encontrar soluções e gerar relatórios técnicos completos." />
+    <meta name="description" content="O software mais profissional para Análise de Risco SPDA conforme a NBR 5419:2026. Cálculos automáticos de Frequência de Dano (FD), memorial descritivo e relatórios técnicos premium gerados por IA. Ideal para engenheiros e projetistas que buscam precisão e agilidade." />
     <meta name="robots" content="index,follow" />
-    <meta name="keywords" content="NBR 5419:2025, análise de risco, SPDA, frequência de dano, descargas atmosféricas, proteção contra raios, projeto SPDA, relatório técnico, engenharia elétrica, IA, inteligência artificial" />
+    <meta name="keywords" content="NBR 5419:2026, análise de risco, SPDA, frequência de dano, descargas atmosféricas, proteção contra raios, projeto SPDA, relatório técnico, engenharia elétrica, IA, inteligência artificial" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Análise de Risco SPDA" />
+    <meta property="og:site_name" content="Análise de Risco PDA NBR 5419-2:2026" />
     <meta property="og:locale" content="pt_BR" />
-    <meta property="og:title" content="Análise de Risco SPDA — NBR 5419:2025 com Frequência de Dano" />
-    <meta property="og:description" content="Ferramenta moderna e completa para Análise de Risco SPDA conforme NBR 5419:2025, incluindo frequência de dano. Use IA para encontrar soluções e gerar relatórios técnicos detalhados." />
+    <meta property="og:title" content="Software Profissional para Análise de Risco PDA — NBR 5419:2026" />
+    <meta property="og:description" content="A ferramenta definitiva para Análise de Risco SPDA NBR 5419:2026. Gere relatórios técnicos completos e memoriais de cálculo com inteligência artificial integrada." />
     <meta property="og:image" content="https://i.imgur.com/siWXsaB.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -22,22 +22,24 @@
     <meta property="og:image:alt" content="Prévia do App de Análise de Risco SPDA" />
     <meta property="og:url" content="https://analise-de-risco-app.vercel.app/" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Análise de Risco SPDA — NBR 5419:2025 (com IA)" />
-    <meta name="twitter:description" content="Aplicativo atualizado com NBR 5419:2025 e frequência de dano. Análises robustas, IA integrada e relatórios técnicos completos." />
+    <meta name="twitter:title" content="Software Profissional para Análise de Risco PDA — NBR 5419:2026" />
+    <meta name="twitter:description" content="O software definitivo para NBR 5419:2026. Análises robustas, cálculos de frequência de dano e relatórios técnicos profissionais produzidos por IA." />
     <meta name="twitter:image" content="https://i.imgur.com/siWXsaB.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Análise de Risco SPDA — NBR 5419:2025 (com IA)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Software para análise de Risco PDA NBR 5419:2026 — COMUNIDADE PDA — Engº Júlio César Certo</title>
     
     <!-- Structured Data for rich results -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "Análise de Risco SPDA — NBR 5419:2025",
+      "name": "Software Profissional para Análise de Risco PDA — NBR 5419:2026",
       "applicationCategory": "EngineeringApplication",
       "operatingSystem": "Web",
       "url": "https://analise-de-risco-app.vercel.app/",
-      "description": "Aplicativo completo de Análise de Risco SPDA conforme NBR 5419:2025, com frequência de dano e IA para gerar relatórios técnicos.",
+      "description": "Software profissional de Análise de Risco SPDA conforme NBR 5419:2026, com frequência de dano e IA para relatórios premium.",
       "author": { "@type": "Person", "name": "Engº Júlio César Certo" },
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL", "availability": "https://schema.org/InStock" }
     }
@@ -63,7 +65,7 @@
       "@context": "https://schema.org",
       "@type": "WebSite",
       "url": "https://analise-de-risco-app.vercel.app/",
-      "name": "Análise de Risco SPDA",
+      "name": "Software Análise de Risco SPDA",
       "inLanguage": "pt-BR"
     }
     </script>
@@ -72,11 +74,15 @@
       /* Ocultar a seção SEO quando JS está ativo para evitar interferência visual */
       .js-enabled .seo-section { display: none !important; }
       html, body {
+        margin: 0;
+        padding: 0;
         height: 100%;
-        /* Removido background-color para preservar a imagem de fundo fixa */
-        overscroll-behavior: none; /* reduz o bounce visual em navegadores modernos */
+        overscroll-behavior: none;
+        overflow-x: hidden;
+        scrollbar-gutter: stable; /* Mantém a largura do gutter estável para evitar pulos no layout */
       }
-      html {
+      body {
+        min-height: 100%;
         overflow-y: auto;
       }
       /* Base editorial para conteúdo gerado */
@@ -89,10 +95,10 @@
           -webkit-font-smoothing: antialiased;
       }
 
-      /* Espaçamento vertical entre blocos, itens e subitens */
-      .prose-styles h2 { margin-top: 2.75rem; margin-bottom: 0.90rem; }
-      .prose-styles h3 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
-      .prose-styles h4 { margin-top: 1.75rem; margin-bottom: 0.60rem; }
+      /* Espaçamento vertical entre blocos, itens e subitens - MUITO COMPACTO */
+      .prose-styles h2 { margin-top: 1rem; margin-bottom: 0.5rem; }
+      .prose-styles h3 { margin-top: 0.75rem; margin-bottom: 0.4rem; }
+      .prose-styles h4 { margin-top: 0.6rem; margin-bottom: 0.3rem; }
 
       .prose-styles p + p { margin-top: 0.75rem; }
       .prose-styles p + ul,
@@ -121,10 +127,10 @@
       .prose-styles li > ol { margin-top: 0.95rem; }
       .prose-styles ul + h2,
       .prose-styles ol + h2,
-      .prose-styles figure + h2 { margin-top: 2.9rem !important; }
+      .prose-styles figure + h2 { margin-top: 1.25rem !important; }
       .prose-styles ul + h3,
       .prose-styles ol + h3,
-      .prose-styles figure + h3 { margin-top: 2.35rem !important; }
+      .prose-styles figure + h3 { margin-top: 1rem !important; }
       .prose-styles p + ul,
       .prose-styles p + ol,
       .prose-styles ul + p,
@@ -231,26 +237,40 @@
           color: #bfdbfe; /* blue-200 */
           border-bottom-color: rgba(147,197,253,0.6);
       }
+
+      /* Fix for white/yellow autofill background in Chrome/Edge */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active,
+      textarea:-webkit-autofill,
+      textarea:-webkit-autofill:hover,
+      textarea:-webkit-autofill:focus,
+      textarea:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+          -webkit-text-fill-color: #f1f5f9 !important;
+          transition: background-color 5000s ease-in-out 0s;
+      }
     </style>
     
-  <script type="module" crossorigin src="/assets/index-CEXXxz2z.js"></script>
+  <script type="module" crossorigin src="/assets/index-C0ckmZeI.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/react-Bzgz95E1.js">
   <link rel="modulepreload" crossorigin href="/assets/motion-CZTIYVKD.js">
   <link rel="modulepreload" crossorigin href="/assets/charts-CPftjIMm.js">
-  <link rel="modulepreload" crossorigin href="/assets/icons-BogGJxPw.js">
+  <link rel="modulepreload" crossorigin href="/assets/icons-CPiUAXfr.js">
 </head>
-  <body class="text-slate-300 overflow-x-hidden">
+  <body class="text-slate-300 antialiased selection:bg-blue-500/30">
     <script>document.documentElement.classList.add('js-enabled');</script>
-    <div style="position: fixed; inset: 0px; z-index: -1; background-image: url('https://i.imgur.com/vdpG5uQ.jpeg'); background-size: cover; background-position: center center;"></div>
-    <div id="root"></div>
+    <div style="position: fixed; inset: 0px; z-index: -1; background-image: url('https://i.imgur.com/vdpG5uQ.jpeg'); background-size: cover; background-position: center center; background-attachment: fixed;"></div>
+    <div id="root"></div>
   </body>
   <!-- Disponível apenas sem JavaScript (crawlers / usuários sem JS) -->
   <noscript>
     <section class="seo-section" style="padding: 1.25rem; background: rgba(2,6,23,0.85); color: #cbd5e1; border-top: 1px solid #475569;">
       <div style="max-width: 980px; margin: 0 auto;">
-        <h2 style="font-size: 1.25rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.75rem;">Análise de Risco SPDA — NBR 5419:2025</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.75rem;">Software Profissional de Análise de Risco SPDA — NBR 5419:2026</h2>
         <p style="line-height:1.6; margin-bottom: 0.75rem;">
-          Este aplicativo produz <strong>análises de risco</strong> conforme a atualização da <strong>NBR 5419:2025</strong>,
+          Este aplicativo produz <strong>análises de risco</strong> conforme a atualização da <strong>NBR 5419:2026</strong>,
           já com a novidade de <strong>frequência de dano</strong> e demais atualizações da nova norma. É completo para
           profissionais que precisam <strong>projetar</strong> e <strong>analisar riscos</strong> para proteger edificações contra
           os efeitos danosos das <strong>descargas atmosféricas</strong>, com uma análise robusta e moderna.
@@ -261,14 +281,14 @@
         </p>
         <h3 style="font-size: 1.1rem; font-weight: 600; color: #cbd5e1; margin-top: 1rem; margin-bottom: 0.5rem;">Recursos principais</h3>
         <ul style="list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem;">
-          <li>Cálculo automatizado conforme NBR 5419:2025 (inclui frequência de dano).</li>
+          <li>Cálculo automatizado conforme NBR 5419:2026 (inclui frequência de dano).</li>
           <li>Relatório técnico detalhado e pronto para conferência.</li>
           <li>Integração com IA para apoio às decisões e sugestões.</li>
           <li>Fluxo completo para análise de risco SPDA.</li>
         </ul>
         <h3 style="font-size: 1.1rem; font-weight: 600; color: #cbd5e1; margin-top: 1rem; margin-bottom: 0.5rem;">Palavras‑chave relevantes</h3>
         <p style="line-height:1.6; margin-bottom: 0.5rem;">
-          NBR 5419:2025, análise de risco, SPDA, frequência de dano, descargas atmosféricas, proteção contra raios,
+          NBR 5419:2026, análise de risco, SPDA, frequência de dano, descargas atmosféricas, proteção contra raios,
           projeto SPDA, relatório técnico, engenharia elétrica, IA, inteligência artificial.
         </p>
       </div>

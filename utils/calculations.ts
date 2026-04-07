@@ -43,6 +43,7 @@ export function calculateEvents(data: Pick<AnalysisData,
         line_sections_1.forEach(section => {
             if (!section) return;
             const ll = Number(section.ll) || 0;
+            const ci = Number(section.ci) ?? 1; // Default to 1 (Overhead) if not provided
             const ce = Number(section.ce) || 0;
             const ct = Number(section.ct) || 0;
             
@@ -50,9 +51,10 @@ export function calculateEvents(data: Pick<AnalysisData,
             const ai_section = 4000 * ll;
             al1_total += al_section;
             ai1_total += ai_section;
-            // NBR 5419: Nl and Ni do NOT use Ci (it belongs only to loss/consequence in some cases or is implied 1 for network)
-            nl1_base += safeNg > 0 ? safeNg * al_section * ce * ct * 1e-6 : 0;
-            ni1_base += safeNg > 0 ? safeNg * ai_section * ce * ct * 1e-6 : 0;
+            // NBR 5419-2:2026: NL and NI use the Ci factor (Installation Factor)
+            // NL = NG * AL * CI * CE * CT * 10^-6
+            nl1_base += safeNg > 0 ? safeNg * al_section * ci * ce * ct * 1e-6 : 0;
+            ni1_base += safeNg > 0 ? safeNg * ai_section * ci * ce * ct * 1e-6 : 0;
         });
     }
 
@@ -66,6 +68,7 @@ export function calculateEvents(data: Pick<AnalysisData,
         line_sections_2.forEach(section => {
             if (!section) return;
             const ll = Number(section.ll) || 0;
+            const ci = Number(section.ci) ?? 1; // Default to 1 (Overhead) if not provided
             const ce = Number(section.ce) || 0;
             const ct = Number(section.ct) || 0;
             
@@ -73,8 +76,9 @@ export function calculateEvents(data: Pick<AnalysisData,
             const ai_section = 4000 * ll;
             al2_total += al_section;
             ai2_total += ai_section;
-            nl2_base += safeNg > 0 ? safeNg * al_section * ce * ct * 1e-6 : 0;
-            ni2_base += safeNg > 0 ? safeNg * ai_section * ce * ct * 1e-6 : 0;
+            // NBR 5419-2:2026: NL and NI use the Ci factor (Installation Factor)
+            nl2_base += safeNg > 0 ? safeNg * al_section * ci * ce * ct * 1e-6 : 0;
+            ni2_base += safeNg > 0 ? safeNg * ai_section * ci * ce * ct * 1e-6 : 0;
         });
     }
 

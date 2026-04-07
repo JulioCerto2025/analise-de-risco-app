@@ -95,7 +95,11 @@ const initialInputData: AnalysisInputData = {
         CLD_electric_ext: 1,
         CLI_electric_ext: 1,
         // Linha Elétrica - Interna
+        is_shielded_electric_int: false,
+        rs_electric_int: 20,
         CLD_electric_int: 1,
+        CLI_electric_int: 1,
+        PLD_electric_int: 1.0,
         Ks3_electric_int: 1,
         Uw_electric_int: 2.5,
         // Linha de Dados - fatores compartilhados
@@ -110,7 +114,11 @@ const initialInputData: AnalysisInputData = {
         CLD_data_ext: 1,
         CLI_data_ext: 1,
         // Linha de Dados - Interna
+        is_shielded_data_int: false,
+        rs_data_int: 20,
         CLD_data_int: 1,
+        CLI_data_int: 1,
+        PLD_data_int: 1.0,
         Ks3_data_int: 1,
         Uw_data_int: 1.5,
     },
@@ -239,11 +247,12 @@ export function useAnalysisData() {
                 setData(prev => {
                     const nextLoc = `${city} - ${rawUf.toUpperCase()}`;
                     if (prev.location === nextLoc && prev.ng === nextNg) return prev;
-                    return { ...prev, location: nextLoc, mapRegion: getRegionFromState(rawUf) as any, ng: nextNg };
+                    // Ao mudar o endereço principal, limpamos rascunhos para não conflitar na etapa 2
+                    return { ...prev, location: nextLoc, mapRegion: getRegionFromState(rawUf) as any, ng: nextNg, ufDraft: '', cityDraft: '' };
                 });
             } catch (_) {}
         };
-        const t = setTimeout(syncFromAddress, 1000);
+        const t = setTimeout(syncFromAddress, 300);
         return () => clearTimeout(t);
     }, [data.clientAddress]);
 

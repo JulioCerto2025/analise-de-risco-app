@@ -106,8 +106,8 @@ const ScientificNotation = ({ value, precision = 2 }: { value: number; precision
 const EVENT_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
     ND: { formula: "Ng × Adf × Cd", vars: ["ng", "adf", "cd"] },
     NM: { formula: "Ng × Am", vars: ["ng", "am"] },
-    NL: { formula: "nl_electric + nl_data", vars: ["nl_electric", "nl_data"] },
-    NI: { formula: "ni_electric + ni_data", vars: ["ni_electric", "ni_data"] },
+    NL: { formula: "NL(Energia) + NL(Dados)", vars: ["nl_electric", "nl_data"] },
+    NI: { formula: "NI(Energia) + NI(Dados)", vars: ["ni_electric", "ni_data"] },
 };
 
 const CustomTooltip = ({ active, payload, label, calculations }: any) => {
@@ -119,9 +119,10 @@ const CustomTooltip = ({ active, payload, label, calculations }: any) => {
 
         // Substituição direta na fórmula para exibir "Valores"
         let formulaDisplay = formulaInfo?.formula || "N/A";
-        if (eventKey === 'ND') formulaDisplay = "Ng × Adf × Cd × 10⁻⁶";
-        if (eventKey === 'NM') formulaDisplay = "Ng × Am × 10⁻⁶";
-
+        if (eventKey === 'ND') formulaDisplay = "ND = Ng × Adf × Cd × 10⁻⁶";
+        if (eventKey === 'NM') formulaDisplay = "NM = Ng × Am × 10⁻⁶";
+        if (eventKey === 'NL') formulaDisplay = "NL = Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶";
+        if (eventKey === 'NI') formulaDisplay = "NI = Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶";
         let valuesString = "N/A";
         if (formulaInfo) {
             const rawFormula = formulaInfo.formula;
@@ -132,14 +133,20 @@ const CustomTooltip = ({ active, payload, label, calculations }: any) => {
                 if (Math.abs(v) < 0.01) return v.toExponential(1).replace('.', ',');
                 return String(v).replace('.', ',');
             };
-            valuesString = formulaInfo.vars.reduce(
-                (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((valueMap as any)[v] ?? 0)),
-                rawFormula
-            );
-    valuesString = valuesString.replace(/\*/g, '×');
-            // Adiciona o fator 10⁻⁶ explicitamente para ND/NM
-            if (eventKey === 'ND' || eventKey === 'NM') {
-                valuesString = `${valuesString} × 10⁻⁶`;
+
+            if (eventKey === 'NL' || eventKey === 'NI') {
+                const val1 = (valueMap as any)[formulaInfo.vars[0]] ?? 0;
+                const val2 = (valueMap as any)[formulaInfo.vars[1]] ?? 0;
+                valuesString = `${formatVarValue(val1)} + ${formatVarValue(val2)}`;
+            } else {
+                valuesString = formulaInfo.vars.reduce(
+                    (acc, v) => acc.replace(new RegExp(`\\b${v}\\b`, 'g'), formatVarValue((valueMap as any)[v] ?? 0)),
+                    rawFormula
+                );
+                valuesString = valuesString.replace(/\*/g, '×');
+                if (eventKey === 'ND' || eventKey === 'NM') {
+                    valuesString = `${valuesString} × 10⁻⁶`;
+                }
             }
         }
 

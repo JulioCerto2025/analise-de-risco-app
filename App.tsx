@@ -477,29 +477,27 @@ export default function App() {
     return (
         <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
             <div className="w-full flex justify-center py-2 px-1">
-                <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 items-start pt-6 pb-6 px-4">
-                <aside className="hidden md:block">
-                    <div className="sticky top-6 w-full flex flex-col gap-4 pb-4">
+                <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 pt-6 pb-6 px-4">
+                <aside className="hidden md:block h-full">
+                    <div className="sticky top-6 w-full flex flex-col gap-4 pb-4 h-full">
                         <SidebarNav currentStep={currentStep} setStep={setStep}/>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div className="flex items-center gap-3 mt-auto pt-4 border-t border-slate-700/30">
                             <Button
                                 variant="outline"
                                 onClick={handlePrev}
                                 disabled={currentStep === 1}
-                                className="flex items-center gap-2 h-12 rounded-2xl border-slate-700/50 hover:bg-slate-800 text-[10.5px] font-bold uppercase tracking-widest text-slate-400 group"
+                                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl hover:bg-slate-800/80 transition-all border-slate-700/50 min-h-[48px] flex-1"
                             >
-                                <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-                                Anterior
+                                <ArrowLeft className="w-4 h-4" />
+                                <span className="uppercase tracking-widest text-[11px]">Anterior</span>
                             </Button>
-                            
                             <Button
                                 onClick={handleNext}
-                                onClickCapture={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                                 disabled={currentStep === STEPS.length}
-                                className="flex items-center justify-center gap-2 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-[0.12em] shadow-xl shadow-blue-900/40 group active:scale-95 transition-all"
+                                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[48px] flex-[1.5]"
                             >
-                                {currentStep === STEPS.length ? "Finalizar" : "Próximo"}
-                                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                                <span className="uppercase tracking-widest text-[11px]">{currentStep === STEPS.length ? "Finalizar" : "Próximo"}</span>
+                                <ArrowRight className="w-4 h-4" />
                             </Button>
                         </div>
                     </div>

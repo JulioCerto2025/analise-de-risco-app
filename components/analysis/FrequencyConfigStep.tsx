@@ -243,10 +243,10 @@ const CustomTooltip = ({ active, payload, label, data, formulas }: any) => {
 
 // A reusable Select component for the simulator card
 const SimulatorSelect = ({ label, value, options, onUpdate, isOpen, onOpenChange }: { label: string, value: number, options: {value: number, label: string}[], onUpdate: (val: number) => void, isOpen: boolean, onOpenChange: (open: boolean) => void }) => {
-    const wrapperClassName = isOpen ? 'relative z-20 mt-2' : 'relative mt-2';
+    const wrapperClassName = isOpen ? 'relative z-20 mt-1' : 'relative mt-1';
     return (
-        <div className="space-y-2">
-            <Label className="text-base font-semibold text-slate-200">{label}</Label>
+        <div className="space-y-0.5">
+            <Label className="text-[11px] font-semibold text-slate-300 leading-none">{label}</Label>
             <Select
                 value={String(value)}
                 onValueChange={(v) => onUpdate(parseFloat(v))}
@@ -254,7 +254,7 @@ const SimulatorSelect = ({ label, value, options, onUpdate, isOpen, onOpenChange
                 onOpenChange={onOpenChange}
                 wrapperClassName={wrapperClassName}
             >
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
                 <SelectContent>
                     {options.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                 </SelectContent>
@@ -449,25 +449,25 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                 {activeViewId === 'GLOBAL' ? (
                     <>
                         <Card className="h-full">
-                            <CardHeader>
-                                <CardTitle className="flex items-center justify-between text-base">
+                            <CardHeader className="py-2 px-4">
+                                <CardTitle className="flex items-center justify-between text-sm">
                                     <span className="flex items-center gap-2">
-                                        <SlidersHorizontal className="w-5 h-5 text-blue-400" />
+                                        <SlidersHorizontal className="w-4 h-4 text-blue-400" />
                                         {`Ajustar Freq. Dano — ${activeHeading}`}
                                     </span>
                                     {multipleZones && (
                                         <div className="flex items-center gap-1">
                                             <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
-                                                <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                                <ChevronLeft className="w-4 h-4 text-slate-300" />
                                             </button>
                                             <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
-                                                <ChevronRight className="w-5 h-5 text-slate-300" />
+                                                <ChevronRight className="w-4 h-4 text-slate-300" />
                                             </button>
                                         </div>
                                     )}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-3 pt-2">
+                            <CardContent className="space-y-4 pt-1 pb-4 px-4">
                                 <SimulatorSelect
                                     label="PEB - Prot. Surto Cond. D1/D2"
                                     value={data.probability_data.PEB_electric}
@@ -487,50 +487,51 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                             </CardContent>
                         </Card>
 
-                        <Card className={`border-2 ${isAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
-                            <CardHeader>
-                                <CardTitle className="flex items-center justify-between text-base">
+                        <Card className={`relative overflow-hidden border-2 ${isAcceptable ? 'border-green-500/60 bg-green-950/20 shadow-[0_0_15px_-5px_rgba(34,197,94,0.2)]' : 'border-red-500/60 bg-red-950/20 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]'} h-full transition-all duration-300 backdrop-blur-sm group`}>
+                            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${isAcceptable ? 'from-green-500/50 via-green-400 to-green-500/50' : 'from-red-500/50 via-red-400 to-red-500/50'} opacity-50`} />
+                            <CardHeader className="py-2.5 px-4 border-b border-white/5 bg-slate-900/40">
+                                <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
                                     <FormulaTooltip formulas={{ F: getFFormulaString() }} values={calculations}>
-                                        <span className="flex items-center gap-2">{`Frequência Total (F) — ${activeHeading}`}</span>
+                                        <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors">{`Frequência Total (F) — ${activeHeading}`}</span>
                                     </FormulaTooltip>
-                                    {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
+                                    {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> : <AlertTriangle className="w-5 h-5 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="text-center p-4">
-                                <div className={`text-4xl font-bold mb-2 ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(F, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
-                                <div className={`py-3 px-4 rounded-md text-base font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>
-                                    {isAcceptable ? "Frequência Aceitável." : "Frequência Não Aceitável."}
+                            <CardContent className="text-center pt-5 pb-4 px-4">
+                                <div className={`text-4xl font-black mb-1.5 tracking-tight ${isAcceptable ? 'text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.3)]' : 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.3)]'}`}>{formatSmartNumber(F, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
+                                <div className={`py-1 px-4 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border shadow-sm transition-all ${isAcceptable ? 'bg-green-500/10 border-green-500/30 text-green-300 shadow-green-500/10' : 'bg-red-500/10 border-red-500/30 text-red-300 shadow-red-500/10'}`}>
+                                    {isAcceptable ? "Aceitável" : "Não Aceitável"}
                                 </div>
                                 {/* Controles movidos para a base do card de F (Global) */}
-                                <div className="mt-5">
-                                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                <div className="mt-2.5">
+                                    <div className="grid grid-cols-2 gap-1.5">
                                         <button
                                             type="button"
                                             onClick={() => handleConfigChange('is_critical_system', true)}
-                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                            className={`py-1.5 px-2 rounded border text-[10px] sm:text-xs font-bold transition-all ${
                                                 config.is_critical_system 
-                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-700/60 text-slate-400'
                                             }`}
                                         >
-                                            <span className="truncate whitespace-nowrap leading-tight">Sist. Crít. ≤ 0,1</span>
+                                            Sist. Crítico (≤ 0,1)
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleConfigChange('is_critical_system', false)}
-                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                            className={`py-1.5 px-2 rounded border text-[10px] sm:text-xs font-bold transition-all ${
                                                 !config.is_critical_system 
-                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-700/60 text-slate-400'
                                             }`}
                                         >
-                                            <span className="truncate whitespace-nowrap leading-tight">Sist. N Crít. ≤ 1</span>
+                                            Não Crítico (≤ 1)
                                         </button>
                                     </div>
-                                    <div className="mt-4 text-left">
-                                        <div className="flex items-center space-x-2 mt-2">
+                                    <div className="mt-2 flex items-center justify-center">
+                                        <div className="flex items-center space-x-2 px-2 py-1 bg-slate-900/40 rounded border border-slate-700/30">
                                             <Checkbox id="equipment_outside" checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} />
-                                            <Label htmlFor="equipment_outside" className="cursor-pointer">Exposição de Equip. ZPR0A</Label>
+                                            <Label htmlFor="equipment_outside" className="cursor-pointer text-[10px] font-bold text-slate-300">Equip. em ZPR0A</Label>
                                         </div>
                                     </div>
                                 </div>
@@ -556,7 +557,7 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                                     </div>
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-6">
+                            <CardContent className="space-y-4 pt-1">
                                 {activeZone && (
                                     <>
                                         <SimulatorSelect
@@ -595,45 +596,49 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                         </Card>
 
                         {multipleZones && (
-                        <Card className={`border-2 ${zoneAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-base">
-                                    {`Frequência Total (F) — ${activeHeading}`}
-                                    {zoneAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
+                        <Card key="zone-result" className={`relative overflow-hidden border-2 ${zoneAcceptable ? 'border-green-500/60 bg-green-950/20 shadow-[0_0_15px_-5px_rgba(34,197,94,0.2)]' : 'border-red-500/60 bg-red-950/20 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]'} h-full transition-all duration-300 backdrop-blur-sm group`}>
+                            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${zoneAcceptable ? 'from-green-500/50 via-green-400 to-green-500/50' : 'from-red-500/50 via-red-400 to-red-500/50'} opacity-50`} />
+                            <CardHeader className="py-2.5 px-4 border-b border-white/5 bg-slate-900/40">
+                                <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                                    <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors font-bold uppercase">{`Frequência Total (F) — ${activeHeading}`}</span>
+                                    {zoneAcceptable ? <CheckCircle className="w-5 h-5 text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> : <AlertTriangle className="w-5 h-5 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="text-center p-6">
-                                <div className={`text-4xl font-bold mb-2 ${zoneAcceptable ? 'text-green-400' : 'text-red-400'}`}>{formatSmartNumber(zoneFr?.F || 0, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
-                                <div className={`py-3 px-4 rounded-md text-base font-semibold ${zoneAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}`}>{zoneAcceptable ? 'Frequência Aceitável.' : 'Frequência Não Aceitável.'}</div>
-                                {/* Controles movidos para a parte de baixo deste card */}
-                                <div className="mt-4 text-left">
-                                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                            <CardContent className="text-center py-6 px-5 overflow-hidden">
+                                <div className={`text-4xl font-black mb-1.5 tracking-tight ${zoneAcceptable ? 'text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.3)]' : 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.3)]'}`}>{formatSmartNumber(zoneFr?.F || 0, { maxDecimals: 3, useScientificBelow: 0.001 })}</div>
+                                <div className={`py-1 px-4 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border shadow-sm transition-all ${zoneAcceptable ? 'bg-green-500/10 border-green-500/30 text-green-300 shadow-green-500/10' : 'bg-red-500/10 border-red-500/30 text-red-300 shadow-red-500/10'}`}>
+                                    {zoneAcceptable ? 'Aceitável' : 'Não Aceitável'}
+                                </div>
+                                <div className="mt-3 text-left">
+                                    <div className="grid grid-cols-2 gap-1.5">
                                         <button
                                             type="button"
                                             onClick={() => handleConfigChange('is_critical_system', true)}
-                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                            className={`py-1.5 px-2 rounded border text-[10px] font-bold transition-all ${
                                                 config.is_critical_system 
-                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-700/60 text-slate-400'
                                             }`}
                                         >
-                                            <span className="truncate whitespace-nowrap leading-tight">Sist. Crít. ≤ 0,1</span>
+                                            Sist. Crítico (≤ 0,1)
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => handleConfigChange('is_critical_system', false)}
-                                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-colors max-sm:text-[11px] sm:text-sm min-w-0 ${
+                                            className={`py-1.5 px-2 rounded border text-[10px] font-bold transition-all ${
                                                 !config.is_critical_system 
-                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold' 
-                                                : 'bg-slate-800/50 border-slate-600 hover:bg-slate-700/60 text-slate-300'
+                                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-700/60 text-slate-400'
                                             }`}
                                         >
-                                            <span className="truncate whitespace-nowrap leading-tight">Sist. N Crít. ≤ 1</span>
+                                            Não Crítico (≤ 1)
                                         </button>
                                     </div>
-                                    <div className="flex items-center space-x-2 mt-2">
-                                        <Checkbox id="equipment_outside_zone_bottom" checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} />
-                                        <Label htmlFor="equipment_outside_zone_bottom" className="cursor-pointer">Exposição de Equip. ZPR0A</Label>
+                                    <div className="mt-2.5 flex items-center justify-center">
+                                        <div className="flex items-center space-x-2 px-2 py-1 bg-slate-900/40 rounded border border-slate-700/30">
+                                            <Checkbox id="equipment_outside_zone" checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} />
+                                            <Label htmlFor="equipment_outside_zone" className="cursor-pointer text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none">Expos. Equip. ZPR0A</Label>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -643,14 +648,16 @@ export function FrequencyConfigStep({ data, onUpdate }: FrequencyConfigStepProps
                 )}
             </div>
 
-            <Card>
-                <CardHeader><CardTitle>{`Componentes de Frequência — ${activeHeading}`}</CardTitle></CardHeader>
-                <CardContent className="h-[14.5rem]">
+            <Card className="shadow-none border-slate-700/30">
+                <CardHeader className="py-2 px-4 border-b border-slate-700/20">
+                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-400">{`Componentes de Frequência — ${activeHeading}`}</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[16rem] pt-3 pb-2">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={activeViewId === 'GLOBAL' ? chartData : zoneChart}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                            <XAxis dataKey="name" tick={{ fill: '#94a3b8' }} />
-                            <YAxis tick={{ fill: '#94a3b8' }} domain={[0, activeViewId === 'GLOBAL' ? yMaxDomain : zoneMaxDomain]} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, activeViewId === 'GLOBAL' ? yMaxDomain : zoneMaxDomain]} />
                             {!isMobile && (
                                 <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} />} cursor={{ fill: 'rgba(30, 41, 59, 0.7)' }} />
                             )}

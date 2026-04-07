@@ -23,7 +23,7 @@ export const markdownToHtml = (md: string, prefs: any) => {
 
     let html = md
         .replace(/^# (.*$)/gm, `<h1 style="font-size: 2rem; font-weight: 900; color: ${headerColor}; margin-bottom: 1rem; text-align: center; border-bottom: 4px solid ${headerColor}; padding-bottom: 0.5rem;">$1</h1>`)
-        .replace(/^## (.*$)/gm, `<h2 style="font-size: ${prefs.h2FontSizeRem}rem; font-weight: 800; color: ${subheaderColor}; margin-top: ${prefs.h2MarginTopPx}px; margin-bottom: ${prefs.h2MarginBottomPx}px; border-left: 6px solid ${isWord ? '#1e3a8a' : '#3b82f6'}; padding-left: 0.75rem; background: ${bgHeader};">$1</h2>`)
+        .replace(/^## (.*$)/gm, `<h2 style="font-size: ${prefs.h2FontSizeRem}rem; font-weight: ${prefs.h2Weight || 700}; color: ${subheaderColor}; margin-top: ${prefs.h2MarginTopPx}px; margin-bottom: ${prefs.h2MarginBottomPx}px; border-left: 3px solid ${isWord ? '#1e3a8a' : '#3b82f6'}; padding-left: 0.75rem;">$1</h2>`)
         .replace(/^### (.*$)/gm, `<h3 style="font-size: 1.25rem; font-weight: 700; color: ${isWord ? '#334155' : '#94a3b8'}; margin-top: 1.5rem; margin-bottom: 0.75rem;">$1</h3>`)
         .replace(/\*\*(.*?)\*\*/g, '<strong style="color: inherit;">$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -40,15 +40,13 @@ export const markdownToHtml = (md: string, prefs: any) => {
         .replace(/^- (.*$)/gm, `<li style="margin-left: 0.75rem; margin-bottom: 0.15rem; color: ${prefs.isWord ? '#000' : '#94a3b8'}; font-size: 0.9rem;">$1</li>`)
         .replace(/^> (.*$)/gm, `<blockquote style="border-left: 4px solid #3b82f6; padding: 0.5rem 1rem; margin: 1rem 0; background: rgba(59,130,246,0.05); font-style: italic; color: ${prefs.isWord ? '#1e293b' : '#94a3b8'};">$1</blockquote>`);
     
-    // Cleanup redundant newlines - extremely aggressive
+    // Cleanup redundant newlines - more surgical approach
     const cleanHtml = html
-        .replace(/<\/h[1-3]>\n+/g, ' ') 
-        .replace(/\n+<table/g, '<table') 
-        .replace(/<\/table>\n+/g, '</table>')
-        .replace(/\n\s*\n/g, '<div style="margin-bottom: 4px;"></div>')
+        .replace(/<\/h[1-3]>\s*\n+/g, (match) => match.replace(/\n+/g, '<br/>'))
+        .replace(/\n\s*\n/g, '<div style="margin-bottom: 12px;"></div>')
         .replace(/\n/g, ' ');
 
-    return `<div class="prose-styles" style="font-family: 'Inter', sans-serif; line-height: 1.35;">${cleanHtml}</div>`;
+    return `<div class="prose-styles" style="font-family: 'Inter', sans-serif; line-height: 1.5; text-align: justify; color: ${textColor};">${cleanHtml}</div>`;
 };
 
 interface ReportStepProps {
@@ -62,15 +60,12 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
     const [copySuccess, setCopySuccess] = useState(false);
     const [generationStep, setGenerationStep] = useState('');
 
-    // Configurações de impressão (em mm)
-    const pageMarginLR = 15;
-    const pageMarginTB = 15;
-    
     const formatPrefs = {
-        h2FontSizeRem: 1.5,
-        h2MarginTopPx: 12,
-        h2MarginBottomPx: 4,
-        h3FontSizeRem: 1.15,
+        h2FontSizeRem: 1.15,
+        h2Weight: 700,
+        h2MarginTopPx: 48,
+        h2MarginBottomPx: 8,
+        h3FontSizeRem: 1.0,
         h3MarginTopPx: 8,
         h3MarginBottomPx: 2,
     };
@@ -101,57 +96,25 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
     const handleDownloadWord = async () => {
         setIsGenerating(true);
         try {
-            setGenerationStep('Gerando versão de alta compatibilidade para Microsoft Word...');
-            // Gera o texto do relatório com o tema de alta visibilidade/contraste (isWord = true)
+            setGenerationStep('Gerando versão MS Word...');
             const wordReportText = await generateFullReportText(data, true);
             const htmlContent = markdownToHtml(wordReportText, { ...formatPrefs, isWord: true });
             const defaultName = `RELATORIO_SPDA_${(data.clientName || 'PROJETO').replace(/\s+/g, '_').toUpperCase()}.doc`;
             
-            // Estilo CSS base para o Word (força bordas sólidas e cores padrão)
             const wordHtml = `
                 <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
                 <head>
                     <meta charset='utf-8'>
-                    <title>Relatório SPDA - NBR 5419-2:2026</title>
                     <style>
                         body { font-family: 'Arial', sans-serif; font-size: 11pt; color: #000000; }
-                        h1 { color: #000000; font-size: 18pt; text-align: center; }
-                        h2 { color: #1e3a8a; font-size: 14pt; border-bottom: 0.5pt solid #1e3a8a; padding-bottom: 2pt; margin-top: 15pt; }
-                        h3 { color: #334155; font-size: 12pt; margin-top: 10pt; }
-                        table { border-collapse: collapse; width: 100%; margin-bottom: 10pt; border: 1pt solid #000000; }
-                        td, th { border: 1pt solid #000000; padding: 4pt; font-size: 10pt; color: #000000; }
-                        .status-box { padding: 10pt; border: 1.5pt solid #000000; margin: 10pt 0; background-color: #f8fafc; }
-                        b, strong { color: #000000; }
+                        table { border-collapse: collapse; width: 100%; border: 1pt solid #000; }
+                        td, th { border: 1pt solid #000; padding: 4pt; font-size: 10pt; }
                     </style>
                 </head>
-                <body>
-                    ${htmlContent}
-                    <div style="margin-top: 30pt; font-size: 8pt; color: #666666; text-align: center;">
-                        Documento gerado automaticamente via Plataforma SPDA NBR 5419-2:2026 em ${new Date().toLocaleDateString('pt-BR')}
-                    </div>
-                </body>
+                <body>${htmlContent}</body>
                 </html>
             `;
             
-            // Tenta usar a File System Access API (Salvar Como)
-            if ('showSaveFilePicker' in window) {
-                try {
-                    const handle = await (window as any).showSaveFilePicker({
-                        suggestedName: defaultName,
-                        types: [{
-                            description: 'Relatório Microsoft Word (.doc)',
-                            accept: { 'application/msword': ['.doc'] },
-                        }],
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write('\ufeff' + wordHtml);
-                    await writable.close();
-                    return;
-                } catch (err: any) {
-                    if (err.name === 'AbortError') return;
-                }
-            }
-
             const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -167,163 +130,79 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
         }
     };
 
-    const copyToClipboard = () => {
+    const handlePrint = async () => {
+        setIsGenerating(true);
         try {
-            const tempElement = document.createElement('div');
-            tempElement.innerHTML = markdownToHtml(reportText, formatPrefs);
-            const blob = new Blob([tempElement.innerHTML], { type: 'text/html' });
-            const dataTransfer = [new (window as any).ClipboardItem({ 'text/html': blob })];
-            (navigator.clipboard as any).write(dataTransfer).then(() => {
-                setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 2000);
-            });
-        } catch (e) {
-            navigator.clipboard.writeText(reportText).then(() => {
-                setCopySuccess(true);
-                setTimeout(() => setCopySuccess(false), 2000);
-            });
-        }
-    };
-
-    const handlePrint = () => {
-        // HTML specifically for high-quality print - Clean and High Contrast
-        const printableHtml = reportText
-            .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-            .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-            .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-            .replace(/\| (.*) \|/g, (match) => {
-                if (match.includes('---')) return '';
-                const cells = match.split('|').filter(c => c.trim() !== '').map(c => `<td>${c.trim()}</td>`).join('');
-                return `<tr>${cells}</tr>`;
-            })
-            .replace(/(<tr>.*?<\/tr>)+/g, (match) => `<table class="print-table">${match}</table>`)
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^- (.*$)/gm, '<li>$1</li>')
-            .replace(/^\d\. (.*$)/gm, '<li>$1</li>')
-            .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
-            .replace(/!\[(.*?)\]\((.*?)\)/g, '<div class="chart-container"><img src="$2" /></div>');
-
-        const win = window.open('', '_blank');
-        if (!win) return;
-        win.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>LAUDO TECNICO SPDA - NBR 5419-2</title>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+            setGenerationStep('Preparando versão para impressão PDF...');
+            const printReportText = await generateFullReportText(data, true);
+            const printableHtml = markdownToHtml(printReportText, { ...formatPrefs, isWord: true });
+            const win = window.open('', '_blank');
+            if (!win) return;
+            win.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>Relatório SPDA - ${data.clientName || 'N/A'}</title>
             <style>
                 @page { size: A4; margin: 15mm; }
-                body { font-family: 'Inter', -apple-system, sans-serif; color: #000 !important; background: #fff !important; line-height: 1.4; padding: 0; margin: 0; }
+                body { font-family: sans-serif; color: #000; line-height: 1.4; }
+                table { width: 100%; border-collapse: collapse; margin: 4mm 0; border: 1pt solid #000; }
+                td, th { border: 0.5pt solid #000; padding: 2mm; font-size: 9.5pt; }
                 
-                /* GLOBAL OVERRIDES FOR PRINT PURITY */
-                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                
-                /* OVERRIDE INLINE STYLES FROM CALCULATOR */
-                div[style*="background"], div[style*="background-color"] { background: transparent !important; border-color: #000 !important; }
-                span[style*="color"], p[style*="color"], td[style*="color"], b[style*="color"] { color: #000 !important; }
-                td[style*="border"], th[style*="border"], table[style*="border"] { border: 0.5pt solid #000 !important; }
-                
-                .report { max-width: 100%; }
-                h1 { font-size: 20pt; color: #1e3a8a !important; text-align: center; text-transform: uppercase; border-bottom: 2pt solid #1e3a8a !important; padding-bottom: 3mm; margin-bottom: 8mm; font-weight: 900; }
-                h2 { font-size: 14pt; color: #1e40af !important; border-left: 5pt solid #1e40af !important; padding-left: 3mm; margin-top: 10mm; margin-bottom: 4mm; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 2mm; text-transform: uppercase; }
-                h3 { font-size: 11pt; color: #1e293b !important; border-bottom: 0.5pt solid #cbd5e1 !important; margin-top: 6mm; padding-bottom: 1mm; font-weight: 700; text-transform: uppercase; }
-                
-                p, li { font-size: 10pt; text-align: justify; margin-bottom: 3pt; color: #000 !important; }
-                
-                table { width: 100%; border-collapse: collapse; margin: 4mm 0; table-layout: fixed; border: 1px solid #000 !important; }
-                td, th { border: 0.5pt solid #000 !important; padding: 2mm; font-size: 9pt; color: #000 !important; }
-                th, tr[style*="background: rgba(15,23,42,0.5)"] { background: #f1f5f9 !important; color: #000 !important; font-weight: bold; }
-                
-                /* STATUS COLORS - THE ONLY COLORS ALLOWED */
-                .status-box { border: 2pt solid #000 !important; padding: 5mm; margin: 6mm 0; page-break-inside: avoid; border-radius: 4px; }
-                .status-box.safe { border-color: #059669 !important; background: #f0fdf4 !important; }
-                .status-box.safe h3, .status-box.safe p { color: #065f46 !important; }
-                .status-box.danger { border-color: #dc2626 !important; background: #fef2f2 !important; }
-                .status-box.danger h3, .status-box.danger p { color: #991b1b !important; }
+                td[style*="width: 11%"] { width: 11% !important; }
+                td[style*="width: 5%"] { width: 5% !important; }
+                td[style*="width: 14%"] { width: 14% !important; }
 
-                /* FORCE OK/CRITICAL COLORS */
-                td[style*="color: #10b981"] { color: #059669 !important; font-weight: bold; }
-                td[style*="color: #ef4444"] { color: #dc2626 !important; font-weight: bold; }
-                
-                .chart-container { text-align: center; margin: 5mm 0; page-break-inside: avoid; }
-                .chart-container img { max-width: 130mm; }
-                
-                .footer { margin-top: 10mm; border-top: 0.5pt solid #e2e8f0; padding-top: 3mm; font-size: 7.5pt; color: #64748b !important; text-align: center; }
-                
-                @media print {
-                    .no-print { display: none; }
-                }
+                .status-box { border: 2pt solid #000; padding: 5mm; margin: 6mm 0; }
+                .footer { margin-top: 10mm; border-top: 0.5pt solid #ccc; font-size: 8pt; text-align: center; }
             </style></head><body>
-            <div class="report">
                 ${printableHtml}
-                <div class="footer">
-                    LAUDO TÉCNICO GERADO CONFORME NBR 5419-2:2026 — SISTEMA AUTOMATIZADO PROFISSIONAL<br/>
-                    Data de Emissão: ${new Date().toLocaleDateString('pt-BR')} — Página 1 de 1
-                </div>
-            </div>
+                <div class="footer">Gerado via Plataforma SPDA — ${new Date().toLocaleDateString('pt-BR')} — Engº Júlio César Certo</div>
             </body></html>`);
-        win.document.close();
-        
-        setTimeout(() => {
-            win.focus();
-            win.print();
-        }, 800);
+            win.document.close();
+            setTimeout(() => { win.focus(); win.print(); }, 800);
+        } catch (error) {
+            console.error('Erro ao preparar impressão:', error);
+        } finally {
+            setIsGenerating(false);
+            setGenerationStep('');
+        }
     };
 
     return (
         <div className="space-y-4">
-            {/* Ação Central: Relatório Técnico */}
             <div className="flex flex-col md:flex-row items-stretch gap-4">
                 <AnimatePresence mode="wait">
                     {!reportText ? (
-                        <motion.div
-                            key="gen-btn"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="flex-1"
-                        >
+                        <motion.div key="gen-btn" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1">
                             <Button
                                 onClick={handleGenerateReport}
                                 disabled={isGenerating}
-                                className="w-full h-20 bg-blue-600 hover:bg-blue-500 text-white rounded-3xl shadow-[0_10px_40px_-5px_rgba(37,99,235,0.4)] transition-all flex items-center justify-center gap-4 group"
+                                className="w-full h-20 bg-blue-600 hover:bg-blue-500 text-white rounded-3xl"
                             >
                                 {isGenerating ? (
-                                    <div className="flex flex-col items-center">
-                                        <div className="flex items-center gap-4 mb-2">
-                                            <Loader2 className="w-8 h-8 animate-spin" />
-                                            <span className="text-xl font-black tracking-widest uppercase">Gerando Relatório...</span>
-                                        </div>
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        <span>{generationStep}</span>
                                     </div>
                                 ) : (
-                                    <>
-                                        <FileText className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                        <span className="text-xl font-black tracking-widest uppercase">Gerar Relatório Gerencial</span>
-                                    </>
+                                    <div className="flex items-center gap-3">
+                                        <FileText className="w-8 h-8" />
+                                        <span className="text-xl font-black tracking-widest uppercase">Gerar Relatório</span>
+                                    </div>
                                 )}
                             </Button>
                         </motion.div>
                     ) : (
-                        <motion.div
-                            key="report-view"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="flex-1 bg-slate-900/95 border border-slate-700/40 rounded-3xl p-5 shadow-2xl"
-                        >
+                        <motion.div key="report-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 bg-slate-900 border border-slate-700 rounded-3xl p-5">
                             <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <FileText className="w-6 h-6 text-blue-400" />
-                                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">Preview do Relatório</h3>
-                                </div>
+                                <h3 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                    <FileText className="w-6 h-6 text-blue-400" /> Relatório Técnico
+                                </h3>
                                 <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" onClick={handleDownloadWord} className="h-10 px-4 bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-600/20 flex items-center gap-2">
-                                        <FileDown className="w-4 h-4" />
-                                        Exportar Word
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={handlePrint} className="h-10 px-4">Gerar PDF</Button>
-                                    <Button variant="outline" size="icon" onClick={() => setReportText('')} className="h-10 w-10">
-                                        <X className="w-4 h-4" />
-                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={handleDownloadWord}>Word</Button>
+                                    <Button variant="outline" size="sm" onClick={handlePrint}>PDF</Button>
+                                    <Button variant="outline" size="icon" onClick={() => setReportText('')}><X className="w-4 h-4" /></Button>
                                 </div>
                             </div>
                             <div 
-                                className="bg-slate-950/80 p-8 rounded-2xl border border-slate-800 shadow-inner max-h-[600px] overflow-y-auto"
+                                className="bg-slate-950 p-8 rounded-2xl border border-slate-800 max-h-[600px] overflow-y-auto"
                                 dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
                             />
                         </motion.div>
@@ -372,42 +251,30 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                     </motion.div>
                 )}
             </div>
-
-            {/* Rodapé: Responsabilidade Técnica - Só aparece se NÃO houver relatório gerado */}
             {!reportText && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                >
-                    <Card className="bg-slate-950/60 border-slate-800 shadow-xl rounded-3xl overflow-hidden mt-6">
-                        <CardHeader className="bg-slate-900/40 border-b border-slate-800 p-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-200 text-sm uppercase font-black tracking-widest">
-                                <CheckCircle className="w-4 h-4 text-emerald-500" />
-                                Confirmação Técnica
-                                <AlertTriangle className="w-4 h-4 text-amber-500 ml-auto opacity-50" />
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-5 space-y-4">
-                            <p className="text-slate-300 leading-relaxed text-xs italic border-l-4 border-emerald-500/30 pl-4 py-1">
-                                "Este relatório automatizado é uma ferramenta de apoio para cálculos da NBR 5419:2026. A conferência final e a responsabilidade técnica integral pelo projeto cabem exclusivamente ao profissional habilitado."
-                            </p>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 group hover:border-blue-500/30 transition-colors text-center">
-                                    <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1 leading-none">Autor da Ferramenta</span>
-                                    <span className="text-slate-100 font-bold text-xs">Engº Júlio César Certo</span>
-                                    <span className="text-[8px] text-slate-500 block mt-1 leading-none italic">(Não é o Resp. Técnico pela análise)</span>
-                                </div>
-                                <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 group hover:border-emerald-500/30 transition-colors text-center">
-                                    <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1 font-black">WhatsApp Apoio</span>
-                                    <span className="text-slate-100 font-bold text-xs">(35) 9 8811-3746</span>
-                                </div>
-                                <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 group hover:border-slate-700 transition-colors text-center">
-                                    <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1 font-black">E-mail Suporte</span>
-                                    <span className="text-slate-200 font-medium text-[10px]">julio.certo@hotmail.com</span>
-                                </div>
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                    <Card className="bg-slate-950/60 border-slate-800 shadow-xl rounded-3xl overflow-hidden mt-6 p-5">
+                        <div className="flex items-center gap-2 text-slate-200 text-sm uppercase font-black tracking-widest mb-4">
+                            <CheckCircle className="w-4 h-4 text-emerald-500" /> Confirmação Técnica
+                        </div>
+                        <p className="text-slate-300 leading-relaxed text-xs italic border-l-4 border-emerald-500/30 pl-4 py-1 mb-6">
+                            "Este relatório automatizado é uma ferramenta de apoio para cálculos da NBR 5419:2026. A conferência final e a responsabilidade técnica integral pelo projeto cabem exclusivamente ao profissional habilitado."
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                                <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1">Autor da Ferramenta</span>
+                                <span className="text-slate-100 font-bold text-xs">Engº Júlio César Certo</span>
+                                <span className="text-[8px] text-slate-500 block mt-1 leading-none italic">(Não é o Resp. Técnico pela análise)</span>
                             </div>
-                        </CardContent>
+                            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                                <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1">WhatsApp Apoio</span>
+                                <span className="text-slate-100 font-bold text-xs">(35) 9 8811-3746</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                                <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1">E-mail Suporte</span>
+                                <span className="text-slate-200 font-medium text-[10px]">julio.certo@hotmail.com</span>
+                            </div>
+                        </div>
                     </Card>
                 </motion.div>
             )}

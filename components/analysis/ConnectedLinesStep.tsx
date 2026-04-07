@@ -197,10 +197,18 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     </Button>
 
                                     <div className="hidden sm:block pt-1 md:pt-2 border-t border-slate-600 mt-1">
-                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados das Áreas Totais</span>
+                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Geometria da Linha</span>
                                         <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
                                             <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
                                             <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
+                                        </div>
+                                    </div>
+
+                                    <div className="hidden sm:block pt-1 md:pt-2">
+                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência da Linha (Energia)</span>
+                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
+                                            <ResultBox label={<>N<sub>L</sub> (Energia)</>} value={nl_electric} unit="ev/ano" color="blue" formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" />
+                                            <ResultBox label={<>N<sub>I</sub> (Energia)</>} value={ni_electric} unit="ev/ano" color="green" formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" />
                                         </div>
                                     </div>
 
@@ -280,10 +288,18 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                     </Button>
 
                                     <div className="hidden sm:block pt-1 md:pt-2 border-t border-slate-600 mt-1">
-                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados das Áreas Totais</span>
+                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Geometria da Linha</span>
                                         <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
                                             <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
                                             <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
+                                        </div>
+                                    </div>
+
+                                    <div className="hidden sm:block pt-1 md:pt-2">
+                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência da Linha (Dados)</span>
+                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
+                                            <ResultBox label={<>N<sub>L</sub> (Dados)</>} value={nl_data} unit="ev/ano" color="blue" formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" />
+                                            <ResultBox label={<>N<sub>I</sub> (Dados)</>} value={ni_data} unit="ev/ano" color="green" formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" />
                                         </div>
                                     </div>
 

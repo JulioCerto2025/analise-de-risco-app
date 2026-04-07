@@ -65,8 +65,12 @@ export interface ProbabilityData {
 
   // Electric line - Internal
   CLD_electric_int: number;
+  CLI_electric_int: number;
   Ks3_electric_int: number;
   Uw_electric_int: number;
+  is_shielded_electric_int: boolean;
+  rs_electric_int: number; 
+  PLD_electric_int: number;
 
   // Data line (shared factors)
   PSPD_data: number;
@@ -83,8 +87,12 @@ export interface ProbabilityData {
 
   // Data line - Internal
   CLD_data_int: number;
+  CLI_data_int: number;
   Ks3_data_int: number;
   Uw_data_int: number;
+  is_shielded_data_int: boolean;
+  rs_data_int: number;
+  PLD_data_int: number;
 }
 
 export interface LossData {

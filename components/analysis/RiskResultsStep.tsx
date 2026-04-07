@@ -379,34 +379,34 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
             {/* Cards lado a lado quando R3 e R4 presentes (e R1, se ativo) */}
             <div className={`grid grid-cols-1 ${gridColsClass} gap-4 items-stretch`}>
 
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle className="flex items-center justify-between text-base">
-                            <span className="flex items-center gap-2">
-                                <SlidersHorizontal className="w-5 h-5 text-blue-400" />
+                <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-900/20 backdrop-blur-sm shadow-xl shadow-black/20 group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
+                    <CardHeader className="py-2.5 px-4 border-b border-white/5 bg-slate-900/40">
+                        <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                            <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors">
+                                <SlidersHorizontal className="w-4 h-4 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                                 {adjustTitle}
                             </span>
                             {multipleZones && (
                                 <div className="flex items-center gap-1">
-                                    <button aria-label="Zona anterior" className="p-1 rounded hover:bg-slate-700" onClick={goPrevView}>
-                                        <ChevronLeft className="w-5 h-5 text-slate-300" />
+                                    <button aria-label="Zona anterior" className="p-0.5 rounded hover:bg-slate-700 transition-colors" onClick={goPrevView}>
+                                        <ChevronLeft className="w-4 h-4 text-slate-300" />
                                     </button>
-                                    <button aria-label="Próxima zona" className="p-1 rounded hover:bg-slate-700" onClick={goNextView}>
-                                        <ChevronRight className="w-5 h-5 text-slate-300" />
+                                    <button aria-label="Próxima zona" className="p-0.5 rounded hover:bg-slate-700 transition-colors" onClick={goNextView}>
+                                        <ChevronRight className="w-4 h-4 text-slate-300" />
                                     </button>
                                 </div>
                             )}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-1 pb-4 px-4">
+                    <CardContent className="space-y-4 py-4 px-4">
                         <div>
-                            <Label className="text-base font-semibold text-slate-200">Nível do SPDA (PB)</Label>
+                            <Label className="text-[11px] font-bold text-slate-400 mb-1 block uppercase tracking-wider">Nível do SPDA (PB)</Label>
                             <Select
                                 value={String(activeZone ? (activeZone.probability_overrides?.PB ?? data.probability_data.PB) : data.probability_data.PB)}
                                 onValueChange={(val) => {
                                     const v = parseFloat(val);
                                     if (activeZone) {
-                                        // Atualização atômica: definir PB na probability_data da zona e remover override PB
                                         const newZones = data.zones.map(z => {
                                             if (z.id !== activeZone.id) return z;
                                             const baseProb = (z.probability_data || data.probability_data);
@@ -417,37 +417,36 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         });
                                         onUpdate({ zones: newZones });
                                     } else {
-                                        // Visão Global: apenas atualiza probabilidade base
                                         handleSimulatorUpdate('PB', v);
                                     }
                                 }}
                                 options={PB_OPTIONS}
                                 onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
-                                wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-2' : 'relative mt-2'}
+                                wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-1' : 'relative mt-1'}
                             >
-                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {PB_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-base font-semibold text-slate-200">Proteção Incêndio (rp)</Label>
+                            <Label className="text-[11px] font-bold text-slate-400 mb-1 block uppercase tracking-wider">Proteção Incêndio (rp)</Label>
                             <Select
                                 value={String(activeZone ? (activeZone.loss_data.rp ?? (data.zones[0]?.loss_data.rp ?? 1)) : (data.zones[0]?.loss_data.rp ?? 1))}
                                 onValueChange={(val) => activeZone ? handleZoneLossUpdate(activeZone.id, 'rp', parseFloat(val)) : handleSimulatorUpdate('rp', parseFloat(val))}
                                 options={RP_OPTIONS}
                                 onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
-                                wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-2' : 'relative mt-2'}
+                                wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-1' : 'relative mt-1'}
                             >
-                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs px-2"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
-                            <Label className="text-base font-semibold text-slate-200">Proteção contra Surtos (MPS)</Label>
+                            <Label className="text-[11px] font-bold text-slate-400 mb-1 block uppercase tracking-wider">PEB - Prot. Surto Cond. D1/D2</Label>
                             <Select
                                 value={String(activeZone ? (activeZone.probability_data?.PSPD_electric ?? data.probability_data.PSPD_electric) : data.probability_data.PSPD_electric)}
                                 onValueChange={(val) => {
@@ -456,19 +455,25 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         const newZones = data.zones.map(z => {
                                             if (z.id !== activeZone.id) return z;
                                             const baseProb = (z.probability_data || data.probability_data);
-                                            // Atualiza PSPD_electric e sincroniza PSPD_data
-                                            return { ...z, probability_data: { ...baseProb, PSPD_electric: v, PSPD_data: v } };
+                                            return { ...z, probability_data: { ...baseProb, PSPD_electric: v, PSPD_data: v, PEB_electric: v, PEB_data: v } };
                                         });
                                         onUpdate({ zones: newZones });
                                     } else {
-                                        handleSimulatorUpdate('PSPD_electric', v);
+                                        // Update state with unified values for all related PEB/PSPD fields
+                                        onUpdate({ 
+                                            probability_data: { 
+                                                ...data.probability_data, 
+                                                PSPD_electric: v, PSPD_data: v, 
+                                                PEB_electric: v, PEB_data: v 
+                                            } 
+                                        });
                                     }
                                 }}
                                 options={PSPD_OPTIONS}
                                 onOpenChange={(open) => setOpenSelect(open ? 'pspd' : null)}
-                                wrapperClassName={openSelect === 'pspd' ? 'relative z-20 mt-2' : 'relative mt-2'}
+                                wrapperClassName={openSelect === 'pspd' ? 'relative z-20 mt-1' : 'relative mt-1'}
                             >
-                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-7 text-xs px-2"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {PSPD_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                 </SelectContent>
@@ -484,26 +489,27 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                             const isAcceptable = currentTotalRiskValue <= riskTolerance;
                             const formula = riskFormulas[riskKey];
                             return (
-                                <Card key={riskKey} className={`border-2 ${isAcceptable ? 'border-green-500/80' : 'border-red-500/80'} h-full`}>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center justify-between text-base">
+                                <Card key={riskKey} className={`relative overflow-hidden border-2 ${isAcceptable ? 'border-green-500/60 bg-green-950/20 shadow-[0_0_15px_-5px_rgba(34,197,94,0.2)]' : 'border-red-500/60 bg-red-950/20 shadow-[0_0_15px_-5px_rgba(239,68,68,0.2)]'} h-full transition-all duration-300 backdrop-blur-sm group`}>
+                                    <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${isAcceptable ? 'from-green-500/50 via-green-400 to-green-500/50' : 'from-red-500/50 via-red-400 to-red-500/50'} opacity-50`} />
+                                    <CardHeader className="py-2.5 px-4 border-b border-white/5 bg-slate-900/40">
+                                        <CardTitle className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
                                             {formula ? (
                                                 <FormulaTooltip formulas={{ [riskKey]: formula }} values={activeZone ? (activeZoneRisk || {}) : risk_results}>
-                                                    <span className="flex items-center gap-2">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                                    <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors">{`RT (${riskKey}) — ${activeHeading}`}</span>
                                                 </FormulaTooltip>
                                             ) : (
-                                                <span className="flex items-center gap-2">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                                <span className="flex items-center gap-2 group-hover:text-slate-200 transition-colors">{`RT (${riskKey}) — ${activeHeading}`}</span>
                                             )}
-                                            {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
+                                            {isAcceptable ? <CheckCircle className="w-5 h-5 text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> : <AlertTriangle className="w-5 h-5 text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent className="text-center p-4">
-                                        <div className="text-2xl font-bold mb-1 whitespace-nowrap ${isAcceptable ? 'text-green-400' : 'text-red-400'}">
+                                    <CardContent className="text-center py-6 px-4">
+                                        <div className={`text-3xl font-black mb-1.5 tracking-tight ${isAcceptable ? 'text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.3)]' : 'text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.3)]'}`}>
                                             <ScientificNotation value={currentTotalRiskValue} />
                                         </div>
-                                        <div className="text-[10px] text-slate-400 mb-2">Limite: <ScientificNotation value={riskTolerance} precision={2} /></div>
-                                        <div className="rounded-md py-1.5 px-3 text-xs font-semibold ${isAcceptable ? 'bg-green-950/70 text-green-200' : 'bg-red-950/70 text-red-200'}">
-                                            {isAcceptable ? 'Risco Aceitável' : 'Risco Não Aceitável'}
+                                        <div className="text-[10px] text-slate-500 font-mono mb-2">Limite: <ScientificNotation value={riskTolerance} precision={1} /></div>
+                                        <div className={`py-1 px-4 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border shadow-sm transition-all ${isAcceptable ? 'bg-green-500/10 border-green-500/30 text-green-300 shadow-green-500/10' : 'bg-red-500/10 border-red-500/30 text-red-300 shadow-red-500/10'}`}>
+                                            {isAcceptable ? 'Aceitável' : 'Não Aceitável'}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -517,9 +523,11 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                     )}
                 </div>
 
-            <Card>
-                <CardHeader><CardTitle>{`Componentes de Risco — ${activeHeading}`}</CardTitle></CardHeader>
-                <CardContent className="h-[13.5rem] pt-0">
+            <Card className="shadow-none border-slate-700/30">
+                <CardHeader className="py-2 px-4 border-b border-slate-700/20">
+                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-slate-400">{`Componentes de Risco — ${activeHeading}`}</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[16rem] pt-3 pb-2">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={activeZone ? activeZoneChart : chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#475569" />

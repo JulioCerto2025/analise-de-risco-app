@@ -350,66 +350,44 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         })();
     }, []);
 
-    // Autofill robusto: quando "clientAddress" mudar, extrai Cidade/UF e atualiza automaticamente
-    useEffect(() => {
-        const rawAddr = (data.clientAddress || '').toString().trim();
-        if (!rawAddr || rawAddr === lastProcessedAddressRef.current) return;
-        
-        lastProcessedAddressRef.current = rawAddr;
-
-        const parsed = extractCityAndUf(rawAddr);
-        if (!parsed) return;
-
-        const { city, uf } = parsed;
-        
-        (async () => {
-            // Se já estiver selecionado um UF/Cidade diferente e NÃO for a primeira carga, 
-            // talvez devêssemos perguntar, mas a solicitação é que "já preencha".
-            await commitUf(uf);
-            
-            // Tenta casar a cidade com a lista oficial para normalização
-            const cities = await getCitiesByUf(uf);
-            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[.,/]/g, ' ').trim();
-            const rawNorm = norm(city);
-            
-            let bestMatch = city;
-            for (const c of cities) {
-                const cn = norm(c);
-                if (rawNorm === cn || rawNorm.includes(cn) || cn.includes(rawNorm)) {
-                    bestMatch = c;
-                    break;
-                }
-            }
-            
-            await commitCity(bestMatch);
-        })();
-    }, [data.clientAddress]);
-
-    // Reidratação: ao retornar para a etapa, restaura UF/Cidade apenas para o estado local
+    // Sync robusto: monitora a localização global (Step 1) e atualiza os campos da Step 2
+    // Prioriza o rascunho apenas se a localização estiver vazia ou for igual à anterior
     useEffect(() => {
         const loc = (data.location || '').toString().trim();
-        if (!loc) return;
-        // Suporta formatos: "Cidade / UF", "Cidade - UF", "Cidade, UF", "Cidade UF"
-        const mSlash = loc.match(/^(.*)\s\/\s([A-Za-z]{2})$/i);
-        const mHyphen = loc.match(/^(.*)\s-\s([A-Za-z]{2})$/i);
-        const mComma = loc.match(/^(.*),\s*([A-Za-z]{2})$/i);
-        const mSpace = loc.match(/^(.*)\s([A-Za-z]{2})$/i);
-        const city = (mSlash?.[1] || mHyphen?.[1] || mComma?.[1] || mSpace?.[1] || '').trim();
-        const ufRaw = (mSlash?.[2] || mHyphen?.[2] || mComma?.[2] || mSpace?.[2] || '').trim();
-        const uf = (toUfCode(ufRaw.toUpperCase()) || ufRaw.toUpperCase());
+        if (!loc || loc === lastLocationAppliedRef.current) return;
+        
+        lastLocationAppliedRef.current = loc;
+
+        // Formatos aceitos: "Cidade - UF", "Cidade / UF", etc.
+        const parts = loc.split(/[\-\/]/).map(s => s.trim());
+        if (parts.length < 2) return;
+
+        const city = parts[0];
+        const ufRaw = parts[parts.length - 1].toUpperCase();
+        const uf = (toUfCode(ufRaw) || ufRaw);
+
         if (!city || !uf) return;
-        // Evita reidratar redundante se já estiver em memória local
-        const alreadyUf = (selectedUf || '').toUpperCase() === uf.toUpperCase();
-        const alreadyCity = (selectedCity || '').trim().toLowerCase() === city.trim().toLowerCase();
-        if (alreadyUf && alreadyCity && !!ufInput && !!cityInput) return;
+
         (async () => {
-            // Primeiro comitar a UF para carregar lista oficial de cidades
-            await commitUf(uf);
-            // pequeno atraso para garantir atualização da lista de cidades
-            await new Promise(r => setTimeout(r, 120));
-            await commitCity(city);
+            // Commit silencioso para sincronizar os inputs locais com a localização global
+            const ufs = await getUfs();
+            if (ufs.includes(uf)) {
+                setUfInput(uf);
+                setSelectedUf(uf);
+                setUfError(null);
+                const cities = await getCitiesByUf(uf);
+                setAvailableCities(cities);
+                
+                // Normalização para encontrar a cidade na lista oficial
+                const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                const matchedCity = cities.find(c => norm(c) === norm(city)) || city;
+                
+                setCityInput(matchedCity);
+                setSelectedCity(matchedCity);
+                // Posiciona o marcador visual no mapa baseado na cidade detectada
+                positionMarkerForCityUf(matchedCity, uf);
+            }
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.location]);
 
     // Reidratação de rascunhos: se houver ufDraft/cityDraft salvos, restaura nos inputs sem comitar
