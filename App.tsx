@@ -477,11 +477,11 @@ export default function App() {
     return (
         <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
             <div className="w-full flex justify-center py-2 px-1">
-                <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 pt-6 pb-6 px-4">
-                <aside className="hidden md:block h-full">
-                    <div className="sticky top-6 w-full flex flex-col gap-4 pb-4 h-full">
+                <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 items-start pt-6 pb-6 px-4">
+                <aside className="hidden md:block">
+                    <div className="sticky top-6 w-full flex flex-col gap-4 pb-4">
                         <SidebarNav currentStep={currentStep} setStep={setStep}/>
-                        <div className="flex items-center gap-3 mt-auto pt-4 border-t border-slate-700/30">
+                        <div className="flex items-center gap-3 pt-4 border-t border-slate-700/30">
                             <Button
                                 variant="outline"
                                 onClick={handlePrev}
