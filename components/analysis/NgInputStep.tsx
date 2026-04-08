@@ -85,8 +85,8 @@ const mapPixelBounds: { [key: string]: { x1: number; y1: number; x2: number; y2:
 // Esses valores foram estimados para as imagens atuais e evitam usar o contorno colorido irregular.
 const mapPixelBoundsPercent: { [key: string]: { left: number; top: number; right: number; bottom: number } } = {
   // Brasil (AQcWBhv.png): recorte da área da grade cartográfica, exclui margens e legenda
-  // Ajuste fino: reduz ligeiramente margem direita e superior para alinhar lon/lat
-  'brasil': { left: 0.120, top: 0.070, right: 0.952, bottom: 0.900 },
+  // Ajuste fino: amplia margens laterais para não cortar o litoral (Nordeste/Norte)
+  'brasil': { left: 0.110, top: 0.050, right: 0.965, bottom: 0.920 },
   // Sudeste (imagem atual WMhsjys.jpeg): margem esquerda/topo pequena, base com legenda
   // Ajuste fino: se necessário, podemos refinar após inspeção visual
   // Ajuste fino para alinhar ao retângulo da grade impresso
@@ -259,7 +259,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             const y1 = Math.round(dims.height * perc.top);
             const x2 = Math.round(dims.width * perc.right);
             const y2 = Math.round(dims.height * perc.bottom);
-            if (!imageDims) setImageDims(dims);
             return { x1, y1, x2, y2 };
         }
         const auto = ref?.getContentBounds();
@@ -267,7 +266,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         const calibrated = mapPixelBounds[region];
         if (calibrated) return calibrated;
         if (dims) {
-            if (!imageDims) setImageDims(dims);
             return { x1: 0, y1: 0, x2: dims.width, y2: dims.height };
         }
         return null;
@@ -275,16 +273,17 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     // Efeito para posicionar o marcador inicial se houver coordenadas salvas
     useEffect(() => {
-        if (data.lat && data.lon && !markerPoint && mapViewerRef.current) {
-            const region = mapRegion || 'brasil';
-            const geoBounds = mapBounds[region];
-            const pixelBounds = getDynamicPixelBounds(region);
-            if (geoBounds && pixelBounds) {
-                const px = convertGeoToPixel(data.lat, data.lon, geoBounds, pixelBounds);
-                if (px) setMarkerPoint(px);
+        const region = mapRegion || 'brasil';
+        const geoBounds = mapBounds[region];
+        const pixelBounds = getDynamicPixelBounds(region);
+
+        if (data.lat && data.lon && geoBounds && pixelBounds) {
+            const px = convertGeoToPixel(data.lat, data.lon, geoBounds, pixelBounds);
+            if (px && (!markerPoint || Math.abs(px.x - markerPoint.x) > 1 || Math.abs(px.y - markerPoint.y) > 1)) {
+                 setMarkerPoint(px);
             }
         }
-    }, [data.lat, data.lon, mapRegion, getDynamicPixelBounds]);
+    }, [data.lat, data.lon, mapRegion, getDynamicPixelBounds, imageDims, markerPoint]);
 
     // Efeito unificado para busca de coordenadas (reativo a drafts e seleções oficiais)
     useEffect(() => {
@@ -341,9 +340,9 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)` : ngColorHex;
     }, [ngColorHex]);
     
-    // Inicialização: fixa região em 'brasil' e carrega UFs (sem autofill)
+    // Inicialização: carrega UFs (preserva região se já existir)
     useEffect(() => {
-        onUpdate({ mapRegion: 'brasil' });
+        if (!mapRegion) onUpdate({ mapRegion: 'brasil' });
         (async () => {
             const ufs = await getUfs();
             setAvailableUfs(ufs);
@@ -427,6 +426,11 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         try {
             const ref = mapViewerRef.current;
             if (!ref) return;
+
+            const region = mapRegion || 'brasil';
+            const geoBounds = mapBounds[region];
+            const pixelBounds = getDynamicPixelBounds(region);
+
             // Primeiro: média radial (7x7, raio 3)
             let idx = ref.getDominantPaletteIndexAtPoint(clickData.clickPoint, palette);
             // Fallback: pixel exato caso a média retorne nulo (gridline/tons neutros)
@@ -434,32 +438,43 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 idx = ref.getPaletteIndexAtPoint(clickData.clickPoint, palette);
             }
             setLegendHighlightIndex(typeof idx === 'number' && idx >= 0 ? idx : null);
-            // Associação direta: ponto clicado define o Ng (2..32)
+            
+            // Novos dados para atualização
+            const updates: any = {};
+
+            // 1. Atualização do Ng (2..32)
             if (typeof idx === 'number' && idx >= 0) {
-                const ngDetected = (idx * 2) + 2;
-                onUpdate({ ng: ngDetected });
+                updates.ng = (idx * 2) + 2;
+            }
+
+            // 2. IMPORTANTE: Atualização de Coordenadas (evita snap-back)
+            if (geoBounds && pixelBounds) {
+                const geo = convertPixelToGeo(clickData.clickPoint.x, clickData.clickPoint.y, geoBounds, pixelBounds);
+                if (geo) {
+                    updates.lat = geo.lat;
+                    updates.lon = geo.lon;
+                }
+            }
+
+            if (Object.keys(updates).length > 0) {
+                onUpdate(updates);
             }
         } catch (_) {
             setLegendHighlightIndex(null);
         }
-    }, []);
+    }, [mapRegion, getDynamicPixelBounds, palette]);
 
     // Removido: handler com geocodificação reversa e coordenadas
 
     
 
     // Atualiza dimensões da imagem sempre que a região do mapa muda
+    // (Opcional, pois onImageLoad já trata o carregamento inicial e trocas)
     useEffect(() => {
         const ref = mapViewerRef.current;
         if (!ref) return;
-        // tentar imediatamente e com pequeno atraso para garantir que canvas foi desenhado
         const dimsNow = ref.getImageDimensions();
         if (dimsNow) setImageDims(dimsNow);
-        const t = setTimeout(() => {
-            const dimsLater = ref.getImageDimensions();
-            if (dimsLater) setImageDims(dimsLater);
-        }, 300);
-        return () => clearTimeout(t);
     }, [mapRegion]);
 
     // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
@@ -642,7 +657,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     useEffect(() => {
         // Auto-commit desativado
         return;
-        const norm = (s: string) => s.normalize('NFD').replace(/[ -\u036f]/g, '').toLowerCase();
+        const norm = (s: string) => s.normalize('NFD').replace(/[ -\u036f]/g, '').toLowerCase();
         const city = (cityInput || '').trim();
         if (!selectedUf || !city) return;
         const match = availableCities.find(c => norm(c) === norm(city));
@@ -842,10 +857,14 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                         )}
                         <React.Suspense fallback={<div className="h-[450px] w-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>
                             <MapViewerLazy
+                                key={mapRegion}
                                 ref={mapViewerRef}
                                 imageUrl={mapUrls[mapRegion] || mapUrls['brasil']}
                                 onMapClick={handleMapClick}
                                 markerPoint={markerPoint}
+                                initialTransform={data.map_transform}
+                                onTransformChange={(t) => onUpdate({ map_transform: t })}
+                                onImageLoad={(dims) => setImageDims(dims)}
                             />
                         </React.Suspense>
                     </CardContent>

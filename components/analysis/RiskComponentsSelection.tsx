@@ -1,7 +1,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Checkbox, Label } from '../ui';
-import { PlusCircle, XCircle } from 'lucide-react';
+import { 
+    CheckCircle2, 
+    ShieldAlert, 
+    HardHat, 
+    Home,
+    Building2
+} from 'lucide-react';
 import { AnalysisData } from '../../types';
+import { motion } from 'framer-motion';
 
 interface RiskComponentsSelectionProps {
     data: AnalysisData;
@@ -14,7 +21,6 @@ const riskTypeOptions = [
     { value: 'R4', label: 'R4 - Valor econômico' },
 ];
 
-// Re-introducing all components as per the user's image
 const sourceOfDamageComponents = {
     S1: [
         { key: 'RA', label: 'RA - Choque' },
@@ -34,20 +40,12 @@ const sourceOfDamageComponents = {
     ],
 };
 
-const sourceOfDamageTitles = {
-    S1: "S1- Raio na Estrutura",
-    S2: "S2 - Raio Próx. Estrut.",
-    S3: "S3 - Raio na Linha",
-    S4: "S4 - Raio Próx. Linha",
-};
-
 const PHYSICAL_DAMAGE_COMPONENTS = ['RB', 'RV'];
 const SYSTEM_FAILURE_COMPONENTS = ['RC', 'RM', 'RW', 'RZ'];
 const ELECTRICAL_SHOCK_COMPONENTS = ['RA', 'RU'];
 
-
 export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelectionProps) {
-    const { selected_risk_components, risks_to_analyze, zones } = data;
+    const { selected_risk_components, risks_to_analyze, robust_infrastructure } = data;
 
     const handleToggle = (component: keyof typeof selected_risk_components) => {
         onChange({
@@ -67,199 +65,227 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
         });
     };
 
-    // This function will now toggle all system failure components
-    const handleCriticalSystemsToggle = (checked: boolean) => {
+    const handleCriticalSystemsToggle = () => {
+        const areCriticalsSelected = selected_risk_components.RC && selected_risk_components.RM && selected_risk_components.RW && selected_risk_components.RZ;
+        const targetValue = !areCriticalsSelected;
+        
         onChange({
             selected_risk_components: {
                 ...selected_risk_components,
-                RC: checked,
-                RM: checked,
-                RW: checked,
-                RZ: checked,
+                RC: targetValue,
+                RM: targetValue,
+                RW: targetValue,
+                RZ: targetValue,
             }
         });
     };
 
-    // Card de Zonas reposicionado para RiskResultsStep
-
-
-    // Check if all system failure components are selected
     const areCriticalsSelected = selected_risk_components.RC && selected_risk_components.RM && selected_risk_components.RW && selected_risk_components.RZ;
 
     return (
         <div className="grid grid-cols-1 gap-6 items-start">
             <div className="flex flex-col gap-6">
+                {/* TIPO DE CONSTRUÇÃO E FALHA DE SISTEMAS - AGORA NO TOPO */}
+                <Card className="w-full">
+                    <CardContent className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            {/* Coluna 1: Tipo de Construção */}
+                            <div className={`bg-slate-950/60 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-2xl backdrop-blur-xl group hover:border-emerald-500/30 transition-all duration-300 h-full`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2.5 rounded-xl transition-all duration-300 ${robust_infrastructure ? 'bg-emerald-500/20 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-slate-900/50 text-slate-400'}`}>
+                                        {robust_infrastructure ? <Building2 className="w-6 h-6" /> : <Home className="w-6 h-6" />}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white leading-none mb-1.5">Tipo de Construção</h4>
+                                        <p className="text-[9px] text-slate-300 uppercase font-black tracking-widest opacity-80">
+                                            {robust_infrastructure ? 'Robusta (rs = 1)' : 'Simples (rs = 2)'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => {
+                                            const nextRobust = !robust_infrastructure;
+                                            onChange({ 
+                                                robust_infrastructure: nextRobust,
+                                                rs: nextRobust ? 1 : 2
+                                            });
+                                        }}
+                                        className={`relative w-12 h-6.5 rounded-full transition-all duration-500 p-1 flex items-center ${
+                                            robust_infrastructure ? 'bg-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-slate-800 border border-white/10'
+                                        }`}
+                                    >
+                                        <motion.div
+                                            animate={{ x: robust_infrastructure ? 22 : 0 }}
+                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                            className={`w-4.5 h-4.5 rounded-full bg-white shadow-xl flex items-center justify-center`}
+                                        >
+                                            {robust_infrastructure && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                                        </motion.div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Coluna 2: Falha de Sistemas */}
+                            <div className={`bg-slate-950/60 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-2xl backdrop-blur-xl group hover:border-red-500/30 transition-all duration-300 h-full`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2.5 rounded-xl transition-all duration-300 ${areCriticalsSelected ? 'bg-red-500/20 text-red-300 shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'bg-slate-900 text-slate-500'}`}>
+                                        {areCriticalsSelected ? <ShieldAlert className="w-6 h-6 animate-pulse" /> : <HardHat className="w-6 h-6" />}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white leading-none mb-1.5">
+                                            Falha de Sistemas
+                                        </h4>
+                                        <p className="text-[9px] text-slate-300 uppercase font-black tracking-widest opacity-80 leading-tight pr-4">
+                                            {areCriticalsSelected 
+                                                ? 'Colocam a vida em risco' 
+                                                : <><span className="text-blue-400 font-black">NÃO</span> colocam a vida em risco</>}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={handleCriticalSystemsToggle}
+                                        className={`relative w-12 h-6.5 rounded-full transition-all duration-500 p-1 flex items-center ${
+                                            areCriticalsSelected ? 'bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-slate-800 border border-white/10'
+                                        }`}
+                                    >
+                                        <motion.div
+                                            animate={{ x: areCriticalsSelected ? 22 : 0 }}
+                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                            className={`w-4.5 h-4.5 rounded-full bg-white shadow-xl flex items-center justify-center`}
+                                        >
+                                            {areCriticalsSelected && <CheckCircle2 className="w-3 h-3 text-red-600" />}
+                                        </motion.div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* RISCO DE PERDA A SER CALCULADO - AGORA ABAIXO */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Risco de Perda a ser Calculado</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {riskTypeOptions.map(opt => (
-                            <div key={opt.value} className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-600 hover:bg-slate-700/60 transition-colors w-full">
+                            <div key={opt.value} className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 rounded-xl border border-slate-600 hover:bg-slate-700/60 transition-all w-full cursor-pointer group" onClick={() => handleRiskTypeChange(opt.value as keyof typeof risks_to_analyze, !risks_to_analyze[opt.value as keyof typeof risks_to_analyze])}>
                                 <Checkbox
                                     id={opt.value}
                                     checked={risks_to_analyze[opt.value as keyof typeof risks_to_analyze]}
                                     onCheckedChange={(checked) => handleRiskTypeChange(opt.value as keyof typeof risks_to_analyze, !!checked)}
                                 />
-                                <Label htmlFor={opt.value} className="cursor-pointer text-slate-200 text-base whitespace-nowrap">{opt.label}</Label>
+                                <Label htmlFor={opt.value} className="cursor-pointer text-slate-200 text-sm font-bold uppercase tracking-widest group-hover:text-white transition-colors">{opt.label}</Label>
                             </div>
                         ))}
                     </CardContent>
                 </Card>
-
-                {risks_to_analyze.R1 && (
-                    <Card className="w-fit">
-                        <CardContent className="p-4">
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="critical_systems"
-                                    checked={areCriticalsSelected}
-                                    onCheckedChange={handleCriticalSystemsToggle}
-                                />
-                                <Label htmlFor="critical_systems" className="cursor-pointer font-medium text-slate-200 text-xs">
-                                    Perigo à vida por falha de sistema ou equipamento vital?
-                                </Label>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Zonas movido para Etapa 4 */}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                {/** Card combinado: S1 + S2 (Estrutura) */}
                 <Card className="h-fit w-full lg:order-1 hidden sm:block">
                     <CardHeader>
-                        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-200">S1/S2 - Estrutura</CardTitle>
+                        <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">S1/S2 - Descargas na Estrutura</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2">
-                        {/* Wrapper com barra contínua */}
-                        <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-0 items-start">
-                            {/* Cabeçalho esquerdo (S1) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pr-4">
-                                <span className="px-2 py-0.5 rounded bg-slate-700/60">S1</span>
-                                <span>Descarga Atm. Direta</span>
-                            </div>
-                            {/* Cabeçalho direito (S2) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pl-4">
-                                <span className="px-2 py-0.5 rounded bg-slate-700/60">S2</span>
-                                <span>Desc. Atm. Próxima</span>
-                            </div>
-                            {/* Lista esquerda (S1) */}
-                            <div className="sm:col-span-1 space-y-2 sm:pr-4">
+                    <CardContent className="space-y-4">
+                        <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                            <div className="sm:col-span-1 space-y-2 sm:pr-4 border-r border-white/5">
+                                <div className="text-[10px] font-black text-slate-200 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-white">S1</span>
+                                    <span>Incidência Direta</span>
+                                </div>
                                 {sourceOfDamageComponents.S1.map(({ key, label }) => {
                                     const isSystemFailure = SYSTEM_FAILURE_COMPONENTS.includes(key);
                                     const isPhysicalDamage = PHYSICAL_DAMAGE_COMPONENTS.includes(key);
                                     const isElectricalShock = ELECTRICAL_SHOCK_COMPONENTS.includes(key);
-                                    const baseClasses = "flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border transition-colors w-full";
-                                    let colorClasses = "bg-slate-800/50 border-slate-600 hover:bg-slate-700/60";
-                                    if (isSystemFailure) colorClasses = "bg-emerald-950/60 border-emerald-700/60 hover:bg-emerald-900/70";
-                                    else if (isPhysicalDamage) colorClasses = "bg-red-950/60 border-red-700/60 hover:bg-red-900/70";
-                                    else if (isElectricalShock) colorClasses = "bg-blue-950/60 border-blue-700/60 hover:bg-blue-900/70";
+                                    const baseClasses = "flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all w-full cursor-pointer group";
+                                    let colorClasses = "bg-slate-950/60 border-slate-700/50 hover:bg-slate-900/90";
+                                    if (isSystemFailure) colorClasses = "bg-emerald-950/60 border-emerald-900/40 hover:bg-emerald-900/60";
+                                    else if (isPhysicalDamage) colorClasses = "bg-red-950/60 border-red-900/40 hover:bg-red-900/60";
+                                    else if (isElectricalShock) colorClasses = "bg-blue-950/60 border-blue-900/40 hover:bg-blue-900/60";
+                                    
                                     return (
-                                        <div key={key}>
-                                            <div className={`${baseClasses} ${colorClasses}`}>
-                                                <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
-                                                <Label htmlFor={key} className="cursor-pointer flex-1 text-xs md:text-sm text-slate-200 whitespace-nowrap">{label}</Label>
-                                            </div>
+                                        <div key={key} className={`${baseClasses} ${colorClasses}`} onClick={() => handleToggle(key as keyof typeof selected_risk_components)}>
+                                            <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
+                                            <Label htmlFor={key} className="cursor-pointer flex-1 text-[11px] font-bold text-slate-300 uppercase tracking-wider group-hover:text-white">{label}</Label>
                                         </div>
                                     );
                                 })}
                             </div>
-                            {/* Lista direita (S2) */}
                             <div className="sm:col-span-1 sm:pl-4">
-                                <div className="grid grid-rows-3 gap-2">
+                                <div className="text-[10px] font-black text-slate-200 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-white">S2</span>
+                                    <span>Incidência Próxima</span>
+                                </div>
+                                <div className="space-y-2">
                                     {sourceOfDamageComponents.S2.map(({ key, label }) => {
                                         const isSystemFailure = SYSTEM_FAILURE_COMPONENTS.includes(key);
-                                        const isPhysicalDamage = PHYSICAL_DAMAGE_COMPONENTS.includes(key);
-                                        const isElectricalShock = ELECTRICAL_SHOCK_COMPONENTS.includes(key);
-                                        const baseClasses = "flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border transition-colors w-full";
-                                        let colorClasses = "bg-slate-800/50 border-slate-600 hover:bg-slate-700/60";
-                                        if (isSystemFailure) colorClasses = "bg-emerald-950/60 border-emerald-700/60 hover:bg-emerald-900/70";
-                                        else if (isPhysicalDamage) colorClasses = "bg-red-950/60 border-red-700/60 hover:bg-red-900/70";
-                                        else if (isElectricalShock) colorClasses = "bg-blue-950/60 border-blue-700/60 hover:bg-blue-900/70";
+                                        const baseClasses = "flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all w-full cursor-pointer group";
+                                        let colorClasses = isSystemFailure ? "bg-emerald-950/60 border-emerald-900/40 hover:bg-emerald-900/60" : "bg-slate-950/60 border-slate-700/50 hover:bg-slate-900/90";
                                         return (
-                                            <div key={key} className="row-start-3">
-                                                <div className={`${baseClasses} ${colorClasses}`}>
-                                                    <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
-                                                    <Label htmlFor={key} className="cursor-pointer flex-1 text-xs md:text-sm text-slate-200 whitespace-nowrap">{label}</Label>
-                                                </div>
+                                            <div key={key} className={`${baseClasses} ${colorClasses}`} onClick={() => handleToggle(key as keyof typeof selected_risk_components)}>
+                                                <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
+                                                <Label htmlFor={key} className="cursor-pointer flex-1 text-[11px] font-bold text-slate-300 uppercase tracking-wider group-hover:text-white">{label}</Label>
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
-                            {/* Barra contínua central */}
-                            <div className="hidden sm:block absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-slate-400/80" />
                         </div>
                     </CardContent>
                 </Card>
 
-                {/** Card combinado: S3 + S4 (Linha) */}
                 <Card className="h-fit w-full lg:order-2 hidden sm:block">
                     <CardHeader>
-                        <CardTitle className="text-sm font-semibold uppercase tracking-wider text-slate-200">S3/S4 - Linha</CardTitle>
+                        <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">S3/S4 - Descargas na Linha</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2">
-                        {/* Wrapper com barra contínua */}
-                        <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-0 items-start">
-                            {/* Cabeçalho esquerdo (S3) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pr-4">
-                                <span className="px-2 py-0.5 rounded bg-slate-700/60">S3</span>
-                                <span>Descarga Atm. Direta</span>
-                            </div>
-                            {/* Cabeçalho direito (S4) */}
-                            <div className="sm:col-span-1 text-xs font-semibold text-slate-300 mb-3 hidden sm:flex items-center gap-2 sm:pl-4">
-                                <span className="px-2 py-0.5 rounded bg-slate-700/60">S4</span>
-                                <span>Desc. Atm. Próxima</span>
-                            </div>
-                            {/* Lista esquerda (S3) */}
-                            <div className="sm:col-span-1 space-y-2 sm:pr-4">
+                    <CardContent className="space-y-4">
+                        <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                            <div className="sm:col-span-1 space-y-2 sm:pr-4 border-r border-white/5">
+                                <div className="text-[10px] font-black text-slate-200 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-white">S3</span>
+                                    <span>Incidência Direta</span>
+                                </div>
                                 {sourceOfDamageComponents.S3.map(({ key, label }) => {
                                     const isSystemFailure = SYSTEM_FAILURE_COMPONENTS.includes(key);
                                     const isPhysicalDamage = PHYSICAL_DAMAGE_COMPONENTS.includes(key);
                                     const isElectricalShock = ELECTRICAL_SHOCK_COMPONENTS.includes(key);
-                                    const baseClasses = "flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border transition-colors w-full";
-                                    let colorClasses = "bg-slate-800/50 border-slate-600 hover:bg-slate-700/60";
-                                    if (isSystemFailure) colorClasses = "bg-emerald-950/60 border-emerald-700/60 hover:bg-emerald-900/70";
-                                    else if (isPhysicalDamage) colorClasses = "bg-red-950/60 border-red-700/60 hover:bg-red-900/70";
-                                    else if (isElectricalShock) colorClasses = "bg-blue-950/60 border-blue-700/60 hover:bg-blue-900/70";
+                                    const baseClasses = "flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all w-full cursor-pointer group";
+                                    let colorClasses = "bg-slate-950/60 border-slate-700/50 hover:bg-slate-900/90";
+                                    if (isSystemFailure) colorClasses = "bg-emerald-950/60 border-emerald-900/40 hover:bg-emerald-900/60";
+                                    else if (isPhysicalDamage) colorClasses = "bg-red-950/60 border-red-900/40 hover:bg-red-900/60";
+                                    else if (isElectricalShock) colorClasses = "bg-blue-950/60 border-blue-900/40 hover:bg-blue-900/60";
+                                    
                                     return (
-                                        <div key={key}>
-                                            <div className={`${baseClasses} ${colorClasses}`}>
-                                                <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
-                                                <Label htmlFor={key} className="cursor-pointer flex-1 text-xs md:text-sm text-slate-200 whitespace-nowrap">{label}</Label>
-                                            </div>
+                                        <div key={key} className={`${baseClasses} ${colorClasses}`} onClick={() => handleToggle(key as keyof typeof selected_risk_components)}>
+                                            <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
+                                            <Label htmlFor={key} className="cursor-pointer flex-1 text-[11px] font-bold text-slate-300 uppercase tracking-wider group-hover:text-white">{label}</Label>
                                         </div>
                                     );
                                 })}
                             </div>
-                            {/* Lista direita (S4) */}
                             <div className="sm:col-span-1 sm:pl-4">
-                                <div className="grid grid-rows-3 gap-2">
+                                <div className="text-[10px] font-black text-slate-200 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-white">S4</span>
+                                    <span>Incidência Próxima</span>
+                                </div>
+                                <div className="space-y-2">
                                     {sourceOfDamageComponents.S4.map(({ key, label }) => {
                                         const isSystemFailure = SYSTEM_FAILURE_COMPONENTS.includes(key);
-                                        const isPhysicalDamage = PHYSICAL_DAMAGE_COMPONENTS.includes(key);
-                                        const isElectricalShock = ELECTRICAL_SHOCK_COMPONENTS.includes(key);
-                                        const baseClasses = "flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg border transition-colors w-full";
-                                        let colorClasses = "bg-slate-800/50 border-slate-600 hover:bg-slate-700/60";
-                                        if (isSystemFailure) colorClasses = "bg-emerald-950/60 border-emerald-700/60 hover:bg-emerald-900/70";
-                                        else if (isPhysicalDamage) colorClasses = "bg-red-950/60 border-red-700/60 hover:bg-red-900/70";
-                                        else if (isElectricalShock) colorClasses = "bg-blue-950/60 border-blue-700/60 hover:bg-blue-900/70";
+                                        const baseClasses = "flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all w-full cursor-pointer group";
+                                        let colorClasses = isSystemFailure ? "bg-emerald-950/60 border-emerald-900/40 hover:bg-emerald-900/60" : "bg-slate-950/60 border-slate-700/50 hover:bg-slate-900/90";
                                         return (
-                                            <div key={key} className="row-start-3">
-                                                <div className={`${baseClasses} ${colorClasses}`}>
-                                                    <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
-                                                    <Label htmlFor={key} className="cursor-pointer flex-1 text-xs md:text-sm text-slate-200 whitespace-nowrap">{label}</Label>
-                                                </div>
+                                            <div key={key} className={`${baseClasses} ${colorClasses}`} onClick={() => handleToggle(key as keyof typeof selected_risk_components)}>
+                                                <Checkbox id={key} checked={selected_risk_components[key as keyof typeof selected_risk_components]} onCheckedChange={() => handleToggle(key as keyof typeof selected_risk_components)} />
+                                                <Label htmlFor={key} className="cursor-pointer flex-1 text-[11px] font-bold text-slate-300 uppercase tracking-wider group-hover:text-white">{label}</Label>
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
-                            {/* Barra contínua central */}
-                            <div className="hidden sm:block absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-slate-400/80" />
                         </div>
                     </CardContent>
                 </Card>

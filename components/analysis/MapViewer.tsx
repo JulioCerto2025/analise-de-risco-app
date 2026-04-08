@@ -25,6 +25,9 @@ interface MapViewerProps {
     imageUrl: string;
     onMapClick: (clickData: MapClickData) => void;
     markerPoint: { x: number; y: number } | null;
+    initialTransform?: { scale: number; x: number; y: number };
+    onTransformChange?: (t: { scale: number; x: number; y: number }) => void;
+    onImageLoad?: (dims: { width: number; height: number }) => void;
 }
 
 
@@ -35,9 +38,24 @@ type DetectionConfig = {
     centerWeightExp: number; // exponent to strengthen center weighting in radial sampling
 };
 
-export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUrl, onMapClick, markerPoint }, ref) => {
-    const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
+export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUrl, onMapClick, markerPoint, initialTransform, onTransformChange, onImageLoad }, ref) => {
+    const [transform, setTransform] = useState(initialTransform || { scale: 1, x: 0, y: 0 });
     
+    const lastTransformRef = useRef(transform);
+    lastTransformRef.current = transform;
+
+    useEffect(() => {
+        if (!onTransformChange) return;
+        const timer = setTimeout(() => {
+            onTransformChange(transform);
+        }, 300);
+        return () => {
+            clearTimeout(timer);
+            // Salva imediatamente ao desmontar para garantir persistência na navegação rápida
+            onTransformChange(lastTransformRef.current);
+        };
+    }, [transform, onTransformChange]);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
@@ -58,9 +76,9 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                 canvas.width = img.width;
                 canvas.height = img.height;
                 context.drawImage(img, 0, 0);
+                if (onImageLoad) onImageLoad({ width: img.width, height: img.height });
             }
         };
-        handleReset();
     }, [imageUrl]);
 
     const handleZoom = (zoomFactor: number, centerX?: number, centerY?: number) => {
@@ -309,24 +327,38 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
             if ((ref as any).isContentPixel(point)) return { x: Math.round(point.x), y: Math.round(point.y) };
             const { width, height } = canvas;
             const ignoreBottom = Math.floor(height * 0.15);
-            const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+            
+            // Otimização: Ler uma única vez a área de busca ao invés de milhares de requisições individuais
+            const startX = Math.max(0, Math.round(point.x - maxRadius));
+            const startY = Math.max(0, Math.round(point.y - maxRadius));
+            const endX = Math.min(width - 1, Math.round(point.x + maxRadius));
+            const endY = Math.min(height - ignoreBottom - 1, Math.round(point.y + maxRadius));
+            const scanW = endX - startX + 1;
+            const scanH = endY - startY + 1;
+            if (scanW <= 0 || scanH <= 0) return null;
+
+            let imageData: ImageData;
+            try {
+                imageData = context.getImageData(startX, startY, scanW, scanH);
+            } catch { return null; }
+            const data = imageData.data;
+
+            const isPointValid = (lx: number, ly: number) => {
+                const i = (ly * scanW + lx) * 4;
+                const r = data[i], g = data[i + 1], b = data[i + 2];
+                const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                const s = max === 0 ? 0 : (max - min) / max;
+                const v = max / 255;
+                return v > 0.25 && s > 0.1; // Limiar de saturação relaxado
+            };
+
             for (let r = 1; r <= maxRadius; r++) {
-                for (let a = 0; a < 360; a += 6) {
+                for (let a = 0; a < 360; a += 10) {
                     const rad = (a * Math.PI) / 180;
-                    const x = clamp(Math.round(point.x + Math.cos(rad) * r), 0, width - 1);
-                    const y = clamp(Math.round(point.y + Math.sin(rad) * r), 0, height - ignoreBottom - 1);
-                    let p: Uint8ClampedArray;
-                    try {
-                        p = context.getImageData(x, y, 1, 1).data;
-                    } catch {
-                        continue;
-                    }
-                    const r1 = p[0], g1 = p[1], b1 = p[2];
-                    const maxRGB = Math.max(r1, g1, b1), minRGB = Math.min(r1, g1, b1);
-                    const saturationApprox = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
-                    const valueApprox = maxRGB / 255;
-                    if (valueApprox > 0.25 && saturationApprox > 0.25) {
-                        return { x, y };
+                    const rx = Math.round(point.x + Math.cos(rad) * r);
+                    const ry = Math.round(point.y + Math.sin(rad) * r);
+                    if (rx >= startX && rx <= endX && ry >= startY && ry <= endY) {
+                        if (isPointValid(rx - startX, ry - startY)) return { x: rx, y: ry };
                     }
                 }
             }
@@ -500,6 +532,9 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
                 return BLACK_INDEX;
             }
 
+            // Se nenhum pixel válido foi encontrado (área branca ou nula), retorna null ao invés de Ng 2
+            if (totalCount === 0 || scoreSum.every(s => s === 0)) return null;
+
             // Choose palette with minimal accumulated DeltaE
             let bestIdx = 0;
             for (let k = 1; k < scoreSum.length; k++) {
@@ -600,32 +635,44 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (isPanning.current) return;
 
-        const image = imageRef.current;
         const canvas = canvasRef.current;
-        if (!image || !canvas) return;
+        if (!canvas) return;
 
-        // Map screen click to canvas pixel accounting for object-fit: contain letterboxing
-        const imageRect = image.getBoundingClientRect();
-        const xOnImage = e.clientX - imageRect.left;
-        const yOnImage = e.clientY - imageRect.top;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
 
-        const naturalW = image.naturalWidth || canvas.width;
-        const naturalH = image.naturalHeight || canvas.height;
-        const scale = Math.min(imageRect.width / naturalW, imageRect.height / naturalH);
+        // Normalização direta considerando o transform aplicado pelo framer-motion
+        // Como o origin é 0,0 e o motion.div cobre o container, a destransformação é linear
+        const untransformedX = (mouseX / transform.scale);
+        const untransformedY = (mouseY / transform.scale);
+
+        // Agora calculamos os offsets do object-contain 'virtual' dentro do div original
+        const containerW = rect.width / transform.scale;
+        const containerH = rect.height / transform.scale;
+        const naturalW = canvas.width;
+        const naturalH = canvas.height;
+        
+        const scale = Math.min(containerW / naturalW, containerH / naturalH);
         const displayedW = naturalW * scale;
         const displayedH = naturalH * scale;
-        const offsetX = (imageRect.width - displayedW) / 2;
-        const offsetY = (imageRect.height - displayedH) / 2;
+        const offsetX = (containerW - displayedW) / 2;
+        const offsetY = (containerH - displayedH) / 2;
 
-        const xInContent = xOnImage - offsetX;
-        const yInContent = yOnImage - offsetY;
+        const xInContent = untransformedX - offsetX;
+        const yInContent = untransformedY - offsetY;
+
+        // Verifica se o clique caiu dentro da área real da imagem (ignorando letterbox)
         if (xInContent < 0 || xInContent > displayedW || yInContent < 0 || yInContent > displayedH) return;
 
         const canvasX = Math.round((xInContent / displayedW) * canvas.width);
         const canvasY = Math.round((yInContent / displayedH) * canvas.height);
-        if (canvasX < 0 || canvasX >= canvas.width || canvasY < 0 || canvasY >= canvas.height) return;
 
-        onMapClick({ clickPoint: { x: canvasX, y: canvasY } });
+        // Clamp final para garantir que o pixel está dentro do canvas
+        const finalX = Math.max(0, Math.min(canvas.width - 1, canvasX));
+        const finalY = Math.max(0, Math.min(canvas.height - 1, canvasY));
+
+        onMapClick({ clickPoint: { x: finalX, y: finalY } });
     };
     
     const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {

@@ -19,11 +19,13 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     };
     const { bg, text } = colorClasses[color] || colorClasses.blue;
 
+    const displayValue = formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 });
+    
     const content = (
-        <div className={`p-3 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
-            <div className={`font-bold text-xl md:text-2xl ${text}`}>{formatSmartNumber(value, { maxDecimals: 2 })}</div>
-            <div className={`font-semibold text-[10px] text-slate-200 mt-0.5 flex items-center justify-center gap-1`}>
-                {label} <span>({unit})</span>
+        <div className={`w-full p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
+            <div className={`font-black text-xl md:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
+            <div className="font-black text-[9px] uppercase tracking-[0.2em] text-slate-400 mt-1 flex items-center justify-center gap-1 leading-none mr-[-0.2em]">
+                {label} <span className="opacity-60">({unit})</span>
             </div>
         </div>
     );
@@ -39,7 +41,7 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
 
     if (Object.keys(formulasObj).length > 0) {
         return (
-            <FormulaTooltip formulas={formulasObj} values={valuesObj}>
+            <FormulaTooltip formulas={formulasObj} values={valuesObj} className="w-full block" triggerClassName="w-full cursor-default block">
                 {content}
             </FormulaTooltip>
         );
@@ -116,7 +118,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <div className="flex flex-col gap-4">
             <Card>
-                <CardHeader className="py-3">
+                <CardHeader className="py-2">
                     <CardTitle className="flex items-start gap-3">
                         <Building className="w-5 h-5 text-slate-100" />
                         <div className="leading-tight">
@@ -127,61 +129,77 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-1">
-                    <div className="space-y-1">
-                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Dimensões da Estrutura</span>
-                        <div className="grid grid-cols-2 gap-2 mt-0.5 p-2.5 rounded-lg bg-blue-950/30 border border-slate-700">
-                            <DimensionInput icon="L" label="Comprimento" id="l" value={data.l} onUpdate={val => onUpdate({ l: val })} color="blue" />
-                            <DimensionInput icon="W" label="Largura" id="w" value={data.w} onUpdate={val => onUpdate({ w: val })} color="green" />
-                            <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
-                            <DimensionInput icon="Hp" label="Altura de Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" tooltipText="Refere-se a caixas d'água, chaminés ou torres. IMPORTANTE: Meça sempre do nível do solo (chão) até o topo da estrutura, mesmo que ela esteja sobre o telhado ou na lateral da edificação. Insira o valor total acumulado do chão ao topo." />
+                        <div className="mx-auto max-w-sm space-y-2">
+                            <span className="block text-center px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-xs tracking-wider uppercase">Dimensões da Estrutura</span>
+                            <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-blue-950/30 border border-slate-700/50">
+                                <DimensionInput icon="L" label="Comprimento" id="l" value={data.l} onUpdate={val => onUpdate({ l: val })} color="blue" />
+                                <DimensionInput icon="W" label="Largura" id="w" value={data.w} onUpdate={val => onUpdate({ w: val })} color="green" />
+                                <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
+                                <DimensionInput icon="Hp" label="Altura Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" tooltipText="Refere-se a caixas d'água, chaminés ou torres. IMPORTANTE: Meça sempre do nível do solo (chão) até o topo da estrutura, mesmo que ela esteja sobre o telhado ou na lateral da edificação. Insira o valor total acumulado do chão ao topo." />
+                            </div>
                         </div>
-                    </div>
-                    <div className="hidden sm:block space-y-1">
-                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold">Resultados da Área de Exposição</span>
-                        <div className="grid grid-cols-2 gap-2 mt-0.5 p-2 rounded-lg bg-slate-900/40 border border-slate-700">
-                            <ResultBox 
-                                label={<span>A<sub>df</sub></span>} 
-                                value={adf} unit="m² (max)" color="blue" 
-                                formula="max(Ad, Adp)" formulaKey="Adf" 
-                                formulaValues={{ Ad: ad, Adp: adp }}
-                                extraFormulas={{
-                                    Ad: "L×W+2(3×H)(L+W)+π(3×H)²",
-                                    "Ad'": "π(3×Hp)²",
-                                }}
-                                extraValues={{
-                                    L: data.l, W: data.w, H: data.h, Hp: data.hp,
-                                    Ad: ad, Adp: adp, Adf: adf,
-                                }}
-                            />
-                            <ResultBox 
-                                label={<span>A<sub>m</sub></span>} 
-                                value={am} unit="m²" color="green" 
-                                formula="2×500(L+W)+π(500)²" formulaKey="Am" formulaValues={{ L: data.l, W: data.w }}
-                            />
-                        </div>
-                    </div>
-                    <div className="hidden sm:block space-y-1">
-                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência de Eventos (Estrutura)</span>
-                        <div className="grid grid-cols-2 gap-2 mt-0.5 p-2 rounded-lg bg-slate-900/40 border border-slate-700">
-                            <ResultBox 
-                                label={<span>N<sub>d</sub> (Estrutura)</span>} 
-                                value={nd} unit="ev/ano" color="blue" 
-                                formula="Ng × Ad × Cd × 10⁻⁶" 
-                                formulaKey="Nd"
-                                formulaValues={{ Ng: data.ng, Ad: ad, Cd: data.cd }}
-                            />
-                            <ResultBox 
-                                label={<span>N<sub>m</sub> (Estrutura)</span>} 
-                                value={nm} unit="ev/ano" color="green" 
-                                formula="Ng × Am × 10⁻⁶" 
-                                formulaKey="Nm"
-                                formulaValues={{ Ng: data.ng, Am: am }}
-                            />
+                    <div className="hidden sm:block pt-2 border-t border-slate-700/50 mt-4">
+                        <div className="grid grid-cols-2 gap-8">
+                            {/* Coluna 1: Estrutura (Adf + Nd) */}
+                            <div className="flex flex-col items-center gap-2">
+                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Expos.</span>
+                                <div className="w-[210px]">
+                                    <ResultBox 
+                                        label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>DF</sub></span></span>} 
+                                        value={adf} unit="m² (max)" color="blue" 
+                                        formula="max(Ad, Adp)" formulaKey="Adf" 
+                                        formulaValues={{ Ad: ad, Adp: adp }}
+                                        extraFormulas={{
+                                            Ad: "L×W+2(3×H)(L+W)+π(3×H)²",
+                                            "Ad'": "π(3×Hp)²",
+                                        }}
+                                        extraValues={{
+                                            L: data.l, W: data.w, H: data.h, Hp: data.hp,
+                                            Ad: ad, Adp: adp, Adf: adf,
+                                        }}
+                                    />
+                                </div>
+                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. (Estrutura)</span>
+                                <div className="w-[210px]">
+                                    <ResultBox 
+                                        label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>D</sub></span></span>} 
+                                        value={nd} unit="desc./ano" color="blue" 
+                                        formula="Ng × Ad × Cd × 10⁻⁶" 
+                                        formulaKey="Nd"
+                                        formulaValues={{ Ng: data.ng, Ad: ad, Cd: data.cd }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Coluna 2: Próximo (Am + Nm) */}
+                            <div className="flex flex-col items-center gap-2">
+                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Magnética</span>
+                                <div className="w-[210px]">
+                                    <ResultBox 
+                                        label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>M</sub></span></span>} 
+                                        value={am} unit="m²" color="green" 
+                                        formula="2×500(L+W)+π(500)²" formulaKey="Am" formulaValues={{ L: data.l, W: data.w }}
+                                    />
+                                </div>
+                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. (Próximo)</span>
+                                <div className="w-[210px]">
+                                    <ResultBox 
+                                        label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>M</sub></span></span>} 
+                                        value={nm} unit="desc./ano" color="green" 
+                                        formula="Ng × Am × 10⁻⁶" 
+                                        formulaKey="Nm"
+                                        formulaValues={{ Ng: data.ng, Am: am }}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </CardContent>
             </Card>
-            <Card className="h-fit">
+            </div>
+
+            <div className="w-full space-y-4">
+                <Card className="h-fit">
                     <CardHeader>
                         <CardTitle>CD - Fator de Localização</CardTitle>
                     </CardHeader>
@@ -194,9 +212,6 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                         </Select>
                     </CardContent>
                 </Card>
-            </div>
-
-            <div className="w-full">
                 <Card className="h-fit">
                     <CardHeader>
                         <CardTitle>Zonas de Estudo de Proteção</CardTitle>

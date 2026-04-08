@@ -26,12 +26,12 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const displayValue = formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 });
 
     const content = (
-        <div className={`p-3 rounded-lg border border-slate-700 flex flex-col items-center justify-center text-center ${bg}`}>
-            <div className={`font-bold text-xl ${text}`}>{displayValue}</div>
+        <div className={`w-full p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
+            <div className={`font-black text-xl md:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
             {!hideInfo && (
-                <div className={`font-semibold text-[10px] text-slate-200 mt-0.5 flex items-center justify-center gap-1`}>
+                <div className={`font-black text-[9px] uppercase tracking-[0.2em] text-slate-400 mt-1 flex items-center justify-center gap-1 mr-[-0.2em]`}>
                     {label}
-                    <span>({unit})</span>
+                    <span className="opacity-60">({unit})</span>
                 </div>
             )}
         </div>
@@ -39,7 +39,7 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
 
     if (formula) {
         return (
-            <FormulaTooltip formulas={formulas} values={formulaValues}>
+            <FormulaTooltip formulas={formulas} values={formulaValues} className="w-full block" triggerClassName="w-full cursor-default block">
                 {content}
             </FormulaTooltip>
         );
@@ -185,10 +185,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                     </Button>
                                                 </div>
                                             )}
-                                            <DecimalInput label="Comprimento (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_1', section.id, 'll', val)} />
-                                            <SelectField label="CI - Instalação (Tabela A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ci', val)} />
-                                            <SelectField label="CE - Ambiental (Tabela A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ce', val)} />
-                                            <SelectField label="CT - Tipo de linha (Tabela A.3)" value={section.ct} options={CT_OPTIONS_ELECTRIC} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ct', val)} />
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                                <DecimalInput label="Comp. (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_1', section.id, 'll', val)} />
+                                                <SelectField label="CI (A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ci', val)} />
+                                                <SelectField label="CE (A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ce', val)} />
+                                                <SelectField label="CT (A.3)" value={section.ct} options={CT_OPTIONS_ELECTRIC} onChange={(val) => handleSectionChange('line_sections_1', section.id, 'ct', val)} />
+                                            </div>
                                         </div>
                                     ))}
 
@@ -196,29 +198,41 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="hidden sm:block pt-1 md:pt-2 border-t border-slate-600 mt-1">
-                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Geometria da Linha</span>
-                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
-                                            <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
-                                            <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
-                                        </div>
-                                    </div>
+                                    <div className="hidden sm:block pt-4 border-t border-slate-700/50 mt-2">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {/* Coluna Energia L1: Al + NL */}
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Linha</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>L</sub></span></span>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
+                                                </div>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. Linha</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox 
+                                                        label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>L</sub></span></span>} value={nl_electric} unit="desc./ano" color="blue" 
+                                                        formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formulaKey="NL"
+                                                        formulaValues={{ Ng: data.ng, Al: al1, sections: data.line_sections_1 }}
+                                                    />
+                                                </div>
+                                            </div>
 
-                                    <div className="hidden sm:block pt-1 md:pt-2">
-                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência da Linha (Energia)</span>
-                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
-                                            <ResultBox 
-                                                label={<>N<sub>L</sub> (Energia)</>} value={nl_electric} unit="ev/ano" color="blue" 
-                                                formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
-                                                formulaKey="NL"
-                                                formulaValues={{ Ng: data.ng, Al: al1, sections: data.line_sections_1 }}
-                                            />
-                                            <ResultBox 
-                                                label={<>N<sub>I</sub> (Energia)</>} value={ni_electric} unit="ev/ano" color="green" 
-                                                formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
-                                                formulaKey="NI"
-                                                formulaValues={{ Ng: data.ng, Ai: ai1, sections: data.line_sections_1 }}
-                                            />
+                                            {/* Coluna Energia I1: Ai + NI */}
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Indução</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
+                                                </div>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Equipot. (PSPD)</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox 
+                                                        label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_electric} unit="desc./ano" color="green" 
+                                                        formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formulaKey="NI"
+                                                        formulaValues={{ Ng: data.ng, Ai: ai1, sections: data.line_sections_1 }}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -286,10 +300,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                     </Button>
                                                 </div>
                                             )}
-                                            <DecimalInput label="Comprimento (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_2', section.id, 'll', val)} />
-                                            <SelectField label="CI - Instalação (Tabela A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ci', val)} />
-                                            <SelectField label="CE - Ambiental (Tabela A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ce', val)} />
-                                            <SelectField label="CT - Tipo de linha (Tabela A.3)" value={section.ct} options={CT_OPTIONS_DATA} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ct', val)} />
+                                            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                                                <DecimalInput label="Comp. (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_2', section.id, 'll', val)} />
+                                                <SelectField label="CI (A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ci', val)} />
+                                                <SelectField label="CE (A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ce', val)} />
+                                                <SelectField label="CT (A.3)" value={section.ct} options={CT_OPTIONS_DATA} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ct', val)} />
+                                            </div>
                                         </div>
                                     ))}
 
@@ -297,29 +313,41 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="hidden sm:block pt-1 md:pt-2 border-t border-slate-600 mt-1">
-                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Geometria da Linha</span>
-                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
-                                            <ResultBox label={<>A<sub>l</sub> (Total)</>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
-                                            <ResultBox label={<>A<sub>i</sub> (Total)</>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
-                                        </div>
-                                    </div>
+                                    <div className="hidden sm:block pt-4 border-t border-slate-700/50 mt-2">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            {/* Coluna Dados L2: Al + NL */}
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Linha</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>L</sub></span></span>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
+                                                </div>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. Linha</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox 
+                                                        label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>L</sub></span></span>} value={nl_data} unit="desc./ano" color="blue" 
+                                                        formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formulaKey="NL"
+                                                        formulaValues={{ Ng: data.ng, Al: al2, sections: data.line_sections_2 }}
+                                                    />
+                                                </div>
+                                            </div>
 
-                                    <div className="hidden sm:block pt-1 md:pt-2">
-                                        <span className="inline-block px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-[10px] uppercase tracking-wider">Frequência da Linha (Dados)</span>
-                                        <div className="grid grid-cols-2 gap-1 md:gap-2 mt-1 p-1 md:p-2 rounded bg-slate-900/40 border border-slate-700">
-                                            <ResultBox 
-                                                label={<>N<sub>L</sub> (Dados)</>} value={nl_data} unit="ev/ano" color="blue" 
-                                                formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
-                                                formulaKey="NL"
-                                                formulaValues={{ Ng: data.ng, Al: al2, sections: data.line_sections_2 }}
-                                            />
-                                            <ResultBox 
-                                                label={<>N<sub>I</sub> (Dados)</>} value={ni_data} unit="ev/ano" color="green" 
-                                                formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
-                                                formulaKey="NI"
-                                                formulaValues={{ Ng: data.ng, Ai: ai2, sections: data.line_sections_2 }}
-                                            />
+                                            {/* Coluna Dados I2: Ai + NI */}
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Indução</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
+                                                </div>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Equipot. (PSPD)</span>
+                                                <div className="w-[210px]">
+                                                    <ResultBox 
+                                                        label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_data} unit="desc./ano" color="green" 
+                                                        formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formulaKey="NI"
+                                                        formulaValues={{ Ng: data.ng, Ai: ai2, sections: data.line_sections_2 }}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -362,9 +390,9 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
 const SelectField = ({ label, value, options, onChange }: { label: string; value: number; options: {value: number, label: string}[], onChange: (val: string) => void }) => (
     <div className="space-y-1">
-        <Label className="text-xs">{label}</Label>
+        <Label className="text-xs uppercase font-black text-slate-500 tracking-wider mix-blend-plus-lighter">{label}</Label>
         <Select value={String(value)} onValueChange={onChange} options={options}>
-            <SelectTrigger className="w-full sm:min-w-[260px] truncate text-left"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full truncate text-left h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent className="w-[min(90vw,640px)]">
                 {options.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
             </SelectContent>

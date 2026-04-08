@@ -32,7 +32,6 @@ const initialInputData: AnalysisInputData = {
             // R1
             nz: 120, nt: 120, tz: 6903, te: 0,
             rt: 0.001, rp: 0.2, rf: 0.001, hz: 5, 
-            rs: 1,
             LF: 0.1, LO: 0.001,
             // R3
             lf3: 0.1, cz: 1000000, ct_cultural: 1000000,
@@ -122,11 +121,15 @@ const initialInputData: AnalysisInputData = {
         Ks3_data_int: 1,
         Uw_data_int: 1.5,
     },
-    analyze_data_line_probabilities: false,
+    analyze_data_line_probabilities: true,
     analyze_electric_line_probabilities: true,
     fireRiskAiResult: null,
     fireRiskAiStatus: 'idle',
     fireRiskAiError: null,
+    audit_mode: false,
+    robust_infrastructure: true,
+    rs: 1,
+    map_transform: { scale: 1, x: 0, y: 0 },
 };
 
 export function useAnalysisData() {
@@ -272,7 +275,7 @@ export function useAnalysisData() {
     
     const zoneCalculations: ZoneCalculations[] = useMemo(() => {
         return data.zones.map(zone => {
-            const lossCalculations = calculateLossesForZone(zone);
+            const lossCalculations = calculateLossesForZone(zone, data.rs);
             const zoneBaseProbCalcs = calculateProbabilities(
                 (zone.probability_data || data.probability_data),
                 (zone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),

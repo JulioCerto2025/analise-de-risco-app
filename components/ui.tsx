@@ -4,6 +4,18 @@ import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
 import { correctText } from '../lib/geminiService';
 
+// Contexto global para controlar o Modo Auditoria/Fiscalização
+const AuditContext = createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
+    auditMode: false, 
+    setAuditMode: () => {} 
+});
+
+export const AuditProvider = ({ value, children }: { value: { auditMode: boolean; setAuditMode: (m: boolean) => void }; children: React.ReactNode }) => (
+    <AuditContext.Provider value={value}>{children}</AuditContext.Provider>
+);
+
+export const useAuditMode = () => useContext(AuditContext);
+
 // Button
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'outline';
@@ -28,13 +40,13 @@ Button.displayName = "Button";
 
 // Card
 export const Card = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col rounded-xl border bg-slate-900/60 text-slate-200 shadow-2xl border-slate-500/30 ${className}`} {...props} />
+  <div className={`flex flex-col rounded-xl border bg-slate-900/40 backdrop-blur-md text-slate-200 shadow-2xl border-slate-500/30 ${className}`} {...props} />
 ));
 export const CardHeader = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={`flex flex-col space-y-1 p-4 py-3 bg-slate-900/80 text-white rounded-t-xl border-b border-slate-700/50 ${className}`} {...props} />
 ));
 export const CardTitle = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={`text-lg font-semibold leading-none tracking-tight text-slate-100 ${className}`} {...props} />
+  <h3 className={`text-lg font-semibold leading-snug tracking-tight text-slate-100 ${className}`} {...props} />
 ));
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={`p-4 ${className}`} {...props} />
@@ -80,7 +92,7 @@ Textarea.displayName = "Textarea";
 
 // Label
 export const Label = (props: React.LabelHTMLAttributes<HTMLLabelElement>) => (
-  <label className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-300" {...props} />
+  <label className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-white" {...props} />
 );
 
 // Checkbox
@@ -624,27 +636,28 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, sugges
     );
 };
 
-// Tab Button
 interface TabButtonProps {
     isActive: boolean;
     onClick: () => void;
     children: React.ReactNode;
+    className?: string;
 }
-export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, children }) => (
+export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, children, className }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors flex-1 ${
-            isActive ? 'bg-blue-600 text-white' : 'bg-slate-700/60 text-slate-300 hover:bg-slate-600/80'
-        }`}
+        className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors flex-1 whitespace-nowrap min-w-[100px] ${
+            isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'bg-slate-700/40 text-slate-300 hover:bg-slate-600/50'
+        } ${className || ''}`}
     >
         {children}
     </button>
 );
 
 
-export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [key: string]: string }, values?: { [key: string]: any }, children?: React.ReactNode }) => {
+export const FormulaTooltip = ({ formulas, values, children, className = "inline-block", triggerClassName = "cursor-default inline-block" }: { formulas: { [key: string]: string }, values?: { [key: string]: any }, children?: React.ReactNode, className?: string, triggerClassName?: string }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [style, setStyle] = useState<React.CSSProperties>({});
+    const { auditMode } = useAuditMode();
+    const closeTimer = useRef<NodeJS.Timeout | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLSpanElement>(null);
 
@@ -659,43 +672,22 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
         }
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
+            if (closeTimer.current) clearTimeout(closeTimer.current);
         };
     }, [isOpen]);
-    
-    const updateStyleFromTrigger = () => {
-        if (!triggerRef.current) return;
-        const rect = triggerRef.current.getBoundingClientRect();
-        const newStyle: React.CSSProperties = {
-            position: 'fixed',
-            zIndex: 100,
-        };
-        const tooltipMaxWidth = 320;
-        const tooltipMaxHeight = 300;
-        const viewportPadding = 8;
-        if (rect.left + tooltipMaxWidth > window.innerWidth - viewportPadding) {
-            newStyle.right = `${window.innerWidth - rect.right}px`;
-        } else {
-            newStyle.left = `${rect.left}px`;
-        }
-        if (rect.bottom + tooltipMaxHeight > window.innerHeight - viewportPadding) {
-            newStyle.bottom = `${window.innerHeight - rect.top + viewportPadding}px`;
-        } else {
-            newStyle.top = `${rect.bottom + viewportPadding}px`;
-        }
-        setStyle(newStyle);
-    };
 
     const handleMouseEnter = () => {
-        updateStyleFromTrigger();
+        if (closeTimer.current) clearTimeout(closeTimer.current);
         setIsOpen(true);
     };
 
     const handleMouseLeave = () => {
-        setIsOpen(false);
+        closeTimer.current = setTimeout(() => {
+            setIsOpen(false);
+        }, 150);
     };
 
     const handleToggle = () => {
-        if (!isOpen) updateStyleFromTrigger();
         setIsOpen(!isOpen);
     };
 
@@ -736,17 +728,17 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
         const normalized = normFunc(formula);
         const segments = normalized.split(/\s*\+\s*/);
         const renderSegment = (seg: string, segIdx: number) => {
-            const scanRegex = new RegExp(`\\b(${varKeys.join('|')})\\b`, 'g');
+            const scanRegex = new RegExp(`\\b(${varKeys.join('|')})\\b`, 'gi');
             const localParts: React.ReactNode[] = [];
             let lastIndex = 0;
             let match: RegExpExecArray | null;
             while ((match = scanRegex.exec(seg)) !== null) {
-                const [varName] = match;
+                const varName = match[0];
                 const start = match.index;
                 if (start > lastIndex) {
                     localParts.push(<span key={`t-${segIdx}-${lastIndex}`}>{seg.slice(lastIndex, start)}</span>);
                 }
-                const val = (values as any)[varName];
+                const val = (values as any)[varName] ?? (values as any)[varName.toLowerCase()] ?? (values as any)[varName.toUpperCase()];
                 localParts.push(<span key={`v-${segIdx}-${start}`}>{formatNumberNode(val)}</span>);
                 lastIndex = start + varName.length;
             }
@@ -782,52 +774,84 @@ export const FormulaTooltip = ({ formulas, values, children }: { formulas: { [ke
         return <span className="break-normal whitespace-normal">{nodes}</span>;
     };
     
+    const isMobile = useIsMobile();
+    
     return (
-        <span className="hidden sm:inline-block ml-1 align-middle w-full" ref={containerRef}>
+        <span className={className} ref={containerRef}>
             {children && (
-                <span ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onClick={handleToggle} className="cursor-default inline-block w-full">
+                <span 
+                    ref={triggerRef} 
+                    onMouseEnter={handleMouseEnter} 
+                    onMouseLeave={handleMouseLeave} 
+                    onClick={handleToggle} 
+                    className={triggerClassName}
+                >
                     {children}
                 </span>
             )}
-            {isOpen && (
-                <div 
-                    style={style}
-                    className={`w-auto min-w-[18rem] max-w-[48rem] p-3 bg-slate-800/90 border rounded-lg shadow-lg text-sm border-slate-600 backdrop-blur-sm animate-in fade-in-80`}
+            {isOpen && !isMobile && auditMode && (
+                <>
+                    {/* Backdrop */}
+                    <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
                     
-                >
-                    <p className="font-bold mb-3 text-base">Fórmulas Utilizadas</p>
-                    <ul className="space-y-4">
-                        {Object.entries(formulas).map(([key, formula]) => {
-                            const populated = renderFormulaWithValues(formula);
-                            const valValue = (values as any)?.[key];
-                            const valueNode = values && key in (values || {}) ? formatNumberNode(Number(valValue) || 0) : null;
-                            return (
-                                <li key={key} className="space-y-2">
-                                    {/* Valor */}
-                                    {valueNode && (
-                                        <p className="text-blue-400 font-mono">{`Valor:`} <span className="align-baseline">{valueNode}</span></p>
-                                    )}
-                                    {/* Fórmula */}
-                                    <div>
-                                        <p className="text-slate-300">Fórmula:</p>
-                                        <code className="font-mono bg-slate-700 p-2 rounded-lg block text-white break-normal whitespace-normal text-xs sm:text-sm leading-tight">
-                                            <span className="align-baseline">{key} = {renderPlainFormulaSegments(formula)}</span>
-                                        </code>
-                                    </div>
-                                    {/* Valores */}
-                                    {populated && (
-                                        <div>
-                                            <p className="text-slate-300">Valores:</p>
-                                            <code className="font-mono bg-slate-900 p-2 rounded-lg block text-white break-normal whitespace-normal text-xs sm:text-sm leading-tight">
-                                                <span className="align-baseline">{key} = {populated}</span>
-                                            </code>
+                    {/* Tooltip Panel */}
+                    <div 
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(95vw,540px)] max-h-[85vh] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] overflow-auto custom-scrollbar animate-in zoom-in-95 fade-in duration-300 pointer-events-auto"
+                    >
+                        <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                            <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Memória de Cálculo Editorial</p>
+                        </div>
+                        
+                        <ul className="space-y-8">
+                            {Object.entries(formulas).map(([key, formula], idx) => {
+                                const populated = renderFormulaWithValues(formula);
+                                const valValue = (values as any)?.[key];
+                                const valueNode = values && (key in (values || {}) || key.toLowerCase() in (values || {}) || key.toUpperCase() in (values || {})) 
+                                    ? formatNumberNode(Number(valValue || (values as any)?.[key.toLowerCase()] || (values as any)?.[key.toUpperCase()]) || 0) 
+                                    : null;
+                                    
+                                return (
+                                    <li key={key} className="space-y-4 animate-in slide-in-from-top-2 duration-500" style={{ animationDelay: `${idx * 70}ms` }}>
+                                        {/* Valor */}
+                                        {valueNode && (
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest">Resultado</span>
+                                                <p className="text-blue-400 font-mono font-black text-lg">Valor: <span className="align-baseline">{valueNode}</span></p>
+                                            </div>
+                                        )}
+                                        {/* Fórmula */}
+                                        <div className="space-y-1.5">
+                                            <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
+                                            <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
+                                                <span className="align-baseline font-bold text-blue-300/90">{key}</span>
+                                                <span className="mx-2 text-slate-500">=</span>
+                                                {renderPlainFormulaSegments(formula)}
+                                            </div>
                                         </div>
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </div>
+                                        {/* Valores */}
+                                        {populated && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
+                                                <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner">
+                                                    <span className="align-baseline font-bold text-blue-400">{key}</span>
+                                                    <span className="mx-2 text-blue-900/50">=</span>
+                                                    {populated}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                        
+                        <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                        </div>
+                    </div>
+                </>
             )}
         </span>
     );
@@ -846,30 +870,29 @@ export const useIsMobile = (): boolean => {
 };
 export const InfoTooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [style, setStyle] = useState<React.CSSProperties>({});
     const triggerRef = useRef<HTMLDivElement>(null);
-
-    const updatePosition = () => {
-        if (!triggerRef.current) return;
-        const rect = triggerRef.current.getBoundingClientRect();
-        setStyle({
-            position: 'fixed',
-            top: rect.bottom + 8,
-            left: Math.max(8, Math.min(rect.left, window.innerWidth - 288)),
-            zIndex: 1000,
-        });
-    };
+    const isMobile = useIsMobile();
+    const { auditMode } = useAuditMode();
 
     return (
-        <div className="relative inline-block" ref={triggerRef} onMouseEnter={() => { updatePosition(); setIsOpen(true); }} onMouseLeave={() => setIsOpen(false)}>
+        <div className="relative inline-block" ref={triggerRef} onMouseEnter={() => setIsOpen(true)} onMouseLeave={() => setIsOpen(false)}>
             {children}
-            {isOpen && createPortal(
-                <div style={style} className="w-72 p-3 bg-slate-900/95 border border-slate-700 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] text-xs leading-relaxed text-slate-200 backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-200 ring-1 ring-white/10">
-                    <p className="font-semibold text-blue-400 mb-1 flex items-center gap-1.5 uppercase tracking-wider text-[10px]">
-                        <Info className="w-3.5 h-3.5" /> Informação Técnica
-                    </p>
-                    {text}
-                </div>,
+            {isOpen && !isMobile && auditMode && createPortal(
+                <>
+                    <div className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
+                    <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90vw,400px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl z-[9999] animate-in zoom-in-95 fade-in duration-200 pointer-events-none">
+                        <div className="flex items-center gap-3 border-b border-white/10 pb-3 mb-4">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                            <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Informação Técnica</p>
+                        </div>
+                        <div className="text-sm leading-relaxed text-slate-300 font-medium">
+                            {text}
+                        </div>
+                        <div className="mt-6 pt-3 border-t border-white/5 flex justify-center">
+                            <p className="text-[8px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                        </div>
+                    </div>
+                </>,
                 document.body
             )}
         </div>

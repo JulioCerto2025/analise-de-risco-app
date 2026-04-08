@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle, MessageCircle, Users, ShieldCheck, Copy, ShieldAlert, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button, Alert, AlertDescription, AlertTitle } from "./components/ui";
+import { Button, Alert, AlertDescription, AlertTitle, AuditProvider } from "./components/ui";
 import { Step1Input } from './components/analysis/Step1Input';
 import { NgInputStep } from './components/analysis/NgInputStep';
 const ConnectedLinesStepLazy = React.lazy(() => import('./components/analysis/ConnectedLinesStep').then(m => ({ default: m.ConnectedLinesStep })));
@@ -185,6 +185,11 @@ export default function App() {
     // Removido: controle de loop por zona entre etapas 7 e 8
     const { data, updateData } = useAnalysisData();
     const [errors, setErrors] = useState<string[]>([]);
+
+    const auditProviderValue = useMemo(() => ({
+        auditMode: !!data.audit_mode,
+        setAuditMode: (m: boolean) => updateData({ audit_mode: m })
+    }), [data.audit_mode, updateData]);
 
     const handleNext = useCallback(async () => {
         try {
@@ -475,7 +480,8 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
+        <AuditProvider value={auditProviderValue}>
+            <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
             <div className="w-full flex justify-center py-2 px-1">
                 <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 items-start pt-6 pb-6 px-4">
                 <aside className="hidden md:block">
@@ -593,5 +599,6 @@ export default function App() {
             </div>
         </div>
     </div>
+        </AuditProvider>
     );
 }

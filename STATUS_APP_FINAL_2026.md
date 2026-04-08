@@ -4,29 +4,24 @@
 > **ESTA É A ÚNICA VERSÃO OFICIAL E ATUALIZADA DO PROJETO.**
 > Caminho: `c:\Users\julio\OneDrive\Área de Trabalho\Apresent SPDA  Atualizadas 2025\Curso IAs\backup-análise-de-risco-spda-nbr5419---segurança\`
 
-## 🚀 STATUS DO PROJETO (05/04/2026)
-O projeto foi finalizado com sucesso, atingindo um nível de fidelidade "Ultra-Pro 2026".
+## 🚀 STATUS DO PROJETO (07/04/2026)
+O projeto atingiu o estado de maturidade "Audit-Ready Pro 2026".
 
-### Principais Características da Versão Atual:
-1. **Interface "110% Pro"**: 
-   - Largura do card de acesso aumentada para **460px**.
-   - Tipografia refinada (font-bold) para máxima legibilidade.
-   - Escalonamento visual progressivo: **3 Planos (Mensal, Semestral, Anual)** com intensidade de cores crescente.
-   - Transparência "Glassmorphism" Premium (`bg-slate-950/50`).
+### Principais Vitórias Técnicas (Versão Atual):
+1. **Simulador Global de Proteções**: 
+   - Propagação inteligente de **Nível SPDA (PB)**, **Equipot. (PEB)** e **DPS (PSPD)** nas telas de Risco e Frequência.
+   - Lógica contextual: Ajustes no modo GLOBAL afetam todo o projeto, enquanto ajustes em ZONAS são locais e preservados.
 
-2. **Novos Planos e Preços**:
-   - Mensal: R$ 50,00 (Sóbrio)
-   - Semestral: R$ 200,00 (Intermediário)
-   - **Anual Especial: R$ 300,00 (Destaque Premium - Emerald/Teal)**
+2. **Detalhamento Independente (PEB/PSPD)**:
+   - Na página de Probabilidades, os controles de Elétrica e Dados agora são **100% independentes** para auditoria cirúrgica de linha.
 
-3. **Painel ADM Integrado (Passo 1)**:
-   - **LOCALIZAÇÃO**: Barra técnica embutida no topo da imagem do raio.
-   - Agora com **4 categorias de senhas**: 48h, Mensal, Semestral e **Anual**.
+3. **Painel de Resultados Editorial**:
+   - Gráficos de barras com efeito "Glassmorphism" sapphire e carmim.
+   - Detalhamento matemático total (Scientific Notation) nas tooltips de auditoria.
 
-3. **Normas e Instruções**:
-   - Título: **Plataforma Análise de Risco NBR 5419-2 2026**.
-   - Instrução PIX: Travada em uma **única linha contínua** (whitespace-nowrap).
-   - Aviso de Assessoria: "* Valor referente ao acesso à ferramenta. Assessorias e Projetos à combinar."
+4. **Infraestrutura e Deploy**:
+   - Build de produção validada (Vite build).
+   - **DEPLOY OFICIAL VERCEL FINALIZADO.**
 
 ## 🛑 ALERTAS PARA IA (FUTURAS SESSÕES)
 - **NÃO** utilize versões de pastas com nomes similares a menos que explicitamente ordenado pelo usuário.

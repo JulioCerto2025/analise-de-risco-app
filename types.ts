@@ -107,7 +107,6 @@ export interface LossData {
   hz?: number;
   LF?: number;
   LO?: number;
-  rs?: number;
   
   // R3
   lf3?: number;
@@ -180,6 +179,7 @@ export interface AnalysisInputData {
   cityDraft?: string;
   lat?: number;
   lon?: number;
+  map_transform?: { scale: number; x: number; y: number };
   cd: number;
   has_electric_line: boolean;
   line_sections_1: LineSection[];
@@ -207,7 +207,10 @@ export interface AnalysisInputData {
   probability_data: ProbabilityData;
   analyze_data_line_probabilities: boolean;
   analyze_electric_line_probabilities: boolean;
-    
+  audit_mode:boolean;
+  robust_infrastructure: boolean;
+  rs: number;
+  
   // Background AI analysis state
   fireRiskAiResult?: FireRiskInfo | null;
   fireRiskAiStatus?: 'idle' | 'loading' | 'success' | 'error';

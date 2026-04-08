@@ -295,7 +295,7 @@ export function calculateProbabilities(
     return result;
 }
 
-export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
+export function calculateLossesForZone(zone: Zone, globalRs: number = 1): { [key: string]: any } {
     const losses: { [key: string]: any } = {};
     const ld = zone?.loss_data;
 
@@ -308,7 +308,7 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
         tz: Number(ld.tz) || 0,
         rt: Number(ld.rt) || 0,
         lt: Number((ld as any).lt) || 0.01,
-        rs: Number(ld.rs) || 1,
+        rs: Number(globalRs) || 1,
         rp: Number(ld.rp) || 0,
         rf: Number(ld.rf) || 0,
         hz: Number(ld.hz) || 0,
@@ -342,7 +342,7 @@ export function calculateLossesForZone(zone: Zone): { [key: string]: any } {
     const ct_economic = Number(ld.ct_economic) || 1;
     losses.LA4 = (ld.rt ?? 0) * (ld.lt4 ?? 0) * ((ld.ca ?? 0) / ct_economic);
     const economic_sum = (ld.ca ?? 0) + (ld.cb ?? 0) + (ld.cc ?? 0) + (ld.cs ?? 0);
-    losses.LB4 = (ld.rs ?? 1) * (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.lf4 ?? 0) * (economic_sum / ct_economic);
+    losses.LB4 = Number(globalRs || 1) * (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.lf4 ?? 0) * (economic_sum / ct_economic);
     losses.LC4 = (ld.lo4 ?? 0) * ((ld.cs ?? 0) / ct_economic);
     const le4 = 0; 
     losses.LFT4 = (ld.lf4 ?? 0) + le4; 

@@ -189,3 +189,5 @@ export const LT_OPTIONS = [
     { value: 0.01, label: 'LT 0,01 (Norma)' },
     { value: 0, label: 'Sem risco 0' }
 ];
+
+
