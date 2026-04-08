@@ -312,6 +312,8 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     <tr><td style="${cellCode}">FC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC_comb:${formatScientific(pcTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FC)}</td></tr>
     <tr><td style="${cellCode}">FM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM_comb:${formatScientific(pmTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FM)}</td></tr>
     <tr><td style="${cellCode}">FV</td><td style="${cellFormula}">[Nl_elétrica:${formatScientific(c.nl_electric)} x PEB] + [Nl_dados:${formatScientific(c.nl_data)} x PEB]</td><td style="${cellResult}">${formatFD(f.FV)}</td></tr>
+    <tr><td style="${cellCode}">FW</td><td style="${cellFormula}">[Nl_elétrica:${formatScientific(c.nl_electric)} x PW] + [Nl_dados:${formatScientific(c.nl_data)} x PW]</td><td style="${cellResult}">${formatFD(f.FW)}</td></tr>
+    <tr><td style="${cellCode}">FZ</td><td style="${cellFormula}">[Ni_elétrica:${formatScientific(c.ni_electric)} x PZ] + [Ni_dados:${formatScientific(c.ni_data)} x PZ]</td><td style="${cellResult}">${formatFD(f.FZ)}</td></tr>
     <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
       <td style="${cellCode}">TOTAL</td>
       <td style="${cellFormula}; font-weight: bold;">FD TOTAL (F)</td>
@@ -327,6 +329,11 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
   <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">Choque em seres vivos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
   <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
   <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">Falhas de sistemas (Estrutura)</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
+  <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">Falhas de sistemas (Magnético)</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
+  <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">Choque em seres vivos (Linhas)</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
+  <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">Danos físicos (Linhas)</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
+  <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">Falhas de sistemas (Linhas - Surtos)</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
+  <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">Falhas de sistemas (Linhas - Indução)</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
   <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
     <td style="${cellCode}">TOTAL</td>
     <td style="${cellFormula}; font-weight: bold;">R1 TOTAL</td>
@@ -339,7 +346,8 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
         mainContent += `
 <div style="${subHeaderSection}">3.7. COMPONENTES DO RISCO AO PATRIMÔNIO CULTURAL (R3)</div>
 <table style="${tableStyle}">
-  <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatScientific(r.R3)}</td></tr>
+  <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatScientific(r.RB3)}</td></tr>
+  <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">Danos físicos (Linhas)</td><td style="${cellResult}">${formatScientific(r.RV3)}</td></tr>
   <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
     <td style="${cellCode}">TOTAL</td>
     <td style="${cellFormula}; font-weight: bold;">R3 TOTAL</td>
@@ -352,7 +360,14 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
         mainContent += `
 <div style="${subHeaderSection}">3.8. COMPONENTES DO RISCO ECONÔMICO (R4)</div>
 <table style="${tableStyle}">
-  <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">Choque seres vivos</td><td style="${cellResult}">${formatScientific(r.R4)}</td></tr>
+  <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">Choque seres vivos (Estrutura)</td><td style="${cellResult}">${formatScientific(r.RA4)}</td></tr>
+  <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatScientific(r.RB4)}</td></tr>
+  <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">Falhas sistemas (Estrutura)</td><td style="${cellResult}">${formatScientific(r.RC4)}</td></tr>
+  <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">Falhas sistemas (Magnético)</td><td style="${cellResult}">${formatScientific(r.RM4)}</td></tr>
+  <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">Choque seres vivos (Linhas)</td><td style="${cellResult}">${formatScientific(r.RU4)}</td></tr>
+  <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">Danos físicos (Linhas)</td><td style="${cellResult}">${formatScientific(r.RV4)}</td></tr>
+  <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">Falhas sistemas (Surtos)</td><td style="${cellResult}">${formatScientific(r.RW4)}</td></tr>
+  <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">Falhas sistemas (Indução)</td><td style="${cellResult}">${formatScientific(r.RZ4)}</td></tr>
   <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
     <td style="${cellCode}">TOTAL</td>
     <td style="${cellFormula}; font-weight: bold;">R4 TOTAL</td>
