@@ -20,16 +20,16 @@ function formatScientific(val: number | undefined): string {
     if (val === undefined || isNaN(val)) return '0,00';
     if (val === 0) return '0,00';
     
-    // Se for um valor muito pequeno (menor que 0.01), usa notação científica
-    if (Math.abs(val) < 0.01 && val !== 0) {
+    // Para valores muito pequenos, usa notação científica pura
+    if (Math.abs(val) < 0.001) {
         const parts = val.toExponential(2).split('e');
-        const coefficient = parts[0].replace('.', ',');
-        const exponent = parseInt(parts[1]);
-        return `${coefficient} x 10<sup>${exponent}</sup>`;
+        const coeff = parts[0].replace('.', ',');
+        const exp = parseInt(parts[1]);
+        return `${coeff} x 10<sup>${exp}</sup>`;
     }
     
     // Caso contrário, usa 2 casas decimais padrão
-    return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
 }
 
 function formatLossScientific(val: number | undefined): string {
@@ -44,12 +44,22 @@ function formatLossScientific(val: number | undefined): string {
 
 function formatR1(val: number | undefined): string {
     if (val === undefined || isNaN(val)) return '0,00 x 10<sup>-5</sup>';
+    if (val === 0) return '0,00';
+    
+    // Se o risco for menor que 10^-8, a notação x 10^-5 mostrará 0,00.
+    // Nesses casos, mudamos para notação científica puras para o usuário ver o valor real.
+    if (val < 1e-7 && val > 0) {
+        return formatLossScientific(val);
+    }
+    
     const scaled = (val * 1e5).toFixed(2).replace('.', ',');
     return `${scaled} x 10<sup>-5</sup>`;
 }
 
 function formatFD(val: number | undefined): string {
     if (val === undefined || isNaN(val)) return '0,00';
+    if (val === 0) return '0,00';
+    if (val < 0.01) return formatLossScientific(val);
     return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -219,7 +229,36 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
       <td style="${cellResult}">${formatScientific(value)}</td>
     </tr>`;
 
+    // Cálculo dos fatores de perda reais para o memorial
+    const safeNz = lz.nz || 0;
+    const safeNt = lz.nt || 1;
+    const safeTz = lz.tz || 0;
+    const timeFactor = (safeNz / safeNt) * (safeTz / 8760);
+    const rs = data.rs || 1;
+    
+    const LA_calc = (lz.rt || 0) * (lz.lt || 0.01) * timeFactor * rs;
+    const LB_calc = (lz.rp || 0) * (lz.rf || 0) * (lz.hz || 1) * (lz.LF || 0) * timeFactor * rs;
+    const LC_calc = (lz.LO || 0) * timeFactor * rs;
+
     let riskComponentsSection = '';
+    
+    riskComponentsSection += `
+<div style="${subHeaderSection}">3.3. FATORES DE PERDAS ESTIMADOS (L)</div>
+<table style="${tableStyle}">
+  <thead>
+     <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
+        <th style="${cellCode}">Fator</th>
+        <th style="${cellFormula}">Memória de Cálculo [Valores Literais]</th>
+        <th style="${cellResult}">Resultado (Auditável)</th>
+     </tr>
+  </thead>
+  <tbody>
+    <tr><td style="${cellCode}">LA / LU</td><td style="${cellFormula}">[rt:${lz.rt || 0} x lt:${lz.lt || 0.01} x (nz:${safeNz}/nt:${safeNt}) x (tz:${safeTz}/8760) x rs:${rs}]</td><td style="${cellResult}">${formatLossScientific(LA_calc)}</td></tr>
+    <tr><td style="${cellCode}">LB / LV</td><td style="${cellFormula}">[rs:${rs} x rp:${lz.rp || 0} x rf:${lz.rf || 0} x hz:${lz.hz || 1} x LF:${lz.LF || 0} x (nz/nt * tz/8760)]</td><td style="${cellResult}">${formatLossScientific(LB_calc)}</td></tr>
+    <tr><td style="${cellCode}">LC/LM/LW/LZ</td><td style="${cellFormula}">[LO:${lz.LO || 0} x (nz/nt * tz/8760) x rs:${rs}]</td><td style="${cellResult}">${formatLossScientific(LC_calc)}</td></tr>
+  </tbody>
+</table>`;
+
     if (data.risks_to_analyze.R1) {
         riskComponentsSection += `
 <div style="${subHeaderSection}">3.7. COMPONENTES DO RISCO À VIDA HUMANA (R1)</div>
