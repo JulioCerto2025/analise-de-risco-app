@@ -202,11 +202,6 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     const lz = (zone as any)?.loss_data || {};
     const prob = zone?.probability_data || data.probability_data;
     
-    // Indicadores globais de conformidade
-    const r1Ok = (r.R1 || 0) <= 1e-5;
-    const fdLimitVal = data.frequency_config.is_critical_system ? 0.1 : 1.0;
-    const fOk = (f.F || 0) <= fdLimitVal;
-
     const borderColor = isWord ? '#000000' : 'rgba(148,163,184,0.1)';
     const textColorMain = isWord ? '#000000' : '#ffffff';
     const textColorSub = isWord ? '#000000' : '#94a3b8';
@@ -222,158 +217,65 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     const nlTotal = (c.nl_electric || 0) + (c.nl_data || 0);
     const niTotal = (c.ni_electric || 0) + (c.ni_data || 0);
 
-    const buildCompRow = (label: string, value: number, desc: string) => `
-    <tr>
-      <td style="${cellCode}">${label}</td>
-      <td style="${cellFormula}">${desc}</td>
-      <td style="${cellResult}">${formatScientific(value)}</td>
-    </tr>`;
-
-    // Cálculo dos fatores de perda reais para o memorial
-    const safeNz = lz.nz || 0;
-    const safeNt = lz.nt || 1;
-    const safeTz = lz.tz || 0;
-    const timeFactor = (safeNz / safeNt) * (safeTz / 8760);
-    const rs = data.rs || 1;
+    const rs_val = data.rs || 1;
+    const nz_val = lz.nz || 5; 
+    const nt_val = lz.nt || 5;
+    const tz_val = lz.tz || 8760;
+    const timeRatio = (nz_val / nt_val) * (tz_val / 8760);
     
-    const LA_calc = (lz.rt || 0) * (lz.lt || 0.01) * timeFactor * rs;
-    const LB_calc = (lz.rp || 0) * (lz.rf || 0) * (lz.hz || 1) * (lz.LF || 0) * timeFactor * rs;
-    const LC_calc = (lz.LO || 0) * timeFactor * rs;
+    const LA_val = (lz.rt || 0.00001) * (lz.lt || 0.01) * timeRatio * rs_val;
+    const LB_val = (lz.rp || 0) * (lz.rf || 0) * (lz.hz || 1) * (lz.LF || 0) * timeRatio * rs_val;
+    const LC_val = (lz.LO || 0) * timeRatio * rs_val;
 
-    let riskComponentsSection = '';
-    
-    riskComponentsSection += `
+    const pcTotalFreq = data.has_electric_line && data.has_data_line 
+        ? 1 - ((1 - (pc.PC || 0)) * (1 - (pc.PCT || 0)))
+        : (data.has_electric_line ? pc.PC : (pc.PCT || 0));
+    const pmTotalFreq = data.has_electric_line && data.has_data_line 
+        ? 1 - ((1 - (pc.PM || 0)) * (1 - (pc.PMT || 0)))
+        : (data.has_electric_line ? pc.PM : (pc.PMT || 0));
+
+    let mainContent = '';
+
+    mainContent += `
+<div style="${subHeaderSection}">3.1. ESTIMATIVA DE EVENTOS PERIGOSOS ANUAIS (N)</div>
+<table style="${tableStyle}">
+  <tr><td style="${cellCode}">Nd (S1)</td><td style="${cellFormula}">[Ng:${data.ng} x Ad:${c.ad?.toFixed(2)} x Cd:${data.cd}] x 10⁻⁶</td><td style="${cellResult}">${formatScientific(c.nd)}</td></tr>
+  <tr><td style="${cellCode}">Nm (S2)</td><td style="${cellFormula}">[Ng:${data.ng} x Am:${c.am?.toFixed(2)}] x 10⁻⁶</td><td style="${cellResult}">${formatScientific(c.nm)}</td></tr>
+  <tr><td style="${cellCode}">Nl (S3)</td><td style="${cellFormula}">[Descargas diretas na rede (Elétrica + Dados)]</td><td style="${cellResult}">${formatScientific(nlTotal)}</td></tr>
+  <tr><td style="${cellCode}">Ni (S4)</td><td style="${cellFormula}">[Induções laterais na rede (Elétrica + Dados)]</td><td style="${cellResult}">${formatScientific(niTotal)}</td></tr>
+</table>`;
+
+    mainContent += `
+<div style="${subHeaderSection}">3.2. PROBABILIDADES DE DANO RESIDUAL (P)</div>
+<table style="${tableStyle}">
+  <tr><td style="${cellCode}">PA</td><td style="${cellFormula}">P<sub>TA</sub>:${prob.PTA} x P<sub>B</sub>:${prob.PB}</td><td style="${cellResult}">${formatScientific(pc.PA)}</td></tr>
+  <tr><td style="${cellCode}">PB</td><td style="${cellFormula}">Eficácia SPDA (Nível ${prob.PB})</td><td style="${cellResult}">${formatScientific(pc.PB)}</td></tr>
+  <tr><td style="${cellCode}">PC</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x C<sub>LD</sub>:1,0</td><td style="${cellResult}">${formatScientific(pc.PC)}</td></tr>
+  <tr><td style="${cellCode}">PM</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x P<sub>MS</sub>:${formatScientific(pc.Pms).replace(/<\/?sup>/g, '')}</td><td style="${cellResult}">${formatScientific(pc.PM)}</td></tr>
+  <tr><td style="${cellCode}">PU</td><td style="${cellFormula}">P<sub>TU</sub>:${prob.PTU_electric} x P<sub>EB</sub>:${prob.PEB_electric}</td><td style="${cellResult}">${formatScientific(pc.PU)}</td></tr>
+  <tr><td style="${cellCode}">PV</td><td style="${cellFormula}">P<sub>EB</sub>:${prob.PEB_electric} x P<sub>LD</sub>:1,0</td><td style="${cellResult}">${formatScientific(pc.PV)}</td></tr>
+  <tr><td style="${cellCode}">PW</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x P<sub>LD</sub>:1,0</td><td style="${cellResult}">${formatScientific(pc.PW)}</td></tr>
+  <tr><td style="${cellCode}">PZ</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x P<sub>LI</sub>:${formatScientific(pc.Pli_electric_ext).replace(/<\/?sup>/g, '')}</td><td style="${cellResult}">${formatScientific(pc.PZ)}</td></tr>
+</table>`;
+
+    mainContent += `
 <div style="${subHeaderSection}">3.3. FATORES DE PERDAS ESTIMADOS (L)</div>
 <table style="${tableStyle}">
   <thead>
      <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
         <th style="${cellCode}">Fator</th>
-        <th style="${cellFormula}">Memória de Cálculo [Valores Literais]</th>
-        <th style="${cellResult}">Resultado (Auditável)</th>
+        <th style="${cellFormula}">Memória de Cálculo [Equação]</th>
+        <th style="${cellResult}">VALOR CIENTÍFICO</th>
      </tr>
   </thead>
   <tbody>
-    <tr><td style="${cellCode}">LA / LU</td><td style="${cellFormula}">[rt:${lz.rt || 0} x lt:${lz.lt || 0.01} x (nz:${safeNz}/nt:${safeNt}) x (tz:${safeTz}/8760) x rs:${rs}]</td><td style="${cellResult}">${formatLossScientific(LA_calc)}</td></tr>
-    <tr><td style="${cellCode}">LB / LV</td><td style="${cellFormula}">[rs:${rs} x rp:${lz.rp || 0} x rf:${lz.rf || 0} x hz:${lz.hz || 1} x LF:${lz.LF || 0} x (nz/nt * tz/8760)]</td><td style="${cellResult}">${formatLossScientific(LB_calc)}</td></tr>
-    <tr><td style="${cellCode}">LC/LM/LW/LZ</td><td style="${cellFormula}">[LO:${lz.LO || 0} x (nz/nt * tz/8760) x rs:${rs}]</td><td style="${cellResult}">${formatLossScientific(LC_calc)}</td></tr>
+    <tr><td style="${cellCode}">LA / LU</td><td style="${cellFormula}">[rt:${lz.rt || 0} x lt:${lz.lt || 0.01} x (nz/nt) x (tz/8760) x rs:${rs_val}]</td><td style="${cellResult}">${formatLossScientific(LA_val)}</td></tr>
+    <tr><td style="${cellCode}">LB / LV</td><td style="${cellFormula}">[rp:${lz.rp || 0} x rf:${lz.rf || 0} x hz:${lz.hz || 1} x LF:${lz.LF || 0} x ... x rs:${rs_val}]</td><td style="${cellResult}">${formatLossScientific(LB_val)}</td></tr>
+    <tr><td style="${cellCode}">LC/LM/LW/LZ</td><td style="${cellFormula}">[LO:${lz.LO || 0} x (nz/nt) x (tz/8760) x rs:${rs_val}]</td><td style="${cellResult}">${formatLossScientific(LC_val)}</td></tr>
   </tbody>
 </table>`;
 
-    if (data.risks_to_analyze.R1) {
-        riskComponentsSection += `
-<div style="${subHeaderSection}">3.7. COMPONENTES DO RISCO À VIDA HUMANA (R1)</div>
-<table style="${tableStyle}">
-  <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">Choque em seres vivos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
-  <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura - Fogo/Explosão)</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
-  <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">Falhas de sistemas internos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
-  <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">Falhas de sistemas (Estrutura - Campo Magnético)</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
-  <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">Choque em seres vivos (Linhas)</td><td style="${cellResult}">${formatR1((r.RU||0) + (r.RUT||0))}</td></tr>
-  <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">Danos físicos (Linhas - Fogo/Explosão)</td><td style="${cellResult}">${formatR1((r.RV||0) + (r.RVT||0))}</td></tr>
-  <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">Falhas de sistemas (Linhas - Surtos)</td><td style="${cellResult}">${formatR1((r.RW||0) + (r.RWT||0))}</td></tr>
-  <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">Falhas de sistemas (Linhas - Indução)</td><td style="${cellResult}">${formatR1((r.RZ||0) + (r.RZT||0))}</td></tr>
-  <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
-    <td style="${cellCode}">TOTAL</td>
-    <td style="${cellFormula}; font-weight: bold;">R1 TOTAL (Σ componentes avaliados)</td>
-    <td style="${cellResult}">${formatR1(r.R1)}</td>
-  </tr>
-</table>`;
-    }
-
-    if (data.risks_to_analyze.R3) {
-        riskComponentsSection += `
-<div style="${subHeaderSection}">3.8. COMPONENTES DO RISCO AO PATRIMÔNIO CULTURAL (R3)</div>
-<table style="${tableStyle}">
-  ${buildCompRow('RB', r.RB3, 'Danos físicos - Fogo/Explosão (Estrutura)')}
-  ${buildCompRow('RV', (r.RV3||0) + (r.RVT3||0), 'Danos físicos - Fogo/Explosão (Linhas)')}
-  <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
-    <td style="${cellCode}">TOTAL</td>
-    <td style="${cellFormula}; font-weight: bold;">R3 TOTAL (Σ componentes avaliados)</td>
-    <td style="${cellResult}">${formatScientific(r.R3)}</td>
-  </tr>
-</table>`;
-    }
-
-    if (data.risks_to_analyze.R4) {
-        riskComponentsSection += `
-<div style="${subHeaderSection}">3.9. COMPONENTES DO RISCO ECONÔMICO (R4)</div>
-<table style="${tableStyle}">
-  ${buildCompRow('RA', r.RA4, 'Choque em seres vivos (Estrutura)')}
-  ${buildCompRow('RB', r.RB4, 'Danos físicos (Estrutura - Fogo/Explosão)')}
-  ${buildCompRow('RC', r.RC4, 'Falhas de sistemas internos (Estrutura)')}
-  ${buildCompRow('RM', r.RM4, 'Falhas de sistemas (Estrutura - Campo Magnético)')}
-  ${buildCompRow('RU', (r.RU4||0) + (r.RUT4||0), 'Choque em seres vivos (Linhas)')}
-  ${buildCompRow('RV', (r.RV4||0) + (r.RVT4||0), 'Danos físicos (Linhas - Fogo/Explosão)')}
-  ${buildCompRow('RW', (r.RW4||0) + (r.RWT4||0), 'Falhas de sistemas (Linhas - Surtos)')}
-  ${buildCompRow('RZ', (r.RZ4||0) + (r.RZT4||0), 'Falhas de sistemas (Linhas - Indução)')}
-  <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
-    <td style="${cellCode}">TOTAL</td>
-    <td style="${cellFormula}; font-weight: bold;">R4 TOTAL (Σ componentes avaliados)</td>
-    <td style="${cellResult}">${formatScientific(r.R4)}</td>
-  </tr>
-</table>`;
-    }
-
-    const pcTotalFreq = data.has_electric_line && data.has_data_line 
-        ? 1 - ((1 - (pc.PC || 0)) * (1 - (pc.PCT || 0)))
-        : (data.has_electric_line ? pc.PC : pc.PCT) || 0;
-    
-    const pmTotalFreq = data.has_electric_line && data.has_data_line 
-        ? 1 - ((1 - (pc.PM || 0)) * (1 - (pc.PMT || 0)))
-        : (data.has_electric_line ? pc.PM : pc.PMT) || 0;
-
-    riskComponentsSection += `
-<div style="${subHeaderSection}">3.10. COMPONENTES DA FREQUÊNCIA DE DANOS (FD = N x P)</div>
-<table style="${tableStyle}">
-  <thead>
-    <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
-       <th style="${cellCode}">Fator</th>
-       <th style="${cellFormula}">Equação Auditável: N x P [Valores Literais]</th>
-       <th style="${cellResult}">Resultado</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td style="${cellCode}">FB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)}] ${data.frequency_config.has_equipment_in_ZPR0A ? '' : '(Ignorado: s/ eqp. ZPR0A)'}</td><td style="${cellResult}">${formatFD(f.FB)}</td></tr>
-    <tr><td style="${cellCode}">FC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC_comb:${formatScientific(pcTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FC)}</td></tr>
-    <tr><td style="${cellCode}">FM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM_comb:${formatScientific(pmTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FM)}</td></tr>
-    <tr><td style="${cellCode}">FV</td><td style="${cellFormula}">[Nl_elétrica:${formatScientific(c.nl_electric)} x PEB_elétr.:${prob.PEB_electric}] + [Nl_dados:${formatScientific(c.nl_data)} x PEB_dados:${prob.PEB_data}]</td><td style="${cellResult}">${formatFD(f.FV)}</td></tr>
-    <tr><td style="${cellCode}">FW</td><td style="${cellFormula}">[Nl_elétrica:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)}] + [Nl_dados:${formatScientific(c.nl_data)} x PWT:${formatScientific(pc.PWT)}]</td><td style="${cellResult}">${formatFD(f.FW)}</td></tr>
-    <tr><td style="${cellCode}">FZ</td><td style="${cellFormula}">[Ni_elétrica:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)}] + [Ni_dados:${formatScientific(c.ni_data)} x PZT:${formatScientific(pc.PZT)}]</td><td style="${cellResult}">${formatFD(f.FZ)}</td></tr>
-    <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
-      <td style="${cellCode}">TOTAL</td>
-      <td style="${cellFormula}; font-weight: bold;">FD TOTAL (Σ componentes avaliados)</td>
-      <td style="${cellResult}">${formatFD(f.F)}</td>
-    </tr>
-  </tbody>
-</table>`;
-
-    return `
-<div style="${subHeaderSection}">3.1. ESTIMATIVA DE EVENTOS PERIGOSOS ANUAIS (N)</div>
-<table style="${tableStyle}">
-  <tr><td style="${cellCode}">Nd (S1)</td><td style="${cellFormula}">[Ng:${data.ng} x Ad:${c.ad?.toFixed(2)} x Cd:${data.cd}] x 10⁻⁶</td><td style="${cellResult}">${formatScientific(c.nd)}</td></tr>
-  <tr><td style="${cellCode}">Nm (S2)</td><td style="${cellFormula}">[Ng:${data.ng} x Am:${c.am?.toFixed(2)}] x 10⁻⁶</td><td style="${cellResult}">${formatScientific(c.nm)}</td></tr>
-  <tr><td style="${cellCode}">Nl (S3)</td><td style="${cellFormula}">[Somatório das descargas diretas na rede (Elétrica + Dados)]</td><td style="${cellResult}">${formatScientific(nlTotal)}</td></tr>
-  <tr><td style="${cellCode}">Ni (S4)</td><td style="${cellFormula}">[Somatório das induções laterais na rede (Elétrica + Dados)]</td><td style="${cellResult}">${formatScientific(niTotal)}</td></tr>
-</table>
-
-<div style="${subHeaderSection}">3.2. PROBABILIDADES DE DANO RESIDUAL (P)</div>
-<table style="${tableStyle}">
-  <tr><td style="${cellCode}">PA</td><td style="${cellFormula}">P<sub>TA</sub>:${prob.PTA} x P<sub>B</sub>:${prob.PB}</td><td style="${cellResult}">${formatScientific(pc.PA)}</td></tr>
-  <tr><td style="${cellCode}">PB</td><td style="${cellFormula}">Eficácia SPDA (Nível ${prob.PB})</td><td style="${cellResult}">${formatScientific(pc.PB)}</td></tr>
-  <tr><td style="${cellCode}">PC</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x C<sub>LD</sub>:1,0 (Simplificado)</td><td style="${cellResult}">${formatScientific(pc.PC)}</td></tr>
-  <tr><td style="${cellCode}">PM</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x P<sub>MS</sub>:${formatScientific(pc.Pms).replace(/<\/?sup>/g, '')}</td><td style="${cellResult}">${formatScientific(pc.PM)}</td></tr>
-  <tr><td style="${cellCode}">PU</td><td style="${cellFormula}">P<sub>TU</sub>:${prob.PTU_electric} x P<sub>EB</sub>:${prob.PEB_electric} x P<sub>LD</sub>:1,0 x C<sub>LD</sub>:1,0</td><td style="${cellResult}">${formatScientific(pc.PU)}</td></tr>
-  <tr><td style="${cellCode}">PV</td><td style="${cellFormula}">P<sub>EB</sub>:${prob.PEB_electric} x P<sub>LD</sub>:1,0 x C<sub>LD</sub>:1,0</td><td style="${cellResult}">${formatScientific(pc.PV)}</td></tr>
-  <tr><td style="${cellCode}">PW</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x P<sub>LD</sub>:1,0 x C<sub>LD</sub>:1,0</td><td style="${cellResult}">${formatScientific(pc.PW)}</td></tr>
-  <tr><td style="${cellCode}">PZ</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x C<sub>LI</sub>:1,0 x P<sub>LI</sub>:${formatScientific(pc.Pli_electric_ext).replace(/<\/?sup>/g, '')}</td><td style="${cellResult}">${formatScientific(pc.PZ)}</td></tr>
-</table>
-
-<div style="${subHeaderSection}">3.3. FATORES DE PERDAS ESTIMADOS (L)</div>
-<table style="${tableStyle}">
-  <tr><td style="${cellCode}">LA / LU</td><td style="${cellFormula}">[rt:${lz.rt} x lt:${lz.lt || 0.01} x (nz:${lz.nz || 0}/nt:${lz.nt || 1}) x (tz:${lz.tz || 0}/8760) x rs:${data.rs || 1}]</td><td style="${cellResult}">${formatLossScientific(lz.LA)}</td></tr>
-  <tr><td style="${cellCode}">LB / LV</td><td style="${cellFormula}">[rs:${data.rs || 1} x rp:${lz.rp} x rf:${lz.rf} x hz:${lz.hz} x LF:${lz.LF} x (nz/nt * tz/8760)]</td><td style="${cellResult}">${formatLossScientific(lz.LB)}</td></tr>
-  <tr><td style="${cellCode}">LC/LM/LW/LZ</td><td style="${cellFormula}">[LO:${lz.LO} x (nz/nt * tz/8760) x rs:${data.rs || 1}]</td><td style="${cellResult}">${formatLossScientific(lz.LC)}</td></tr>
-</table>
-
+    mainContent += `
 <div style="${subHeaderSection}">3.4. MEMORIAL DE CÁLCULO DOS COMPONENTES DE RISCO (R = N x P x L)</div>
 <table style="${tableStyle}">
   <thead>
@@ -384,54 +286,82 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     </tr>
   </thead>
   <tbody>
-    <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PA:${formatScientific(pc.PA)} x LA:${formatScientific(lz.LA)}]</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
-    <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)} x LB:${formatScientific(lz.LB)}]</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
-    <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC:${formatScientific(pc.PC)} x LC:${formatScientific(lz.LC)}]</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
-    <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM:${formatScientific(pc.PM)} x LM:${formatScientific(lz.LC)}]</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
-    <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PU:${formatScientific(pc.PU)} x LU:${formatScientific(lz.LA)}]</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
-    <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PV:${formatScientific(pc.PV)} x LV:${formatScientific(lz.LB)}]</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
-    <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)} x LW:${formatScientific(lz.LC)}]</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
-    <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">[Ni:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)} x LZ:${formatScientific(lz.LC)}]</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
+    <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PA:${formatScientific(pc.PA)} x LA:${formatLossScientific(LA_val)}]</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
+    <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)} x LB:${formatLossScientific(LB_val)}]</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
+    <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC:${formatScientific(pc.PC)} x LC:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
+    <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM:${formatScientific(pc.PM)} x LM:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
+    <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PU:${formatScientific(pc.PU)} x LU:${formatLossScientific(LA_val)}]</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
+    <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PV:${formatScientific(pc.PV)} x LV:${formatLossScientific(LB_val)}]</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
+    <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)} x LW:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
+    <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">[Ni:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)} x LZ:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
   </tbody>
-</table>
+</table>`;
 
-${riskComponentsSection}
+    mainContent += `
+<div style="${subHeaderSection}">3.5. COMPONENTES DA FREQUÊNCIA DE DANOS (FD = N x P)</div>
+<table style="${tableStyle}">
+  <thead>
+    <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
+       <th style="${cellCode}">Fator</th>
+       <th style="${cellFormula}">Equação Auditável: N x P [Valores Literais]</th>
+       <th style="${cellResult}">Resultado</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="${cellCode}">FB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)}]</td><td style="${cellResult}">${formatFD(f.FB)}</td></tr>
+    <tr><td style="${cellCode}">FC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC_comb:${formatScientific(pcTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FC)}</td></tr>
+    <tr><td style="${cellCode}">FM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM_comb:${formatScientific(pmTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FM)}</td></tr>
+    <tr><td style="${cellCode}">FV</td><td style="${cellFormula}">[Nl_elétrica:${formatScientific(c.nl_electric)} x PEB] + [Nl_dados:${formatScientific(c.nl_data)} x PEB]</td><td style="${cellResult}">${formatFD(f.FV)}</td></tr>
+    <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
+      <td style="${cellCode}">TOTAL</td>
+      <td style="${cellFormula}; font-weight: bold;">FD TOTAL (F)</td>
+      <td style="${cellResult}">${formatFD(f.F)}</td>
+    </tr>
+  </tbody>
+</table>`;
 
-<div style="${subHeaderSection}">3.11. RESUMO DE CONFORMIDADE E RESULTADOS FINAIS</div>
+    if (data.risks_to_analyze.R1) {
+        mainContent += `
+<div style="${subHeaderSection}">3.6. COMPONENTES DO RISCO À VIDA HUMANA (R1)</div>
+<table style="${tableStyle}">
+  <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">Choque em seres vivos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
+  <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
+  <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">Falhas de sistemas (Estrutura)</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
+  <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
+    <td style="${cellCode}">TOTAL</td>
+    <td style="${cellFormula}; font-weight: bold;">R1 TOTAL</td>
+    <td style="${cellResult}">${formatR1(r.R1)}</td>
+  </tr>
+</table>`;
+    }
 
-<div style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 40px; ${isWord ? 'display: block;' : ''}">
-  <div style="flex: 1; border: ${isWord ? '2.5pt solid #000000' : '1px solid rgba(251,191,36,0.2)'}; padding: 25px; border-radius: 12px; background: ${isWord ? '#ffffff' : 'rgba(251,191,36,0.03)'}; ${isWord ? 'margin-bottom: 25pt;' : ''}">
-    <div style="font-size: 10px; font-weight: 900; letter-spacing: 2.5px; color: ${isWord ? '#000000' : '#fbbf24'}; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1.5pt solid ${isWord ? '#000000' : 'rgba(251,191,36,0.1)'}; padding-bottom: 8px;">
-      <b>📉 RT (R1) — GLOBAL</b>
-    </div>
-    <div style="font-size: 28px; font-weight: 950; color: ${isWord ? '#000000' : '#ffffff'}; margin-bottom: 8px; font-family: 'Arial', monospace; letter-spacing: -0.5px;">
-      ${formatR1(r.R1)}
-    </div>
-    <div style="font-size: 11px; font-weight: 800; color: ${isWord ? '#000000' : '#94a3b8'}; margin-bottom: 20px;">
-      LIMITE TOLERÁVEL: <span style="color: ${isWord ? '#000000' : '#ffffff'}">1,00 x 10⁻⁵</span>
-    </div>
-    <div style="display: inline-block; padding: 8px 18px; border-radius: 4px; background: ${r1Ok ? '#059669' : '#dc2626'}; color: white; font-size: 13px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">
-      ${r1Ok ? '✓ CONFORME' : '❌ CRÍTICO'}
-    </div>
-  </div>
+    if (data.risks_to_analyze.R3) {
+        mainContent += `
+<div style="${subHeaderSection}">3.7. COMPONENTES DO RISCO AO PATRIMÔNIO CULTURAL (R3)</div>
+<table style="${tableStyle}">
+  <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatScientific(r.R3)}</td></tr>
+  <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
+    <td style="${cellCode}">TOTAL</td>
+    <td style="${cellFormula}; font-weight: bold;">R3 TOTAL</td>
+    <td style="${cellResult}">${formatScientific(r.R3)}</td>
+  </tr>
+</table>`;
+    }
 
-  <div style="flex: 1; border: ${isWord ? '2.5pt solid #000000' : '1px solid rgba(96,165,250,0.2)'}; padding: 25px; border-radius: 12px; background: ${isWord ? '#ffffff' : 'rgba(96,165,250,0.03)'};">
-    <div style="font-size: 10px; font-weight: 900; letter-spacing: 2.5px; color: ${isWord ? '#000000' : '#60a5fa'}; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1.5pt solid ${isWord ? '#000000' : 'rgba(96,165,250,0.1)'}; padding-bottom: 8px;">
-      <b>⚡ Frequência Total (F) — Global</b>
-    </div>
-    <div style="font-size: 28px; font-weight: 950; color: ${isWord ? '#000000' : '#ffffff'}; margin-bottom: 8px; font-family: 'Arial', monospace; letter-spacing: -0.5px;">
-      ${formatFD(f.F)}
-    </div>
-    <div style="font-size: 11px; font-weight: 800; color: ${isWord ? '#000000' : '#94a3b8'}; margin-bottom: 20px;">
-      LIMITE TOLERÁVEL: <span style="color: ${isWord ? '#000000' : '#ffffff'}">${formatFD(fdLimitVal)}</span>
-    </div>
-    <div style="display: inline-block; padding: 8px 18px; border-radius: 4px; background: ${fOk ? '#059669' : '#dc2626'}; color: white; font-size: 13px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">
-      ${fOk ? '✓ CONFORME' : '❌ CRÍTICO'}
-    </div>
-  </div>
-</div>
+    if (data.risks_to_analyze.R4) {
+        mainContent += `
+<div style="${subHeaderSection}">3.8. COMPONENTES DO RISCO ECONÔMICO (R4)</div>
+<table style="${tableStyle}">
+  <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">Choque seres vivos</td><td style="${cellResult}">${formatScientific(r.R4)}</td></tr>
+  <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
+    <td style="${cellCode}">TOTAL</td>
+    <td style="${cellFormula}; font-weight: bold;">R4 TOTAL</td>
+    <td style="${cellResult}">${formatScientific(r.R4)}</td>
+  </tr>
+</table>`;
+    }
 
-<div style="border-top: 2px dashed ${isWord ? '#000000' : 'rgba(148,163,184,0.1)'}; margin: 20px 0; height: 1px;"></div>`;
+    return mainContent;
 }
 
 export async function generateFullReportText(data: AnalysisData, isWord: boolean = false): Promise<string> {
