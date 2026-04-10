@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import { Users } from 'lucide-react';
 
 export function VisitorCounter() {
-    const [count, setCount] = useState<number | null>(null); 
-    const [uniqueIps, setUniqueIps] = useState<number | null>(null);
+    const [count, setCount] = React.useState<number | null>(null); 
+    const [uniqueIps, setUniqueIps] = React.useState<number | null>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const namespace = "analise-de-risco-spda-pda";
         
         async function fetchCounter() {
@@ -35,7 +35,7 @@ export function VisitorCounter() {
     if (uniqueIps === null) return null;
 
     return (
-        <div className="fixed bottom-3 right-3 z-[100] pointer-events-none select-none">
+        <div className="fixed bottom-3 right-3 z-[99999] pointer-events-none select-none">
             <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-xl px-4 py-2 flex items-center gap-3 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 <div className="flex items-center gap-2">
                     <Users className="w-3.5 h-3.5 text-blue-400" />
