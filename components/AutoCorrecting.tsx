@@ -1,12 +1,16 @@
 /**
- * AutoCorrecting components — separados do ui.tsx para evitar dependência circular
- * com geminiService (que tem imports pesados: @google/genai, constants, types, etc.)
- * Este arquivo importa apenas os componentes base de ui.tsx e a função correctText.
+ * AutoCorrecting components — ISOLADOS para evitar dependência circular.
+ * NÃO importa de './ui' (causaria ciclo: ui → AutoCorrecting → ui).
+ * Usa elementos HTML nativos com as mesmas classes do design system.
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Input, Textarea, Label } from './ui';
 import { correctText } from '../lib/geminiService';
+
+// Estilos inline (mesmas classes usadas em ui.tsx) — sem import de ui.tsx
+const inputClass = 'flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a]';
+const textareaClass = 'flex min-h-[80px] w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a]';
+const labelClass = 'text-[10px] uppercase font-bold text-slate-500 tracking-wider';
 
 // ── AutoCorrectingInput ──────────────────────────────────────────────────────
 export const AutoCorrectingInput = ({
@@ -34,9 +38,9 @@ export const AutoCorrectingInput = ({
         if (isCorrectionDisabled || isCorrecting || !currentValue.trim()) return;
         setIsCorrecting(true);
         try {
-            const correctedText = await correctText(currentValue);
-            if (correctedText && correctedText !== currentValue) {
-                onUpdate(correctedText);
+            const corrected = await correctText(currentValue);
+            if (corrected && corrected !== currentValue) {
+                onUpdate(corrected);
                 wasCorrectedByApi.current = true;
             }
         } finally {
@@ -45,25 +49,26 @@ export const AutoCorrectingInput = ({
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value;
         if (wasCorrectedByApi.current) {
             setIsCorrectionDisabled(true);
             wasCorrectedByApi.current = false;
         }
-        onUpdate(newValue);
+        onUpdate(e.target.value);
     };
 
     return (
         <div className="space-y-1">
-            <Label htmlFor={id}>{label}</Label>
+            <label htmlFor={id} className={labelClass}>{label}</label>
             <div className="relative w-full">
-                <Input
+                <input
                     id={id}
-                    value={value}
+                    value={value as string}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder={placeholder}
-                    className={`${isCorrecting ? 'pr-8' : ''} ${className}`}
+                    spellCheck={false}
+                    lang="pt-BR"
+                    className={`${inputClass} ${isCorrecting ? 'pr-8' : ''} ${className ?? ''}`}
                     {...props}
                 />
                 {isCorrecting && (
@@ -101,9 +106,9 @@ export const AutoCorrectingTextarea = ({
         if (isCorrectionDisabled || isCorrecting || !currentValue.trim()) return;
         setIsCorrecting(true);
         try {
-            const correctedText = await correctText(currentValue);
-            if (correctedText && correctedText !== currentValue) {
-                onUpdate(correctedText);
+            const corrected = await correctText(currentValue);
+            if (corrected && corrected !== currentValue) {
+                onUpdate(corrected);
                 wasCorrectedByApi.current = true;
             }
         } finally {
@@ -112,26 +117,27 @@ export const AutoCorrectingTextarea = ({
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
         if (wasCorrectedByApi.current) {
             setIsCorrectionDisabled(true);
             wasCorrectedByApi.current = false;
         }
-        onUpdate(newValue);
+        onUpdate(e.target.value);
     };
 
     return (
         <div className="space-y-2">
-            <Label htmlFor={id}>{label}</Label>
+            <label htmlFor={id} className={labelClass}>{label}</label>
             <div className="relative w-full">
-                <Textarea
+                <textarea
                     id={id}
-                    value={value}
+                    value={value as string}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder={placeholder}
                     rows={rows}
-                    className={`${isCorrecting ? 'pr-8' : ''} ${className}`}
+                    spellCheck={false}
+                    lang="pt-BR"
+                    className={`${textareaClass} ${isCorrecting ? 'pr-8' : ''} ${className ?? ''}`}
                     {...props}
                 />
                 {isCorrecting && (
