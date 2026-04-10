@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Input, AutoCorrectingInput, AutoCorrectingTextarea, Label, Button, useAuditMode } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, AutoCorrectingInput, AutoCorrectingTextarea, Label, Button, useAuditMode } from '../ui';
 import { Briefcase, ShieldAlert, X, Clipboard, CheckCircle2, Save, FolderOpen, Search, ShieldCheck } from 'lucide-react';
 import { AnalysisData } from '../../types';
 import { DatePicker } from '../DatePicker';
@@ -53,13 +53,12 @@ export function ProjectInfoStep({
                                 placeholder="Relatório Análise de Risco - Edifício Central"
                                 className="h-10 text-sm"
                             />
-                            <Input
+                            <input
                                 id="clientAddress"
-                                label="Endereço da Obra / Localização"
                                 value={data.clientAddress}
                                 onChange={(e) => handleValueUpdate('clientAddress', e.target.value)}
                                 placeholder="Ex: Av. Paulista, 1000 - São Paulo/SP"
-                                className="h-10 text-sm"
+                                className="flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400"
                             />
                             <AutoCorrectingTextarea
                                 id="projectName"
