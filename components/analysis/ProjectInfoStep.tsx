@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Label, Button, useAuditMode } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Input, Textarea, Label, Button, useAuditMode } from '../ui';
 import { Briefcase, ShieldAlert, X, Clipboard, CheckCircle2, Save, FolderOpen, Search, ShieldCheck } from 'lucide-react';
 import { AnalysisData } from '../../types';
 import { DatePicker } from '../DatePicker';
@@ -45,41 +45,50 @@ export function ProjectInfoStep({
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
                         <div className="flex flex-col lg:col-span-2 gap-3">
-                            <AutoCorrectingInput
-                                id="clientName"
-                                label="Título do Projeto - Cliente"
-                                value={data.clientName}
-                                onUpdate={(val) => handleValueUpdate('clientName', val)}
-                                placeholder="Relatório Análise de Risco - Edifício Central"
-                                className="h-10 text-sm"
-                            />
-                            <input
-                                id="clientAddress"
-                                value={data.clientAddress}
-                                onChange={(e) => handleValueUpdate('clientAddress', e.target.value)}
-                                placeholder="Ex: Av. Paulista, 1000 - São Paulo/SP"
-                                className="flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400"
-                            />
-                            <AutoCorrectingTextarea
-                                id="projectName"
-                                label="Descrição Detalhada do Projeto"
-                                value={data.projectName}
-                                onUpdate={(val) => handleValueUpdate('projectName', val)}
-                                placeholder="Descreva a edificação e detalhes técnicos conforme AVCB..."
-                                rows={4}
-                                className="text-sm min-h-[120px]"
-                            />
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
-                                <AutoCorrectingInput
-                                    id="technicalManagerName"
-                                    label="Responsável Técnico"
-                                    value={data.technicalManagerName}
-                                    onUpdate={(val) => handleValueUpdate('technicalManagerName', val)}
-                                    placeholder="Engº João da Silva"
+                            <div className="space-y-1">
+                                <Label htmlFor="clientName">Título do Projeto - Cliente</Label>
+                                <Input
+                                    id="clientName"
+                                    value={data.clientName}
+                                    onChange={(e) => handleValueUpdate('clientName', e.target.value)}
+                                    placeholder="Relatório Análise de Risco - Edifício Central"
                                     className="h-10 text-sm"
                                 />
-                                 <div className="space-y-1.5">
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="clientAddress">Endereço da Obra / Localização</Label>
+                                <Input
+                                    id="clientAddress"
+                                    value={data.clientAddress}
+                                    onChange={(e) => handleValueUpdate('clientAddress', e.target.value)}
+                                    placeholder="Ex: Av. Paulista, 1000 - São Paulo/SP"
+                                    className="h-10 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="projectName">Descrição Detalhada do Projeto</Label>
+                                <Textarea
+                                    id="projectName"
+                                    value={data.projectName}
+                                    onChange={(e) => handleValueUpdate('projectName', e.target.value)}
+                                    placeholder="Descreva a edificação e detalhes técnicos conforme AVCB..."
+                                    rows={4}
+                                    className="text-sm min-h-[120px]"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                                <div className="space-y-1">
+                                    <Label htmlFor="technicalManagerName">Responsável Técnico</Label>
+                                    <Input
+                                        id="technicalManagerName"
+                                        value={data.technicalManagerName}
+                                        onChange={(e) => handleValueUpdate('technicalManagerName', e.target.value)}
+                                        placeholder="Engº João da Silva"
+                                        className="h-10 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
                                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Data do Projeto</label>
                                     <DatePicker
                                         value={data.projectDate}
@@ -88,14 +97,16 @@ export function ProjectInfoStep({
                                     />
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <AutoCorrectingInput
-                                        id="licenseNumber"
-                                        label="Habilitação e Registro Profissional"
-                                        value={data.licenseNumber}
-                                        onUpdate={(val) => handleValueUpdate('licenseNumber', val)}
-                                        placeholder="Engº Eletricista / CREA-123456D-UF"
-                                        className="h-10 text-sm"
-                                    />
+                                    <div className="space-y-1">
+                                        <Label htmlFor="licenseNumber">Habilitação e Registro Profissional</Label>
+                                        <Input
+                                            id="licenseNumber"
+                                            value={data.licenseNumber}
+                                            onChange={(e) => handleValueUpdate('licenseNumber', e.target.value)}
+                                            placeholder="Engº Eletricista / CREA-123456D-UF"
+                                            className="h-10 text-sm"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
