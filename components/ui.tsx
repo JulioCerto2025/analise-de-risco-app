@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, createContext, useContext, useCallb
 import { createPortal } from 'react-dom';
 import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
-import { correctText } from '../lib/geminiService';
-export { Input } from './input';
-
+// AutoCorrectingInput and AutoCorrectingTextarea moved to ./AutoCorrecting.tsx
+// to break the circular dependency: ui.tsx → geminiService → (heavy deps)
+export { AutoCorrectingInput, AutoCorrectingTextarea } from './AutoCorrecting';
 
 // Contexto global para controlar o Modo Auditoria/Fiscalização
 const AuditContext = createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
@@ -64,6 +64,19 @@ export const Progress = ({ value, className }: { value: number, className?: stri
   </div>
 );
 
+// Input
+export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, spellCheck, lang, ...props }, ref) => (
+    <input
+      className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
+      ref={ref}
+      spellCheck={spellCheck ?? false}
+      lang={lang ?? 'pt-BR'}
+      {...props}
+    />
+  )
+);
+Input.displayName = "Input";
 
 // Textarea
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
@@ -396,127 +409,8 @@ export const SelectItem = React.forwardRef<
 SelectItem.displayName = "SelectItem";
 
 
-export const AutoCorrectingInput = ({ id, label, value, onUpdate, placeholder, className, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void }) => {
-    const [isCorrecting, setIsCorrecting] = useState(false);
-    const wasCorrectedByApi = useRef(false);
-    const [isCorrectionDisabled, setIsCorrectionDisabled] = useState(false);
-    
-    useEffect(() => {
-        if (value === '') {
-            wasCorrectedByApi.current = false;
-            setIsCorrectionDisabled(false);
-        }
-    }, [value]);
-
-    const handleBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
-        const currentValue = e.target.value;
-        if (isCorrectionDisabled || isCorrecting || !currentValue.trim()) {
-            return;
-        }
-
-        setIsCorrecting(true);
-        try {
-            const correctedText = await correctText(currentValue);
-            if (correctedText && correctedText !== currentValue) {
-                onUpdate(correctedText);
-                wasCorrectedByApi.current = true;
-            }
-        } finally {
-            setIsCorrecting(false);
-        }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value;
-        if (wasCorrectedByApi.current) {
-            setIsCorrectionDisabled(true);
-            wasCorrectedByApi.current = false;
-        }
-        onUpdate(newValue);
-    };
-
-    return (
-        <div className="space-y-1">
-            <Label htmlFor={id}>{label}</Label>
-            <div className="relative w-full">
-                <input
-                    id={id}
-                    value={value}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder={placeholder}
-                    className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${isCorrecting ? 'pr-8' : ''} ${className}`}
-                    {...props}
-                />
-                {isCorrecting && (
-                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-slate-500" />
-                )}
-            </div>
-        </div>
-    );
-};
-
-// Auto-correcting Textarea
-export const AutoCorrectingTextarea = ({ id, label, value, onUpdate, placeholder, className, rows = 5, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string, onUpdate: (value: string) => void }) => {
-    const [isCorrecting, setIsCorrecting] = useState(false);
-    const wasCorrectedByApi = useRef(false);
-    const [isCorrectionDisabled, setIsCorrectionDisabled] = useState(false);
-
-    useEffect(() => {
-        if (value === '') {
-            wasCorrectedByApi.current = false;
-            setIsCorrectionDisabled(false);
-        }
-    }, [value]);
-
-    const handleBlur = async (e: React.FocusEvent<HTMLTextAreaElement>) => {
-        const currentValue = e.target.value;
-        if (isCorrectionDisabled || isCorrecting || !currentValue.trim()) {
-            return;
-        }
-
-        setIsCorrecting(true);
-        try {
-            const correctedText = await correctText(currentValue);
-            if (correctedText && correctedText !== currentValue) {
-                onUpdate(correctedText);
-                wasCorrectedByApi.current = true;
-            }
-        } finally {
-            setIsCorrecting(false);
-        }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        if (wasCorrectedByApi.current) {
-            setIsCorrectionDisabled(true);
-            wasCorrectedByApi.current = false;
-        }
-        onUpdate(newValue);
-    };
-
-    return (
-        <div className="space-y-2">
-            <Label htmlFor={id}>{label}</Label>
-            <div className="relative w-full">
-                <Textarea
-                    id={id}
-                    value={value}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder={placeholder}
-                    rows={rows}
-                    className={`${isCorrecting ? 'pr-8' : ''} ${className}`}
-                    {...props}
-                />
-                {isCorrecting && (
-                    <Loader2 className="absolute right-2.5 top-2 h-4 w-4 animate-spin text-slate-500" />
-                )}
-            </div>
-        </div>
-    );
-};
+// AutoCorrectingInput and AutoCorrectingTextarea are now in ./AutoCorrecting.tsx
+// Re-exported above (line 5) for backward compatibility.
 
 // Autocomplete Input (typeahead)
 export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, suggestions, placeholder, className, maxSuggestions = 8, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void, onCommit?: (value: string) => void, suggestions: string[], maxSuggestions?: number }) => {
@@ -597,13 +491,13 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, sugges
         <div className="space-y-1" ref={containerRef}>
             <Label htmlFor={id}>{label}</Label>
             <div className="relative w-full">
-                <input
+                <Input
                     id={id}
                     value={value}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
-                    className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+                    className={`${className}`}
                     {...props}
                 />
                 {open && (
