@@ -37,7 +37,7 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
         return String(num).replace('.', ',');
     };
 
-    useEffect(() => {
+    React.useEffect(() => {
         // Atualiza visualização quando o prop muda, mas evita sobrescrever durante digitação ativa
         if (isFocused) return;
         if (value !== undefined && value !== null) {
@@ -51,7 +51,7 @@ export function DecimalInput({ id, label, value, onUpdate, placeholder, classNam
     }, [value, isFocused]);
 
     // Garantir que a digitação não se perca ao navegar: flush no unmount
-    useEffect(() => {
+    React.useEffect(() => {
         return () => {
             const val = displayValue;
             const numericValue = parseFloat(val

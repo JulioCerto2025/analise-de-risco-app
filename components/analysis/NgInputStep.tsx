@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Label, Button, AutocompleteInput } from '../ui';
 import { ZoomIn, ZoomOut, RefreshCw, X, Loader2, MapPin, Zap } from "lucide-react";
 import { DecimalInput } from "../DecimalInput";
@@ -232,29 +232,29 @@ const findClosestColorIndex = (targetHex: string | null): number => {
 
 export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const { mapRegion = 'brasil', clientAddress = '', location = '' } = data || {};
-    const [markerPoint, setMarkerPoint] = useState<{ x: number; y: number } | null>(null);
-    const mapViewerRef = useRef<MapViewerHandles>(null);
+    const [markerPoint, setMarkerPoint] = React.useState<{ x: number; y: number } | null>(null);
+    const mapViewerRef = React.useRef<MapViewerHandles>(null);
     // Removido: estado de coordenadas e calibração OCR
-    const [legendHighlightIndex, setLegendHighlightIndex] = useState<number | null>(null);
-    const [palette, setPalette] = useState<string[]>(DEFAULT_NG_COLOR_BLOCKS);
-    const [isLoading, setIsLoading] = useState(false);
-    const [imageDims, setImageDims] = useState<{ width: number; height: number } | null>(null);
+    const [legendHighlightIndex, setLegendHighlightIndex] = React.useState<number | null>(null);
+    const [palette, setPalette] = React.useState<string[]>(DEFAULT_NG_COLOR_BLOCKS);
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [imageDims, setImageDims] = React.useState<{ width: number; height: number } | null>(null);
     // Removido: suporte a mapa melhorado via upload/URL e opções de detecção/cor.
-    const [availableUfs, setAvailableUfs] = useState<string[]>([]);
-    const [availableCities, setAvailableCities] = useState<string[]>([]);
-    const [selectedUf, setSelectedUf] = useState<string>('');
-    const [selectedCity, setSelectedCity] = useState<string>('');
-    const [ufInput, setUfInput] = useState<string>('');
-    const [cityInput, setCityInput] = useState<string>('');
-    const [ufError, setUfError] = useState<string | null>(null);
-    const lastAutoCommitRef = useRef<string>('');
-    const lastLocationAppliedRef = useRef<string>('');
-    const lastProcessedAddressRef = useRef<string>('');
+    const [availableUfs, setAvailableUfs] = React.useState<string[]>([]);
+    const [availableCities, setAvailableCities] = React.useState<string[]>([]);
+    const [selectedUf, setSelectedUf] = React.useState<string>('');
+    const [selectedCity, setSelectedCity] = React.useState<string>('');
+    const [ufInput, setUfInput] = React.useState<string>('');
+    const [cityInput, setCityInput] = React.useState<string>('');
+    const [ufError, setUfError] = React.useState<string | null>(null);
+    const lastAutoCommitRef = React.useRef<string>('');
+    const lastLocationAppliedRef = React.useRef<string>('');
+    const lastProcessedAddressRef = React.useRef<string>('');
     // Coordenadas da cidade (lat/lon). Tenta override local e, se não houver, geocodifica via OSM.
-    const [coordsForCity, setCoordsForCity] = useState<{ lat: number; lon: number } | null>(null);
+    const [coordsForCity, setCoordsForCity] = React.useState<{ lat: number; lon: number } | null>(null);
 
     // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
-    const getDynamicPixelBounds = useCallback((region: string): { x1: number; y1: number; x2: number; y2: number } | null => {
+    const getDynamicPixelBounds = React.useCallback((region: string): { x1: number; y1: number; x2: number; y2: number } | null => {
         const ref = mapViewerRef.current;
         const dims = imageDims || ref?.getImageDimensions() || null;
         const perc = mapPixelBoundsPercent[region];
@@ -276,7 +276,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     }, [imageDims]);
 
     // Efeito para posicionar o marcador inicial se houver coordenadas salvas
-    useEffect(() => {
+    React.useEffect(() => {
         const region = mapRegion || 'brasil';
         const geoBounds = mapBounds[region];
         const pixelBounds = getDynamicPixelBounds(region);
@@ -291,7 +291,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     // Efeito unificado para busca de coordenadas (reativo a drafts e seleções oficiais)
     // Com debounce de 600ms para evitar rate-limit no OSM
-    useEffect(() => {
+    React.useEffect(() => {
         const run = async () => {
             try {
                 const uf = (selectedUf || ufInput || '').trim().toUpperCase();
@@ -347,7 +347,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     }, [ngColorHex]);
     
     // Inicialização: carrega UFs (preserva região se já existir)
-    useEffect(() => {
+    React.useEffect(() => {
         if (!mapRegion) onUpdate({ mapRegion: 'brasil' });
         (async () => {
             const ufs = await getUfs();
@@ -357,7 +357,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     // Sync robusto: monitora a localização global (Step 1) e atualiza os campos da Step 2
     // Prioriza o rascunho apenas se a localização estiver vazia ou for igual à anterior
-    useEffect(() => {
+    React.useEffect(() => {
         const loc = (data.location || '').toString().trim();
         if (!loc || loc === lastLocationAppliedRef.current) return;
         
@@ -400,7 +400,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     }, [data.location]);
 
     // Reidratação de rascunhos: se houver ufDraft/cityDraft salvos, restaura nos inputs sem comitar
-    useEffect(() => {
+    React.useEffect(() => {
         const ufDraftRaw = ((data.ufDraft || '') as any).toString().trim().toUpperCase();
         const cityDraftRaw = ((data.cityDraft || '') as any).toString().trim();
         // Restaura UF digitada se não houver UF selecionada
@@ -425,13 +425,13 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.ufDraft, data.cityDraft]);
     
-    useEffect(() => {
+    React.useEffect(() => {
         // Removido: não associar ponto do cursor à legenda ou valor Ng.
         // Cliques no mapa agora só posicionam o marcador visual.
     }, [markerPoint]);
 
 
-    const handleMapClick = useCallback(async (clickData: { clickPoint: { x: number, y: number } }) => {
+    const handleMapClick = React.useCallback(async (clickData: { clickPoint: { x: number, y: number } }) => {
         setMarkerPoint(clickData.clickPoint);
         try {
             const ref = mapViewerRef.current;
@@ -477,10 +477,11 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     // Removido: handler com geocodificação reversa e coordenadas
 
     
+    
 
     // Atualiza dimensões da imagem sempre que a região do mapa muda
     // (Opcional, pois onImageLoad já trata o carregamento inicial e trocas)
-    useEffect(() => {
+    React.useEffect(() => {
         const ref = mapViewerRef.current;
         if (!ref) return;
         const dimsNow = ref.getImageDimensions();
@@ -490,7 +491,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
 
     // Posiciona o marcador para a cidade/UF informados (Brasil como mapa)
-    const positionMarkerForCityUf = useCallback(async (city: string, uf: string, attempt: number = 0) => {
+    const positionMarkerForCityUf = React.useCallback(async (city: string, uf: string, attempt: number = 0) => {
         const region = 'brasil';
         const pixelBounds = getDynamicPixelBounds(region);
         if (!city || !uf) return;
@@ -654,7 +655,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     };
 
 // Redundância segura: segundo auto-commit com normalização correta de acentos
-    useEffect(() => {
+    React.useEffect(() => {
         // Auto-commit desativado
         return;
         const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -670,7 +671,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     }, [cityInput, selectedUf, availableCities]);
 
 // Auto-commit: quando a digitação coincidir com uma cidade conhecida, posiciona automaticamente
-    useEffect(() => {
+    React.useEffect(() => {
         // Auto-commit desativado
         return;
         const norm = (s: string) => s.normalize('NFD').replace(/[ -\u036f]/g, '').toLowerCase();

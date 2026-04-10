@@ -1,4 +1,4 @@
-import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
+import * as React from 'react';
 import { motion } from 'framer-motion';
 
 export interface MapViewerHandles {
@@ -39,12 +39,12 @@ type DetectionConfig = {
 };
 
 export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUrl, onMapClick, markerPoint, initialTransform, onTransformChange, onImageLoad }, ref) => {
-    const [transform, setTransform] = useState(initialTransform || { scale: 1, x: 0, y: 0 });
+    const [transform, setTransform] = React.useState(initialTransform || { scale: 1, x: 0, y: 0 });
     
-    const lastTransformRef = useRef(transform);
+    const lastTransformRef = React.useRef(transform);
     lastTransformRef.current = transform;
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (!onTransformChange) return;
         const timer = setTimeout(() => {
             onTransformChange(transform);
@@ -56,14 +56,14 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         };
     }, [transform, onTransformChange]);
 
-    const containerRef = useRef<HTMLDivElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const imageRef = useRef<HTMLImageElement>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const imageRef = React.useRef<HTMLImageElement>(null);
     
-    const isPanning = useRef(false);
-    const panStart = useRef({ x: 0, y: 0 });
+    const isPanning = React.useRef(false);
+    const panStart = React.useRef({ x: 0, y: 0 });
 
-    useEffect(() => {
+    React.useEffect(() => {
         const canvas = canvasRef.current;
         const context = canvas?.getContext('2d', { willReadFrequently: true });
         if (!context) return;
@@ -110,7 +110,7 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         setTransform({ scale: 1, x: 0, y: 0 });
     };
 
-    const detectionCfgRef = useRef<DetectionConfig>({ blackMaxRgb: 50, blackVThreshold: 0.22, exactPixelMode: false, centerWeightExp: 2.5 });
+    const detectionCfgRef = React.useRef<DetectionConfig>({ blackMaxRgb: 50, blackVThreshold: 0.22, exactPixelMode: false, centerWeightExp: 2.5 });
 
     // Precise color matching utilities (sRGB → Lab → CIEDE2000)
     const srgbToLinear = (c: number) => {
@@ -185,7 +185,7 @@ export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUr
         return dE;
     };
 
-    useImperativeHandle(ref, () => ({
+    React.useImperativeHandle(ref, () => ({
         zoomIn: () => handleZoom(1.3),
         zoomOut: () => handleZoom(0.85),
         reset: handleReset,

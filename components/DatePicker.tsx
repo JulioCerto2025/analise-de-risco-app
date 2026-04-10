@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from './ui';
@@ -24,14 +24,14 @@ interface DatePickerProps {
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = React.useState(false);
     // Use memoization to avoid re-parsing the date on every render
-    const selectedDate = useMemo(() => value ? parseDate(value) : new Date(), [value]);
-    const [viewDate, setViewDate] = useState(selectedDate);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const selectedDate = React.useMemo(() => value ? parseDate(value) : new Date(), [value]);
+    const [viewDate, setViewDate] = React.useState(selectedDate);
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     // Close the date picker when clicking outside of it
-    useEffect(() => {
+    React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
@@ -42,12 +42,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange }) => {
     }, []);
 
     // Sync the calendar view with the selected date when it changes from the parent
-    useEffect(() => {
+    React.useEffect(() => {
         setViewDate(selectedDate);
     }, [selectedDate]);
 
     // Calculate the grid for the current month view
-    const calendarGrid = useMemo(() => {
+    const calendarGrid = React.useMemo(() => {
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -87,7 +87,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange }) => {
         setIsOpen(false);
     };
 
-    const displayValue = useMemo(() => {
+    const displayValue = React.useMemo(() => {
         try {
             return selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         } catch (e) {

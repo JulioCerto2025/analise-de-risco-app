@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import * as React from 'react';
 import { AnalysisData, AnalysisInputData, ZoneCalculations, Zone } from '../types';
 import { getNgByCity, getCitiesByUf, getUfs } from '../data/ngByCity';
 import { getRegionFromState } from '../utils/geoUtils';
@@ -208,19 +208,19 @@ export function useAnalysisData() {
         }
     };
 
-    const [data, setData] = useState<AnalysisInputData>(() => {
+    const [data, setData] = React.useState<AnalysisInputData>(() => {
         try {
-            const storedData = localStorage.getItem(STORAGE_KEY);
+            const storedData = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
             return storedData ? sanitizeData(JSON.parse(storedData)) : initialInputData;
         } catch (error) {
             return initialInputData;
         }
     });
 
-    const saveTimeoutRef = useRef<number | null>(null);
+    const saveTimeoutRef = React.useRef<number | null>(null);
 
     // Persistência
-    useEffect(() => {
+    React.useEffect(() => {
         if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = window.setTimeout(() => {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (error) {}
@@ -229,7 +229,7 @@ export function useAnalysisData() {
     }, [data]);
 
     // Automação: Sincroniza Ng/Localização quando o endereço do cliente muda
-    useEffect(() => {
+    React.useEffect(() => {
         const syncFromAddress = async () => {
             try {
                 const address = (data.clientAddress || '').toString().trim();
@@ -275,41 +275,41 @@ export function useAnalysisData() {
     }, [data.clientAddress]);
 
     // Cálculos
-    const eventCalculations = useMemo(() => calculateEvents(data), [
+    const eventCalculations = React.useMemo(() => calculateEvents(data), [
         data.h, data.l, data.w, data.hp, data.ng, data.cd, 
         data.has_electric_line, data.line_sections_1, data.use_adj_structure_1, data.l_adj_1, data.w_adj_1, data.h_adj_1, data.hp_adj_1, data.cd_adj_1,
         data.has_data_line, data.line_sections_2, data.use_adj_structure_2, data.l_adj_2, data.w_adj_2, data.h_adj_2, data.hp_adj_2, data.cd_adj_2
     ]);
 
-    const probabilityCalculations = useMemo(() => calculateProbabilities(
+    const probabilityCalculations = React.useMemo(() => calculateProbabilities(
         data.probability_data,
         data.analyze_data_line_probabilities,
         data.has_data_line,
         data.analyze_electric_line_probabilities
     ), [data.probability_data, data.analyze_data_line_probabilities, data.has_data_line, data.analyze_electric_line_probabilities]);
     
-    const zoneCalculations: ZoneCalculations[] = useMemo(() => {
+    const zoneCalculations: ZoneCalculations[] = React.useMemo(() => {
         return data.zones.map(zone => {
             const lossCalculations = calculateLossesForZone(zone, data.rs);
-            const zoneBaseProbCalcs = calculateProbabilities(
+            const zoneBaseProbCalculations = calculateProbabilities(
                 (zone.probability_data || data.probability_data),
                 (zone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
                 data.has_data_line,
                 (zone.analyze_electric_line_probabilities ?? data.analyze_electric_line_probabilities)
             );
-            const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, zone);
-            const riskCalculations = calculateRisksForZone(eventCalculations, zoneProbCalcs, lossCalculations, data.selected_risk_components);
+            const zoneProbCalculations = mergeZoneProbabilities(zoneBaseProbCalculations, zone);
+            const riskCalculations = calculateRisksForZone(eventCalculations, zoneProbCalculations, lossCalculations, data.selected_risk_components);
             return { zone, lossCalculations, riskCalculations };
         });
     }, [data.zones, eventCalculations, data.selected_risk_components, data.has_data_line, data.probability_data]);
 
-    const totalRiskResults = useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
+    const totalRiskResults = React.useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
 
-    const frequencyResults = useMemo(() => {
+    const frequencyResults = React.useMemo(() => {
         return aggregateFrequenciesForZones(data.zones, eventCalculations, data.probability_data, data.analyze_data_line_probabilities, data.analyze_electric_line_probabilities, data.frequency_config, data.has_electric_line, data.has_data_line);
     }, [data.zones, eventCalculations, data.probability_data, data.analyze_data_line_probabilities, data.analyze_electric_line_probabilities, data.frequency_config, data.has_electric_line, data.has_data_line]);
 
-    const fullAnalysisData: AnalysisData = useMemo(() => ({
+    const fullAnalysisData: AnalysisData = React.useMemo(() => ({
         ...data,
         calculations: eventCalculations,
         probability_calculations: probabilityCalculations,
@@ -318,11 +318,11 @@ export function useAnalysisData() {
         frequency_results: frequencyResults,
     }), [data, eventCalculations, probabilityCalculations, zoneCalculations, totalRiskResults, frequencyResults]);
 
-    const updateData = useCallback((newData: Partial<AnalysisInputData>) => {
+    const updateData = React.useCallback((newData: Partial<AnalysisInputData>) => {
         setData(prevData => ({ ...prevData, ...newData }));
     }, []);
 
-    const restoreDefaultPreset = useCallback(() => {
+    const restoreDefaultPreset = React.useCallback(() => {
         setData(prev => ({
             ...prev,
             probability_data: {
@@ -335,7 +335,7 @@ export function useAnalysisData() {
         }));
     }, []);
 
-    const resetToInitialPreset = useCallback(() => {
+    const resetToInitialPreset = React.useCallback(() => {
         try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
         setData({ ...initialInputData });
     }, []);

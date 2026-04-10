@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import * as React from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input } from '../ui';
 import { ocrWordsFromSource } from '../../lib/ocr';
 
@@ -21,14 +21,14 @@ function reconstructTextFromBoxes(boxes: { text: string; x: number; y: number; w
 }
 
 export const PdfOcrViewer: React.FC = () => {
-  const [status, setStatus] = useState<'idle'|'loading'|'done'|'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [text, setText] = useState('');
-  const [scale, setScale] = useState(2);
-  const [sourceType, setSourceType] = useState<'upload'|'url'>('upload');
-  const [file, setFile] = useState<File | null>(null);
-  const [url, setUrl] = useState('');
-  const objectUrlRef = useRef<string | null>(null);
+  const [status, setStatus] = React.useState<'idle'|'loading'|'done'|'error'>('idle');
+  const [error, setError] = React.useState<string | null>(null);
+  const [text, setText] = React.useState('');
+  const [scale, setScale] = React.useState(2);
+  const [sourceType, setSourceType] = React.useState<'upload'|'url'>('upload');
+  const [file, setFile] = React.useState<File | null>(null);
+  const [url, setUrl] = React.useState('');
+  const objectUrlRef = React.useRef<string | null>(null);
 
   const resolvedSrc = (() => {
     if (sourceType === 'upload' && file) {
@@ -40,7 +40,7 @@ export const PdfOcrViewer: React.FC = () => {
     return null;
   })();
 
-  useEffect(() => {
+  React.useEffect(() => {
     let cancelled = false;
     async function run() {
       try {

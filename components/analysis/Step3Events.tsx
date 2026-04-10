@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from "react";
+import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Card, CardContent, FormulaTooltip, Alert, AlertTitle, AlertDescription, useIsMobile, useAuditMode } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
@@ -151,7 +151,7 @@ const eventsConfig = [
 ];
 
 export function Step3Events({ data }: { data: AnalysisData }) {
-    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+    const [selectedEvent, setSelectedEvent] = React.useState<string | null>(null);
     const isMobile = useIsMobile();
     const { auditMode } = useAuditMode();
 
