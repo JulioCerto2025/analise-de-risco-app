@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnalysisData, AnalysisInputData, ZoneCalculations, Zone } from '../types';
-import { getNgByCity, getCitiesByUf } from '../data/ngByCity';
+import { getNgByCity, getCitiesByUf, getUfs } from '../data/ngByCity';
 import { getRegionFromState } from '../utils/geoUtils';
  import { 
      calculateEvents, 
@@ -13,7 +13,7 @@ import { getRegionFromState } from '../utils/geoUtils';
      mergeZoneProbabilities,
      calculatePld
   } from '../utils/calculations';
-import { extractCityAndUf } from '../utils/addressParser';
+import { extractCityAndUf, normalizeCityName } from '../utils/addressParser';
 
 const STORAGE_KEY = 'spda-analysis-data';
 
@@ -237,25 +237,40 @@ export function useAnalysisData() {
                 const parsed = extractCityAndUf(address);
                 if (!parsed) return;
                 const { city: rawCity, uf: rawUf } = parsed;
-                let city = rawCity;
+                let city = rawCity.replace(/[-/;,]$/, '').trim(); 
+                
                 try {
-                    const cities = await getCitiesByUf(rawUf);
-                    const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const rawNorm = norm(rawCity);
-                    const match = cities.find(c => norm(c) === rawNorm || rawNorm.includes(norm(c)));
-                    if (match) city = match;
+                    const ufs = await getUfs();
+                    if (ufs.includes(rawUf.toUpperCase())) {
+                        const cities = await getCitiesByUf(rawUf);
+                        const rawNorm = normalizeCityName(city);
+                        
+                        const exactMatch = cities.find(c => normalizeCityName(c) === rawNorm);
+                        if (exactMatch) {
+                            city = exactMatch;
+                        } else {
+                            const partialMatch = cities.find(c => {
+                                const cn = normalizeCityName(c);
+                                return cn.startsWith(rawNorm) || rawNorm.startsWith(cn);
+                            });
+                            if (partialMatch) city = partialMatch;
+                        }
+
+                        const preset = await getNgByCity(rawUf, city);
+                        const nextNg = (typeof preset === 'number' && preset > 0) ? preset : data.ng;
+                        const cleanCity = city.trim();
+                        const nextLoc = `${cleanCity} - ${rawUf.toUpperCase()}`;
+
+                        setData(prev => {
+                            if (prev.location === nextLoc && prev.ng === nextNg) return prev;
+                            // Ao mudar o endereço principal, limpamos rascunhos para não conflitar na etapa 2
+                            return { ...prev, location: nextLoc, mapRegion: getRegionFromState(rawUf) as any, ng: nextNg, ufDraft: '', cityDraft: '' };
+                        });
+                    }
                 } catch (_) {}
-                const preset = await getNgByCity(rawUf, city);
-                const nextNg = (typeof preset === 'number' && preset > 0) ? preset : data.ng;
-                setData(prev => {
-                    const nextLoc = `${city} - ${rawUf.toUpperCase()}`;
-                    if (prev.location === nextLoc && prev.ng === nextNg) return prev;
-                    // Ao mudar o endereço principal, limpamos rascunhos para não conflitar na etapa 2
-                    return { ...prev, location: nextLoc, mapRegion: getRegionFromState(rawUf) as any, ng: nextNg, ufDraft: '', cityDraft: '' };
-                });
             } catch (_) {}
         };
-        const t = setTimeout(syncFromAddress, 300);
+        const t = setTimeout(syncFromAddress, 500);
         return () => clearTimeout(t);
     }, [data.clientAddress]);
 

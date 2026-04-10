@@ -546,7 +546,7 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, sugges
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const normalizedSuggestions = React.useMemo(() => {
         return suggestions.map(s => ({ norm: normalize(String(s)), value: String(s) }));
     }, [suggestions]);

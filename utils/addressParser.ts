@@ -8,10 +8,10 @@ export function extractCityAndUf(address: string): { city: string; uf: string } 
   if (!address || typeof address !== 'string') return null;
 
   // 1. Clean the address and split by common separators
-  // We include '/', '-', ',', and ';' as separators. 
-  // We keep spaces for multi-word city names but normalize multiple spaces.
+  // We include '/', ',', and ';' as separators.
+  // We split by hyphen ONLY if it has spaces (e.g. " - ") or if it's a UF separator (e.g. "-SP")
   const cleanAddress = address.trim();
-  const segments = cleanAddress.split(/[,/;]|-/).map(s => s.trim()).filter(Boolean);
+  const segments = cleanAddress.split(/[,/;]|\s+-\s+|-(?=[A-Z]{2}$)/i).map(s => s.trim()).filter(Boolean);
 
   if (segments.length < 1) return null;
 
@@ -89,4 +89,18 @@ export function extractCityAndUf(address: string): { city: string; uf: string } 
   }
 
   return null;
+}
+
+/**
+ * Normaliza o nome de uma cidade para comparação robusta.
+ * Remove acentos, espaços e caracteres especiais (como hifens).
+ */
+export function normalizeCityName(name: string): string {
+  if (!name) return '';
+  return name
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toLowerCase();
 }

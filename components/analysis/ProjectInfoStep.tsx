@@ -53,11 +53,11 @@ export function ProjectInfoStep({
                                 placeholder="Relatório Análise de Risco - Edifício Central"
                                 className="h-10 text-sm"
                             />
-                            <AutoCorrectingInput
+                            <Input
                                 id="clientAddress"
                                 label="Endereço da Obra / Localização"
                                 value={data.clientAddress}
-                                onUpdate={(val) => handleValueUpdate('clientAddress', val)}
+                                onChange={(e) => handleValueUpdate('clientAddress', e.target.value)}
                                 placeholder="Ex: Av. Paulista, 1000 - São Paulo/SP"
                                 className="h-10 text-sm"
                             />

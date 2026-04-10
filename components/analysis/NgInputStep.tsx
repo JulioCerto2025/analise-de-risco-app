@@ -7,7 +7,7 @@ import { MapViewerHandles } from './MapViewer';
 const MapViewerLazy = React.lazy(() => import('./MapViewer').then(m => ({ default: m.MapViewer })));
 import { getUfs, getCitiesByUf, getNgByCity, toUfCode, getUfSuggestions } from '../../data/ngByCity';
 import { geocodeCityWithOSM } from '../../lib/osmGeocoding';
-import { extractCityAndUf } from '../../utils/addressParser';
+import { extractCityAndUf, normalizeCityName } from '../../utils/addressParser';
 import { getRegionFromState } from '../../utils/geoUtils';
 
 interface NgInputStepProps {
@@ -29,6 +29,10 @@ const CITY_COORDS_OVERRIDES: { [uf: string]: { [city: string]: { lat: number; lo
   MG: {
     // Extrema (MG) – coordenadas aproximadas do centro urbano
     Extrema: { lat: -22.854, lon: -46.321 }
+  },
+  SP: {
+    'Embu-Guaçu': { lat: -23.832, lon: -46.811 },
+    'Mogi-Guaçu': { lat: -22.370, lon: -46.942 }
   },
   SC: {
     // Joinville (SC) – para garantir posicionamento dentro do contorno em validações
@@ -286,6 +290,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     }, [data.lat, data.lon, mapRegion, getDynamicPixelBounds, imageDims, markerPoint]);
 
     // Efeito unificado para busca de coordenadas (reativo a drafts e seleções oficiais)
+    // Com debounce de 600ms para evitar rate-limit no OSM
     useEffect(() => {
         const run = async () => {
             try {
@@ -318,7 +323,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 setCoordsForCity(null);
             }
         };
-        run();
+        const t = setTimeout(run, 600);
+        return () => clearTimeout(t);
     }, [selectedUf, selectedCity, ufInput, cityInput]);
 
     // Determina a cor do card NG com base no valor atual (2..32)
@@ -358,12 +364,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         lastLocationAppliedRef.current = loc;
 
         // Formatos aceitos: "Cidade - UF", "Cidade / UF", etc.
-        const parts = loc.split(/[\-\/]/).map(s => s.trim());
-        if (parts.length < 2) return;
+        const parsed = extractCityAndUf(loc);
+        if (!parsed) return;
 
-        const city = parts[0];
-        const ufRaw = parts[parts.length - 1].toUpperCase();
-        const uf = (toUfCode(ufRaw) || ufRaw);
+        const { city, uf } = parsed;
 
         if (!city || !uf) return;
 
@@ -377,14 +381,20 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 const cities = await getCitiesByUf(uf);
                 setAvailableCities(cities);
                 
-                // Normalização para encontrar a cidade na lista oficial
-                const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-                const matchedCity = cities.find(c => norm(c) === norm(city)) || city;
+                // Normalização robusta para encontrar a cidade na lista oficial
+                const rawNorm = normalizeCityName(city);
+                const matchedCity = cities.find(c => normalizeCityName(c) === rawNorm) || city;
                 
                 setCityInput(matchedCity);
                 setSelectedCity(matchedCity);
                 // Posiciona o marcador visual no mapa baseado na cidade detectada
                 positionMarkerForCityUf(matchedCity, uf);
+
+                // Força atualização automática do Ng (se disponível) para evitar valores residuais (ex: 20)
+                const presetNg = await getNgByCity(uf, matchedCity);
+                if (typeof presetNg === 'number' && presetNg > 0) {
+                    onUpdate({ ng: presetNg });
+                }
             }
         })();
     }, [data.location]);
@@ -579,38 +589,44 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const commitCity = async (input: string) => {
         const text = (input || '').trim();
         if (!text) return;
-        // pick best match from availableCities
-        const normalized = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        const exact = availableCities.find(c => normalized(c) === normalized(text));
-        // Não forçar escolha por prefixo; mantém o que o usuário digitou
+        
+        const rawNorm = normalizeCityName(text);
+        const exact = availableCities.find(c => normalizeCityName(c) === rawNorm);
         const city = exact || text;
+        
         setSelectedCity(city);
         setCityInput(city);
-        // Atualiza rascunho global também após commit
         try { onUpdate({ cityDraft: city } as any); } catch (_) { /* silencioso */ }
-        // Se UF ainda não foi oficialmente selecionada, mas há rascunho válido, comitar antes
-        if (!selectedUf && ufInput) {
-            const code = toUfCode((ufInput || '').toUpperCase()) || (ufInput || '').toUpperCase();
-            const validUfs = getUfSuggestions();
-            if (code && validUfs.includes(code)) {
-                await commitUf(code);
-            }
-        }
-        if (selectedUf) {
-            const ngPreset = await getNgByCity(selectedUf, city);
-            const loc = `${city} - ${selectedUf}`;
-            // Se coordenadas já forem conhecidas localmente (override), atualiza global também
-            const byUf = CITY_COORDS_OVERRIDES[selectedUf.toUpperCase()] || {};
-            const cityName = city.trim();
-            const foundKey = Object.keys(byUf).find(k => k.toLowerCase() === cityName.toLowerCase());
+
+        const ufToUse = selectedUf || (toUfCode((ufInput || '').toUpperCase()) || (ufInput || '').toUpperCase());
+        const validUfs = getUfSuggestions();
+
+        if (ufToUse && validUfs.includes(ufToUse)) {
+            if (!selectedUf) await commitUf(ufToUse);
+            
+            const ngPreset = await getNgByCity(ufToUse, city);
+            const loc = `${city} - ${ufToUse}`;
+            
+            // Tenta override de coordenadas
+            const byUf = CITY_COORDS_OVERRIDES[ufToUse.toUpperCase()] || {};
+            const foundKey = Object.keys(byUf).find(k => normalizeCityName(k) === normalizeCityName(city));
             const override = foundKey ? byUf[foundKey] : null;
 
-            onUpdate({ 
+            const updates: any = { 
                 location: loc, 
-                ng: ngPreset,
-                lat: override?.lat || data.lat,
-                lon: override?.lon || data.lon
-            });
+                cityDraft: city, 
+                ufDraft: ufToUse,
+            };
+            if (typeof ngPreset === 'number' && ngPreset > 0) {
+                updates.ng = ngPreset;
+            }
+            if (override) {
+                updates.lat = override.lat;
+                updates.lon = override.lon;
+            }
+            
+            onUpdate(updates);
+            positionMarkerForCityUf(city, ufToUse);
         }
     };
 
