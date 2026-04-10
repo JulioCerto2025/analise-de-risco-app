@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Layers, BoxIcon, CheckCircle, AlertTriangle, Loader2, X, FileDown, FolderOpen } from 'lucide-react';
 import { Button, Card, CardHeader, CardTitle, CardContent } from '../ui';
@@ -55,10 +55,10 @@ interface ReportStepProps {
 }
 
 export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [reportText, setReportText] = useState('');
-    const [copySuccess, setCopySuccess] = useState(false);
-    const [generationStep, setGenerationStep] = useState('');
+    const [isGenerating, setIsGenerating] = React.useState(false);
+    const [reportText, setReportText] = React.useState('');
+    const [copySuccess, setCopySuccess] = React.useState(false);
+    const [generationStep, setGenerationStep] = React.useState('');
 
     const formatPrefs = {
         h2FontSizeRem: 1.15,

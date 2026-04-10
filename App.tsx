@@ -254,7 +254,7 @@ export default function App() {
         }
     }, [currentStep]);
 
-    const renderStep = useMemo(() => {
+    const renderStep = React.useMemo(() => {
         try {
             switch (currentStep) {
                 case 1: return (

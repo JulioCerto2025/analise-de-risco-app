@@ -19,9 +19,9 @@ const ScientificNotation = ({ value, precision = 2 }: { value: number; precision
 const CustomTooltip = ({ active, payload, label }: any) => {
     const { auditMode } = useAuditMode();
     const isMobile = useIsMobile();
-    const [mounted, setMounted] = useState(false);
+    const [mounted, setMounted] = React.useState(false);
 
-    useEffect(() => {
+    React.useEffect(() => {
         setMounted(true);
     }, []);
 
@@ -66,7 +66,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         }
     }, [forceActiveZoneId, data.last_active_zone_id, zones, activeZoneId]);
 
-    const availableTabs = useMemo(() => {
+    const availableTabs = React.useMemo(() => {
         const rta = data.risks_to_analyze || { R1: false, R3: false, R4: false };
         const tabs = [];
         if (rta.R1) {
@@ -77,9 +77,9 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         return tabs;
     }, [data.risks_to_analyze]);
 
-    const [activeTab, setActiveTab] = useState(availableTabs[0]?.id || '');
+    const [activeTab, setActiveTab] = React.useState(availableTabs[0]?.id || '');
     
-    useEffect(() => {
+    React.useEffect(() => {
         if (availableTabs.length > 0 && !availableTabs.find(t => t.id === activeTab)) {
             setActiveTab(availableTabs[0].id);
         }

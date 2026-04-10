@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo, useState } from 'react';
+import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Card, CardContent, Checkbox, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, FormulaTooltip, useIsMobile, useAuditMode } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
@@ -171,11 +171,11 @@ const CustomTooltip = ({ active, payload, label, data, ctx, formulas }: any) => 
 
 export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, onUpdate: (newData: Partial<AnalysisData>) => void }) {
     const isMobile = useIsMobile();
-    const [openSelect, setOpenSelect] = useState<string | null>(null);
+    const [openSelect, setOpenSelect] = React.useState<string | null>(null);
     const config = data.frequency_config;
     const calculations = data.frequency_results;
     
-    const dynamicFrequencyFormulas = useMemo(() => {
+    const dynamicFrequencyFormulas = React.useMemo(() => {
         const formulas: { [key: string]: { formula: string; vars: string[] } } = { ...BASE_FREQUENCY_FORMULAS };
         const hasE = data.has_electric_line;
         const hasD = data.has_data_line;
@@ -247,7 +247,7 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
     const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, data.zones.indexOf(activeZone!));
 
     // Per-zone frequency calculations
-    const activeData = useMemo(() => {
+    const activeData = React.useMemo(() => {
         if (!activeZone) return { freq: calculations, p: data.probability_calculations, isAcceptable: (calculations?.F || 0) <= (config.is_critical_system ? 0.1 : 1) };
         const pBase = calculateProbabilities(activeZone.probability_data || data.probability_data, !!activeZone.analyze_data_line_probabilities, data.has_data_line, !!activeZone.analyze_electric_line_probabilities);
         const p = mergeZoneProbabilities(pBase, activeZone);

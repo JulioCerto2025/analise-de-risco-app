@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Card, CardContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Label, TabButton, useIsMobile, useAuditMode } from '../ui';
 import { formatSmartNumber } from '../../lib/format';
@@ -162,9 +162,9 @@ const CLI_OPTIONS = [
 ];
 
 export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
-    const [activeTab, setActiveTab] = useState('structure');
-    const [electricSubTab, setElectricSubTab] = useState<'external' | 'internal'>('external');
-    const [dataSubTab, setDataSubTab] = useState<'external' | 'internal'>('external');
+    const [activeTab, setActiveTab] = React.useState('structure');
+    const [electricSubTab, setElectricSubTab] = React.useState<'external' | 'internal'>('external');
+    const [dataSubTab, setDataSubTab] = React.useState<'external' | 'internal'>('external');
     const isMobile = useIsMobile();
 
     const { zones = [] } = data;
@@ -174,7 +174,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const currentZone = activeViewId === 'GLOBAL' ? undefined : (zones.find(z => z.id === activeViewId) || zones[0]);
     const prob = (currentZone?.probability_data || data.probability_data);
 
-    const handleProbabilityChange = useCallback((updates: Partial<ProbabilityData>) => {
+    const handleProbabilityChange = React.useCallback((updates: Partial<ProbabilityData>) => {
         const nextUpdate: Partial<AnalysisData> = {};
         
         const updatePlds = (pData: ProbabilityData, upds: Partial<ProbabilityData>) => {
