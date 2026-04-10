@@ -16,31 +16,36 @@ interface ProbabilityStepProps {
 }
 
 // Exibe números como "9,98 × 10⁻⁷" com precisão ajustável para seção Detalhe/Valor
-const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
+const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
     if (value === 0 || !isFinite(value)) return <span>0</span>;
-    const [mantissa, exponent] = value.toExponential(precision).split('e');
+    let [mantissa, exponent] = value.toExponential(precision).split('e');
+    const expInt = parseInt(exponent, 10);
     return (
-        <span className="font-mono tracking-tight" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')} &times; 10<sup>${exponent}</sup>` }} />
+        <span className={`inline-flex items-baseline font-black tracking-tighter ${className}`}>
+            <span>{mantissa.replace('.', ',')}</span>
+            <span className="text-[0.6em] ml-0.5 opacity-80">&times;10</span>
+            <sup className="text-[0.55em] leading-none -top-[0.8em]">{expInt}</sup>
+        </span>
     );
 };
 
 const PROBABILITY_FORMULAS: { [key: string]: { formula: string; symbols: string[]; vars: string[] } } = {
     PA: { formula: "PTA × PB", symbols: ["PTA", "PB"], vars: ["PTA", "PB"] },
     PB: { formula: "Seleção Direta (Nível SPDA)", symbols: [], vars: ["PB"] },
-    PC: { formula: "PSPDₑ × CLDₑ(int)", symbols: ["PSPDₑ", "CLDₑ(int)"], vars: ["PSPD_electric", "CLD_electric_int"] },
-    PCT: { formula: "PSPDₐ × CLDₐ(int)", symbols: ["PSPDₐ", "CLDₐ(int)"], vars: ["PSPD_data", "CLD_data_int"] },
-    Pms: { formula: "(Ks1 × Ks2 × Ks3ₑ(int) × Ks4ₑ(int))²", symbols: ["Ks1", "Ks2", "Ks3ₑ(int)", "Ks4ₑ(int)"], vars: ["Ks1", "Ks2", "Ks3_electric_int", "Ks4_electric_int"] },
-    Pmst: { formula: "(Ks1 × Ks2 × Ks3ₐ(int) × Ks4ₐ(int))²", symbols: ["Ks1", "Ks2", "Ks3ₐ(int)", "Ks4ₐ(int)"], vars: ["Ks1", "Ks2", "Ks3_data_int", "Ks4_data_int"] },
-    PM: { formula: "PSPDₑ × Pms", symbols: ["PSPDₑ", "Pms"], vars: ["PSPD_electric", "Pms"] },
-    PMT: { formula: "PSPDₐ × Pmst", symbols: ["PSPDₐ", "Pmst"], vars: ["PSPD_data", "Pmst"] },
-    PU: { formula: "PTUₑ × PEBₑ × PLDₑ(ext) × CLDₑ(ext)", symbols: ["PTUₑ", "PEBₑ", "PLDₑ(ext)", "CLDₑ(ext)"], vars: ["PTU_electric", "PEB_electric", "PLD_electric_ext", "CLD_electric_ext"] },
-    PUT: { formula: "PTUₐ × PEBₐ × PLDₐ(ext) × CLDₐ(ext)", symbols: ["PTUₐ", "PEBₐ", "PLDₐ(ext)", "CLDₐ(ext)"], vars: ["PTU_data", "PEB_data", "PLD_data_ext", "CLD_data_ext"] },
-    PV: { formula: "PEBₑ × PLDₑ(ext) × CLDₑ(ext)", symbols: ["PEBₑ", "PLDₑ(ext)", "CLDₑ(ext)"], vars: ["PEB_electric", "PLD_electric_ext", "CLD_electric_ext"] },
-    PVT: { formula: "PEBₐ × PLDₐ(ext) × CLDₐ(ext)", symbols: ["PEBₐ", "PLDₐ(ext)", "CLDₐ(ext)"], vars: ["PEB_data", "PLD_data_ext", "CLD_data_ext"] },
-    PW: { formula: "PSPDₑ × PLDₑ(ext) × CLDₑ(ext)", symbols: ["PSPDₑ", "PLDₑ(ext)", "CLDₑ(ext)"], vars: ["PSPD_electric", "PLD_electric_ext", "CLD_electric_ext"] },
-    PWT: { formula: "PSPDₐ × PLDₐ(ext) × CLDₐ(ext)", symbols: ["PSPDₐ", "PLDₐ(ext)", "CLDₐ(ext)"], vars: ["PSPD_data", "PLD_data_ext", "CLD_data_ext"] },
-    PZ: { formula: "PSPDₑ × CLIₑ(ext) × Pliₑ(ext)", symbols: ["PSPDₑ", "CLIₑ(ext)", "Pliₑ(ext)"], vars: ["PSPD_electric", "CLI_electric_ext", "Pli_electric_ext"] },
-    PZT: { formula: "PSPDₐ × CLIₐ(ext) × Pliₐ(ext)", symbols: ["PSPDₐ", "CLIₐ(ext)", "Pliₐ(ext)"], vars: ["PSPD_data", "CLI_data_ext", "Pli_data_ext"] },
+    PC: { formula: "PSPD<sub>e</sub> × CLD<sub>e</sub>(int)", symbols: ["PSPD<sub>e</sub>", "CLD<sub>e</sub>(int)"], vars: ["PSPD_electric", "CLD_electric_int"] },
+    PCT: { formula: "PSPD<sub>a</sub> × CLD<sub>a</sub>(int)", symbols: ["PSPD<sub>a</sub>", "CLD<sub>a</sub>(int)"], vars: ["PSPD_data", "CLD_data_int"] },
+    Pms: { formula: "(Ks1 × Ks2 × Ks3<sub>e</sub>(int) × Ks4<sub>e</sub>(int))²", symbols: ["Ks1", "Ks2", "Ks3<sub>e</sub>(int)", "Ks4<sub>e</sub>(int)"], vars: ["Ks1", "Ks2", "Ks3_electric_int", "Ks4_electric_int"] },
+    Pmst: { formula: "(Ks1 × Ks2 × Ks3<sub>a</sub>(int) × Ks4<sub>a</sub>(int))²", symbols: ["Ks1", "Ks2", "Ks3<sub>a</sub>(int)", "Ks4<sub>a</sub>(int)"], vars: ["Ks1", "Ks2", "Ks3_data_int", "Ks4_data_int"] },
+    PM: { formula: "PSPD<sub>e</sub> × Pms", symbols: ["PSPD<sub>e</sub>", "Pms"], vars: ["PSPD_electric", "Pms"] },
+    PMT: { formula: "PSPD<sub>a</sub> × Pmst", symbols: ["PSPD<sub>a</sub>", "Pmst"], vars: ["PSPD_data", "Pmst"] },
+    PU: { formula: "PTU<sub>e</sub> × PEB<sub>e</sub> × PLD<sub>e</sub>(ext) × CLD<sub>e</sub>(ext)", symbols: ["PTU<sub>e</sub>", "PEB<sub>e</sub>", "PLD<sub>e</sub>(ext)", "CLD<sub>e</sub>(ext)"], vars: ["PTU_electric", "PEB_electric", "PLD_electric_ext", "CLD_electric_ext"] },
+    PUT: { formula: "PTU<sub>a</sub> × PEB<sub>a</sub> × PLD<sub>a</sub>(ext) × CLD<sub>a</sub>(ext)", symbols: ["PTU<sub>a</sub>", "PEB<sub>a</sub>", "PLD<sub>a</sub>(ext)", "CLD<sub>a</sub>(ext)"], vars: ["PTU_data", "PEB_data", "PLD_data_ext", "CLD_data_ext"] },
+    PV: { formula: "PEB<sub>e</sub> × PLD<sub>e</sub>(ext) × CLD<sub>e</sub>(ext)", symbols: ["PEB<sub>e</sub>", "PLD<sub>e</sub>(ext)", "CLD<sub>e</sub>(ext)"], vars: ["PEB_electric", "PLD_electric_ext", "CLD_electric_ext"] },
+    PVT: { formula: "PEB<sub>a</sub> × PLD<sub>a</sub>(ext) × CLD<sub>a</sub>(ext)", symbols: ["PEB<sub>a</sub>", "PLD<sub>a</sub>(ext)", "CLD<sub>a</sub>(ext)"], vars: ["PEB_data", "PLD_data_ext", "CLD_data_ext"] },
+    PW: { formula: "PSPD<sub>e</sub> × PLD<sub>e</sub>(ext) × CLD<sub>e</sub>(ext)", symbols: ["PSPD<sub>e</sub>", "PLD<sub>e</sub>(ext)", "CLD<sub>e</sub>(ext)"], vars: ["PSPD_electric", "PLD_electric_ext", "CLD_electric_ext"] },
+    PWT: { formula: "PSPD<sub>a</sub> × PLD<sub>a</sub>(ext) × CLD<sub>a</sub>(ext)", symbols: ["PSPD<sub>a</sub>", "PLD<sub>a</sub>(ext)", "CLD<sub>a</sub>(ext)"], vars: ["PSPD_data", "PLD_data_ext", "CLD_data_ext"] },
+    PZ: { formula: "PSPD<sub>e</sub> × CLI<sub>e</sub>(ext) × Pli<sub>e</sub>(ext)", symbols: ["PSPD<sub>e</sub>", "CLI<sub>e</sub>(ext)", "Pli<sub>e</sub>(ext)"], vars: ["PSPD_electric", "CLI_electric_ext", "Pli_electric_ext"] },
+    PZT: { formula: "PSPD<sub>a</sub> × CLI<sub>a</sub>(ext) × Pli<sub>a</sub>(ext)", symbols: ["PSPD<sub>a</sub>", "CLI<sub>a</sub>(ext)", "Pli<sub>a</sub>(ext)"], vars: ["PSPD_data", "CLI_data_ext", "Pli_data_ext"] },
 };
 
 const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => {
@@ -55,7 +60,13 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
         if (label === 'PM') subComponentLabel = 'Pms';
         else if (label === 'PMT') subComponentLabel = 'Pmst';
 
-        const formatPtBR = (n: number) => (n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
+        const formatPtBR = (n: number) => {
+            const val = Number(n || 0);
+            if (val > 0 && val < 0.0001) {
+                return formatSmartNumber(val, { useScientificBelow: 1, scientificPrecision: 2 });
+            }
+            return val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
+        };
 
         const formatFormulaWithValues = (info: any, rawFormula: string) => {
             if (!info || !rawFormula) return "N/A";
@@ -101,7 +112,7 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
                             <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
                             <div className="flex items-baseline gap-2 text-right">
                                 <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest">Valor Final</span>
-                                <p className="text-blue-400 font-mono font-black text-xl"><ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
+                                <p className="text-blue-400 font-black text-xl"><ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
                             </div>
                         </div>
                         <div className="space-y-4">
@@ -109,11 +120,11 @@ const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => 
                                 <>
                                     <div className="space-y-1.5">
                                         <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                        <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">{formulaInfo.formula}</div>
+                                        <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaInfo.formula }} />
                                     </div>
                                     <div className="space-y-1.5">
                                         <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                        <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner">{valuesString}</div>
+                                        <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
                                     </div>
                                 </>
                             )}
@@ -352,7 +363,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
             <div className="flex justify-center mt-6 mb-4"><span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">{`Gráfico de Probabilidades — ${activeHeading}`}</span></div>
             <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
-                <CardContent className="h-[19rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

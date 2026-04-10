@@ -4,7 +4,7 @@ import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Card, CardContent, Label, TabButton, Button, Alert, AlertDescription, Checkbox, useIsMobile, useAuditMode, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Sparkles, Loader2, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, Loader2, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DecimalInput } from "../DecimalInput";
 import { AnalysisData, LossData } from '../../types';
 import { RP_OPTIONS, RT_OPTIONS, RF_OPTIONS, HZ_OPTIONS, LF_OPTIONS, LO_OPTIONS, LF3_OPTIONS, LF4_OPTIONS, LO4_OPTIONS, LT_OPTIONS } from '../../constants';
@@ -188,14 +188,15 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         );
     }
 
-    const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
-    const lossData = currentZone?.loss_data || {};
-    const l = calculateLossesForZone(currentZone);
     const globalTotals = zones.reduce((acc, z) => {
         const r = calculateLossesForZone(z);
         acc.LA += (r.LA || 0); acc.LB += (r.LB || 0); acc.LC += (r.LC || 0);
         return acc;
     }, { LA: 0, LB: 0, LC: 0 });
+    const isGlobal = activeZoneId === 'GLOBAL';
+    const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
+    const lossData = currentZone?.loss_data || {};
+    const l = isGlobal ? globalTotals : calculateLossesForZone(currentZone);
 
     const chartData = [
         { name: 'LA = LU (Choque)', description: "D1: Choque Elétrico", value: (l.LA || 0), color: '#3b82f6', globalValue: globalTotals.LA },
@@ -208,16 +209,15 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         const finalValue = Number.isFinite(value) ? value : 0;
         
         const nextZones = zones.map(z => {
-            // Se for a zona ativa, atualiza sempre
-            if (z.id === activeZoneId) {
+            // Se for GLOBAL ou a zona ativa específica, atualiza
+            if (activeZoneId === 'GLOBAL' || z.id === activeZoneId) {
                 const next = { ...z.loss_data, [field]: finalValue } as LossData;
                 if (['ca','cb','cc','cs','ce'].includes(field as string)) {
                     next.ct_economic = (Number(next.ca)||0)+(Number(next.cb)||0)+(Number(next.cc)||0)+(Number(next.cs)||0)+(Number(next.ce)||0);
                 }
                 return { ...z, loss_data: next };
             }
-            // Se for um campo de sincronização global (como nt, rt, rp, rf) e a zona não tiver override?
-            // Para perdas, nt (total de pessoas) é comum ser igual em todas as zonas se representar o prédio
+            // Sync nt (total de pessoas) se for global ou nt específico
             if (field === 'nt') return { ...z, loss_data: { ...z.loss_data, nt: finalValue } };
             
             return z;
@@ -230,27 +230,34 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         onChange({ last_active_zone_id: newId });
     };
 
-    const activeHeading = (currentZone?.name || 'ZONA ATIVA').toUpperCase();
+    const hasMultipleZones = zones.length > 1;
+    const viewOrder = hasMultipleZones ? ['GLOBAL', ...zones.map(z => z.id)] : zones.map(z => z.id);
+    const activeHeading = activeZoneId === 'GLOBAL' ? 'Ajuste GLOBAL' : (currentZone?.name || 'ZONA ATIVA').toUpperCase();
+
+    const goNextView = () => {
+        const currentIdx = viewOrder.indexOf(activeZoneId);
+        const nextIdx = (currentIdx + 1) % viewOrder.length;
+        handleZoneChange(viewOrder[nextIdx]);
+    };
+    const goPrevView = () => {
+        const currentIdx = viewOrder.indexOf(activeZoneId);
+        const prevIdx = (currentIdx - 1 + viewOrder.length) % viewOrder.length;
+        handleZoneChange(viewOrder[prevIdx]);
+    };
 
     return (
         <div className="grid grid-cols-1 gap-2 animate-in fade-in duration-500 max-w-6xl w-full mx-auto overflow-hidden">
             <Card className="w-full border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shadow-2xl">
-                <div className="flex justify-center mt-3 mb-2">
-                    <span className="px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-white font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">
-                        {`Parâmetros de Perda — ${activeHeading}`}
-                    </span>
+                <div className="flex justify-center mt-4 mb-2">
+                    <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
+                        {hasMultipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
+                        <span className="text-white font-black text-[10px] uppercase tracking-[0.3em] min-w-[200px] text-center">
+                            {`Parâmetros de Perda — ${activeHeading}`}
+                        </span>
+                        {hasMultipleZones && <button onClick={goNextView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-5 h-5" /></button>}
+                    </div>
                 </div>
                 <CardContent className="space-y-2 py-2 px-4">
-                    {zones.length > 1 && (
-                        <div className="flex justify-center mb-2">
-                            <Select value={activeZoneId} onValueChange={handleZoneChange}>
-                                <SelectTrigger className="w-[200px] h-7 text-[10px] font-black uppercase tracking-widest bg-slate-950/70 border-slate-700 focus:ring-1 focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {zones.map(z => <SelectItem key={z.id} value={z.id} label={z.name}>{z.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
 
                     {availableTabs.length > 0 && (
                         <div className="flex justify-center mb-2">

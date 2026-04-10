@@ -13,13 +13,13 @@ import { PSPD_OPTIONS } from '../../constants';
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
 const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
     if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
-    const [mantissa, exponent] = value.toExponential(precision).split('e');
-    const expInt = parseInt(exponent);
+    let [mantissa, exponent] = value.toExponential(precision).split('e');
+    const expInt = parseInt(exponent, 10);
     
     return (
         <span className={`inline-flex items-baseline tracking-tight ${className}`}>
             <span className="font-black">{mantissa.replace('.', ',')}</span>
-            <span className="text-[0.85em] ml-2 opacity-100 font-bold">×10</span>
+            <span className="text-[0.85em] ml-2 opacity-100 font-bold">&times;10</span>
             <sup className="text-[0.75em] leading-none -top-[0.8em] font-bold">{expInt}</sup>
         </span>
     );
@@ -31,10 +31,10 @@ const formatValue = (value: number) => {
 };
 
 const BASE_FREQUENCY_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
-    FB: { formula: "nd × PB", vars: ["nd", "PB"] },
-    FV: { formula: "nl_e × PEB_e + nl_t × PEB_t", vars: ["nl_electric", "PEB_electric", "nl_data", "PEB_data"] },
-    FW: { formula: "nl_e × PW + nl_t × PWT", vars: ["nl_electric", "PW", "nl_data", "PWT"] },
-    FZ: { formula: "ni_e × PZ + ni_t × PZT", vars: ["ni_electric", "PZ", "ni_data", "PZT"] },
+    FB: { formula: "n<sub>d</sub> × P<sub>B</sub>", vars: ["nd", "PB"] },
+    FV: { formula: "n<sub>l(e)</sub> × P<sub>EB(e)</sub> + n<sub>l(t)</sub> × P<sub>EB(t)</sub>", vars: ["nl_electric", "PEB_electric", "nl_data", "PEB_data"] },
+    FW: { formula: "n<sub>l(e)</sub> × P<sub>W</sub> + n<sub>l(t)</sub> × P<sub>WT</sub>", vars: ["nl_electric", "PW", "nl_data", "PWT"] },
+    FZ: { formula: "n<sub>i(e)</sub> × P<sub>Z</sub> + n<sub>i(t)</sub> × P<sub>ZT</sub>", vars: ["ni_electric", "PZ", "ni_data", "PZT"] },
 };
 
 const CustomTooltip = ({ active, payload, label, data, ctx, formulas }: any) => {
@@ -129,7 +129,7 @@ const CustomTooltip = ({ active, payload, label, data, ctx, formulas }: any) => 
                             </div>
                             <div className="flex items-baseline gap-2 text-right">
                                 <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
-                                <p className="text-blue-400 font-mono font-black text-xl">
+                                <p className="text-blue-400 font-black text-xl">
                                     {Number(payload[0].value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                 </p>
                             </div>
@@ -138,16 +138,12 @@ const CustomTooltip = ({ active, payload, label, data, ctx, formulas }: any) => 
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                    {formulaString}
-                                </div>
+                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaString }} />
                             </div>
                             {valuesString && (
                                 <div className="space-y-1.5">
                                     <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                    <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner">
-                                        {valuesString}
-                                    </div>
+                                    <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
                                 </div>
                             )}
                             {valuesNodes && (
@@ -184,14 +180,14 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
         const hasE = data.has_electric_line;
         const hasD = data.has_data_line;
 
-        if (hasE && hasD) formulas.FC = { formula: "nd × (1 - (1-PC)×(1-PCT))", vars: ["nd", "PC", "PCT"] };
-        else if (hasE) formulas.FC = { formula: "nd × PC", vars: ["nd", "PC"] };
-        else if (hasD) formulas.FC = { formula: "nd × PCT", vars: ["nd", "PCT"] };
+        if (hasE && hasD) formulas.FC = { formula: "n<sub>d</sub> × (1 - (1-P<sub>C</sub>)×(1-P<sub>CT</sub>))", vars: ["nd", "PC", "PCT"] };
+        else if (hasE) formulas.FC = { formula: "n<sub>d</sub> × P<sub>C</sub>", vars: ["nd", "PC"] };
+        else if (hasD) formulas.FC = { formula: "n<sub>d</sub> × P<sub>CT</sub>", vars: ["nd", "PCT"] };
         else formulas.FC = { formula: "0", vars: [] };
 
-        if (hasE && hasD) formulas.FM = { formula: "nm × (1 - (1-PM)×(1-PMT))", vars: ["nm", "PM", "PMT"] };
-        else if (hasE) formulas.FM = { formula: "nm × PM", vars: ["nm", "PM"] };
-        else if (hasD) formulas.FM = { formula: "nm × PMT", vars: ["nm", "PMT"] };
+        if (hasE && hasD) formulas.FM = { formula: "n<sub>m</sub> × (1 - (1-P<sub>M</sub>)×(1-P<sub>MT</sub>))", vars: ["nm", "PM", "PMT"] };
+        else if (hasE) formulas.FM = { formula: "n<sub>m</sub> × P<sub>M</sub>", vars: ["nm", "PM"] };
+        else if (hasD) formulas.FM = { formula: "n<sub>m</sub> × P<sub>MT</sub>", vars: ["nm", "PMT"] };
         else formulas.FM = { formula: "0", vars: [] };
 
         return formulas;
@@ -283,11 +279,17 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                 {/* Config Card */}
                 <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-100/5 backdrop-blur-sm shadow-xl shadow-black/20 group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
-                    <div className="flex justify-start my-4 px-4">
-                        <span className="px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-white font-black text-[9px] uppercase tracking-[0.2em] shadow-lg shadow-black/40 text-left truncate">
-                            {`AJUSTAR FREQ. DANO — ${activeHeading.toUpperCase()}`}
-                        </span>
+                    
+                    <div className="flex justify-center mt-4">
+                        <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
+                            {multipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
+                            <span className="text-white font-black text-[9px] uppercase tracking-[0.3em] min-w-[200px] text-center">
+                                {activeViewId === 'GLOBAL' ? 'Freq. Dano — GLOBAL' : `Freq. Dano — ${activeHeading.split('(')[0].trim()}`}
+                            </span>
+                            {multipleZones && <button onClick={goNextView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-5 h-5" /></button>}
+                        </div>
                     </div>
+
                     <CardContent className="space-y-4 py-4 px-4">
                         <div className="grid grid-cols-2 gap-x-3 gap-y-4 pt-1">
                             <div>
@@ -351,15 +353,6 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                                 </Select>
                             </div>
                         </div>
-                        {multipleZones && (
-                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Navegação Zonas</span>
-                                <div className="flex items-center gap-1">
-                                    <button onClick={goPrevView} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400"><ChevronLeft className="w-4 h-4" /></button>
-                                    <button onClick={goNextView} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400"><ChevronRight className="w-4 h-4" /></button>
-                                </div>
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
 
@@ -418,7 +411,7 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                 </span>
             </div>
             <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
-                <CardContent className="h-[19rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>

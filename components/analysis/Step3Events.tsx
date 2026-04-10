@@ -11,13 +11,13 @@ import { Zap, MapPin, Activity, AlertTriangle, Home } from 'lucide-react';
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
 const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
     if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
-    const [mantissa, exponent] = value.toExponential(precision).split('e');
-    const expInt = parseInt(exponent);
+    let [mantissa, exponent] = value.toExponential(precision).split('e');
+    const expInt = parseInt(exponent, 10);
     
     return (
         <span className={`inline-flex items-baseline font-black tracking-tighter ${className}`}>
             <span>{mantissa.replace('.', ',')}</span>
-            <span className="text-[0.6em] ml-0.5 opacity-80">×10</span>
+            <span className="text-[0.6em] ml-0.5 opacity-80">&times;10</span>
             <sup className="text-[0.55em] leading-none -top-[0.8em]">{expInt}</sup>
         </span>
     );
@@ -39,10 +39,10 @@ const formatFrequencyAsPeriod = (value: number): { period: string; unit: string 
 };
 
 const EVENT_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
-    ND: { formula: "Ng × Adf × Cd × 10⁻⁶", vars: ["ng", "adf", "cd"] },
-    NM: { formula: "Ng × Am × 10⁻⁶", vars: ["ng", "am"] },
-    NL: { formula: "Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶", vars: ["nl_electric", "nl_data"] },
-    NI: { formula: "Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶", vars: ["ni_electric", "ni_data"] },
+    ND: { formula: "Ng × Adf × Cd × 10<sup>-6</sup>", vars: ["ng", "adf", "cd"] },
+    NM: { formula: "Ng × Am × 10<sup>-6</sup>", vars: ["ng", "am"] },
+    NL: { formula: "Σ (Ng × Al × Ci × Ce × Ct) × 10<sup>-6</sup>", vars: ["nl_electric", "nl_data"] },
+    NI: { formula: "Σ (Ng × Ai × Ci × Ce × Ct) × 10<sup>-6</sup>", vars: ["ni_electric", "ni_data"] },
 };
 
 const CustomTooltip = ({ active, payload, label, data }: any) => {
@@ -63,11 +63,11 @@ const CustomTooltip = ({ active, payload, label, data }: any) => {
                     {parts.map((val: number, idx: number) => (
                         <span key={idx} className="inline-flex items-baseline">
                             <ScientificNotation value={val} precision={2} />
-                            {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
+                            {idx < parts.length - 1 ? <span className="mx-0.5">&times;</span> : null}
                         </span>
                     ))}
-                    <span className="mx-0.5">×</span>
-                    <span>10⁻⁶</span>
+                    <span className="mx-0.5">&times;</span>
+                    <span dangerouslySetInnerHTML={{ __html: "10<sup>-6</sup>" }} />
                 </span>
             );
         } else if (eventKey === 'NM') {
@@ -77,11 +77,11 @@ const CustomTooltip = ({ active, payload, label, data }: any) => {
                     {parts.map((val: number, idx: number) => (
                         <span key={idx} className="inline-flex items-baseline">
                             <ScientificNotation value={val} precision={2} />
-                            {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
+                            {idx < parts.length - 1 ? <span className="mx-0.5">&times;</span> : null}
                         </span>
                     ))}
-                    <span className="mx-0.5">×</span>
-                    <span>10⁻⁶</span>
+                    <span className="mx-0.5">&times;</span>
+                    <span dangerouslySetInnerHTML={{ __html: "10<sup>-6</sup>" }} />
                 </span>
             );
         } else {
@@ -119,9 +119,7 @@ const CustomTooltip = ({ active, payload, label, data }: any) => {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                    {formulaInfo?.formula || "N/A"}
-                                </div>
+                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaInfo?.formula || "N/A" }} />
                             </div>
                             {valuesNodes && (
                                 <div className="space-y-1.5">
@@ -149,7 +147,7 @@ const eventsConfig = [
     { name: 'ND', description: "Desc. Estrutura", color: '#3b82f6' },
     { name: 'NM', description: "Campo Próximo", color: '#ef4444' },
     { name: 'NL', description: "Desc. no Linha", color: '#10b981' },
-    { name: 'NI', description: "Equipot. (PSPD)", color: '#f59e0b' }
+    { name: 'NI', description: "Desc. próx. à Linha", color: '#f59e0b' }
 ];
 
 export function Step3Events({ data }: { data: AnalysisData }) {
@@ -231,7 +229,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
             </div>
             <Card className="relative overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl">
                  <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 opacity-20" />
-                 <CardContent className="h-[18rem] pt-6 pb-2 flex flex-col">
+                 <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -256,10 +254,9 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
                                 <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
                                 <YAxis 
-                                    scale="log" 
-                                    domain={[1e-9, 'auto']} 
+                                    domain={[0, yMax * 1.1]} 
                                     allowDataOverflow={true}
-                                    tickFormatter={(tick) => tick.toExponential(0)}
+                                    tickFormatter={(tick) => tick < 0.01 && tick > 0 ? tick.toExponential(1) : tick.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
                                     tick={{ fill: '#64748b', fontSize: 10 }} 
                                     axisLine={false} 
                                     tickLine={false} 
@@ -310,7 +307,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                         </div>
                         <div className="flex items-center justify-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Ni (Equipot.)</span>
+                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Ni (Próx. Linha)</span>
                         </div>
                     </div>
                 </CardContent>

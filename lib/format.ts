@@ -17,6 +17,7 @@ export function formatSmartNumber(value: number, options?: { maxDecimals?: numbe
 
 export function formatScientificNode(value: number, precision: number = 2) {
   if (value === 0 || !isFinite(value)) return '0';
-  const [mantissa, exponent] = value.toExponential(precision).split('e');
-  return `${mantissa.replace('.', ',')} × 10^${exponent}`;
+  let [mantissa, exponent] = value.toExponential(precision).split('e');
+  const cleanExponent = parseInt(exponent, 10);
+  return `${mantissa.replace('.', ',')} × 10^${cleanExponent}`;
 }

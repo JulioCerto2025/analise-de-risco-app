@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Layers, BoxIcon, Zap, Shield, ExternalLink, Wrench, Globe } from 'lucide-react';
+import { Layers, BoxIcon, Zap, Shield, ExternalLink, Wrench, Globe, Activity } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui';
 
 export function ToolboxStep() {
@@ -44,6 +44,16 @@ export function ToolboxStep() {
             color: "amber",
             gradient: "from-amber-600 to-orange-600",
             shadow: "shadow-amber-900/40"
+        },
+        {
+            title: "Cálculo de indução em laços",
+            subtitle: "NBR 5419-4",
+            description: "Simulação de tensões induzidas e correntes de surto em laços elétricos internos.",
+            url: "https://nbr5419-4-lacos-eletricos.vercel.app/",
+            icon: <Activity className="w-6 h-6 text-indigo-400" />,
+            color: "indigo",
+            gradient: "from-indigo-600 to-violet-600",
+            shadow: "shadow-indigo-900/40"
         }
     ];
 

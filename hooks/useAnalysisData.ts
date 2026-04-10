@@ -74,7 +74,7 @@ const initialInputData: AnalysisInputData = {
     hp_adj_2: 4,
     cd_adj_2: 0.25,
     // Pré-seleções para facilitar o primeiro uso (Exemplo 1)
-    selected_risk_components: { RA: true, RB: true, RC: true, RM: true, RU: true, RV: true, RW: false, RZ: false },
+    selected_risk_components: { RA: true, RB: true, RC: true, RM: true, RU: true, RV: true, RW: true, RZ: true },
     risks_to_analyze: { R1: true, R3: false, R4: false },
     frequency_config: { is_critical_system: false, has_equipment_in_ZPR0A: true },
     probability_data: {

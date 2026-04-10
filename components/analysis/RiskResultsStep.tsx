@@ -11,13 +11,13 @@ import { calculateLossesForZone, calculateProbabilities, mergeZoneProbabilities,
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
 const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
     if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
-    const [mantissa, exponent] = value.toExponential(precision).split('e');
-    const expInt = parseInt(exponent);
+    let [mantissa, exponent] = value.toExponential(precision).split('e');
+    const expInt = parseInt(exponent, 10);
     
     return (
         <span className={`inline-flex items-baseline tracking-tight ${className}`}>
             <span className="font-black">{mantissa.replace('.', ',')}</span>
-            <span className="text-[0.85em] ml-2 opacity-100 font-bold">×10</span>
+            <span className="text-[0.85em] ml-2 opacity-100 font-bold">&times;10</span>
             <sup className="text-[0.75em] leading-none -top-[0.8em] font-bold">{expInt}</sup>
         </span>
     );
@@ -28,15 +28,15 @@ const formatValue = (value: number) => {
     return formatSmartNumber(value, { useScientificBelow: 0.001, scientificPrecision: 2, maxDecimals: 3 });
 };
 
-const RISK_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
-    RA: { formula: "Nd × PA × LA", vars: ["nd", "PA", "LA"] },
-    RB: { formula: "Nd × PB × LB", vars: ["nd", "PB", "LB"] },
-    RC: { formula: "Nd × [1 − (1 − PC) × (1 − PCT)] × LC", vars: ["nd", "PC", "PCT", "LC"] },
-    RM: { formula: "Nm × [1 − (1 − PM) × (1 − PMT)] × LM", vars: ["nm", "PM", "PMT", "LM"] },
-    RU: { formula: "Nl_e × PU × LU + Nl_t × PUT × LU", vars: ["nl_electric", "PU", "LU", "nl_data", "PUT", "LU"] },
-    RV: { formula: "Nl_e × PV × LV + Nl_t × PVT × LV", vars: ["nl_electric", "PV", "LV", "nl_data", "PVT", "LV"] },
-    RW: { formula: "Nl_e × PW × LW + Nl_t × PWT × LW", vars: ["nl_electric", "PW", "LW", "nl_data", "PWT", "LW"] },
-    RZ: { formula: "Ni_e × PZ × LZ + Ni_t × PZT × LZ", vars: ["ni_electric", "PZ", "LZ", "ni_data", "PZT", "LZ"] },
+const RISK_FORMULAS: { [key: string]: { formula: string; symbols: string[]; vars: string[] } } = {
+    RA: { formula: "N<sub>d</sub> × P<sub>A</sub> × L<sub>A</sub>", symbols: ["N<sub>d</sub>", "P<sub>A</sub>", "L<sub>A</sub>"], vars: ["nd", "PA", "LA"] },
+    RB: { formula: "N<sub>d</sub> × P<sub>B</sub> × L<sub>B</sub>", symbols: ["N<sub>d</sub>", "P<sub>B</sub>", "L<sub>B</sub>"], vars: ["nd", "PB", "LB"] },
+    RC: { formula: "N<sub>d</sub> × PC_total × L<sub>C</sub>", symbols: ["N<sub>d</sub>", "PC_total", "L<sub>C</sub>"], vars: ["nd", "PC_total", "LC"] },
+    RM: { formula: "N<sub>m</sub> × PM_total × L<sub>M</sub>", symbols: ["N<sub>m</sub>", "PM_total", "L<sub>M</sub>"], vars: ["nm", "PM_total", "LM"] },
+    RU: { formula: "(N<sub>l(e)</sub> × P<sub>U</sub> × L<sub>U</sub>) + (N<sub>l(t)</sub> × P<sub>UT</sub> × L<sub>U</sub>)", symbols: ["N<sub>l(e)</sub>", "P<sub>U</sub>", "L<sub>U</sub>", "N<sub>l(t)</sub>", "P<sub>UT</sub>"], vars: ["nl_electric", "PU", "LU", "nl_data", "PUT"] },
+    RV: { formula: "(N<sub>l(e)</sub> × P<sub>V</sub> × L<sub>V</sub>) + (N<sub>l(t)</sub> × P<sub>VT</sub> × L<sub>V</sub>)", symbols: ["N<sub>l(e)</sub>", "P<sub>V</sub>", "L<sub>V</sub>", "N<sub>l(t)</sub>", "P<sub>VT</sub>"], vars: ["nl_electric", "PV", "LV", "nl_data", "PVT"] },
+    RW: { formula: "(N<sub>l(e)</sub> × P<sub>W</sub> × L<sub>W</sub>) + (N<sub>l(t)</sub> × P<sub>WT</sub> × L<sub>W</sub>)", symbols: ["N<sub>l(e)</sub>", "P<sub>W</sub>", "L<sub>W</sub>", "N<sub>l(t)</sub>", "P<sub>WT</sub>"], vars: ["nl_electric", "PW", "LW", "nl_data", "PWT"] },
+    RZ: { formula: "(N<sub>i(e)</sub> × P<sub>Z</sub> × L<sub>Z</sub>) + (N<sub>i(t)</sub> × P<sub>ZT</sub> × L<sub>Z</sub>)", symbols: ["N<sub>i(e)</sub>", "P<sub>Z</sub>", "L<sub>Z</sub>", "N<sub>i(t)</sub>", "P<sub>ZT</sub>"], vars: ["ni_electric", "PZ", "LZ", "ni_data", "PZT"] },
 };
 
 const CustomTooltip = ({ active, payload, label, data, ctx }: any) => {
@@ -74,14 +74,29 @@ const CustomTooltip = ({ active, payload, label, data, ctx }: any) => {
                 formulaString = formulaInfo.formula;
                 const valueMap: { [key: string]: number } = { ...c, ...p, ...l };
 
-                try {
-                    const regex = new RegExp(`\\b(${formulaInfo.vars.join('|')})\\b`, 'gi');
-                    valuesString = formulaString.replace(regex, (match) => {
-                        const val = valueMap[match] || valueMap[match.toLowerCase()] || valueMap[match.toUpperCase()] || 0;
-                        return formatValue(val);
+                if (formulaInfo.symbols && formulaInfo.symbols.length > 0) {
+                    let res = formulaString;
+                    const valueMapCombined: { [key: string]: number } = { 
+                        ...valueMap, 
+                        PC_total: 1 - ((1 - (valueMap.PC || 0)) * (1 - (valueMap.PCT || 0))),
+                        PM_total: 1 - ((1 - (valueMap.PM || 0)) * (1 - (valueMap.PMT || 0)))
+                    };
+                    formulaInfo.symbols.forEach((symbol, index) => {
+                        const varKey = formulaInfo.vars[index];
+                        const val = valueMapCombined[varKey] || 0;
+                        res = res.split(symbol).join(formatValue(val));
                     });
-                } catch {
-                    valuesString = null;
+                    valuesString = res;
+                } else {
+                    try {
+                        const regex = new RegExp(`\\b(${formulaInfo.vars.join('|')})\\b`, 'gi');
+                        valuesString = formulaString.replace(regex, (match) => {
+                            const val = valueMap[match] || valueMap[match.toLowerCase()] || valueMap[match.toUpperCase()] || 0;
+                            return formatValue(val);
+                        });
+                    } catch {
+                        valuesString = null;
+                    }
                 }
 
                 if (["RU","RV","RW","RZ"].includes(label)) {
@@ -179,7 +194,7 @@ const CustomTooltip = ({ active, payload, label, data, ctx }: any) => {
                             </div>
                             <div className="flex items-baseline gap-2 text-right">
                                 <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
-                                <p className="text-blue-400 font-mono font-black text-xl">
+                                <p className="text-blue-400 font-black text-xl">
                                     Valor: <ScientificNotation value={Number(payload[0].value)} precision={2} />
                                 </p>
                             </div>
@@ -188,18 +203,14 @@ const CustomTooltip = ({ active, payload, label, data, ctx }: any) => {
                         <div className="space-y-3">
                             <div className="space-y-1.5">
                                 <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                    {formulaString}
-                                </div>
+                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaString }} />
                             </div>
 
                             {valuesString && (
-                                <div className="space-y-1.5">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                    <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner">
-                                        {valuesString}
+                                    <div className="space-y-1.5">
+                                        <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
+                                        <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
                                     </div>
-                                </div>
                             )}
 
                             {valuesNodes && (
@@ -337,9 +348,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     const activeZone = activeZoneIndex >= 0 ? data.zones[activeZoneIndex] : undefined;
     const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, Math.max(0, activeZoneIndex));
 
-    const adjustTitle = compact
-        ? `Aj. Prot. - ${activeHeading === 'Global' ? 'Glob.' : activeHeading}`
-        : `Ajustar Proteções — ${activeHeading}`;
+    const goPrevView = () => onUpdate({ last_active_view_id: viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length] });
+    const goNextView = () => onUpdate({ last_active_view_id: viewOrder[(currentViewIndex + 1) % viewOrder.length] });
 
     let activeZoneRisk: { [key: string]: number } | null = null;
     let activeZoneChart: { name: string; value: number }[] = [];
@@ -375,41 +385,49 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
                 <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-100/5 backdrop-blur-sm shadow-xl shadow-black/20 group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
-                    <div className="flex justify-start my-4 px-4 overflow-hidden">
-                        <span className="px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[9px] uppercase tracking-[0.2em] shadow-lg shadow-black/40 text-left truncate">
-                            {adjustTitle}
-                        </span>
-                    </div>
-                    <CardContent className="space-y-4 py-4 px-4">
-                        <div>
-                            <Label className="text-[11px] font-bold text-white mb-1 block uppercase tracking-wider text-left">Nível SPDA (PB)</Label>
-                            <Select
-                                value={String(activeZone ? (activeZone.probability_overrides?.PB ?? data.probability_data.PB) : data.probability_data.PB)}
-                                onValueChange={(val) => handleSimulatorUpdate('PB', parseFloat(val))}
-                                options={PB_OPTIONS}
-                                onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
-                                wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-1' : 'relative mt-1'}
-                            >
-                            <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {PB_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
-                                </SelectContent>
-                            </Select>
+                    
+                    <div className="flex justify-center mt-4">
+                        <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
+                            {multipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
+                            <span className="text-white font-black text-[9px] uppercase tracking-[0.3em] min-w-[200px] text-center">
+                                {activeViewId === 'GLOBAL' ? 'Ajuste — GLOBAL' : `Ajuste — ${activeHeading.split('(')[0].trim()}`}
+                            </span>
+                            {multipleZones && <button onClick={goNextView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-5 h-5" /></button>}
                         </div>
-                        <div>
-                            <Label className="text-[11px] font-bold text-white mb-1 block uppercase tracking-wider text-left">Prot. Incêndio (rp)</Label>
-                            <Select
-                                value={String(activeZone ? (activeZone.loss_data.rp ?? 1) : 1)}
-                                onValueChange={(val) => activeZone ? handleZoneLossUpdate(activeZone.id, 'rp', parseFloat(val)) : handleSimulatorUpdate('rp', parseFloat(val))}
-                                options={RP_OPTIONS}
-                                onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
-                                wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-1' : 'relative mt-1'}
-                            >
-                                <SelectTrigger className="h-7 text-xs px-2"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
-                                </SelectContent>
-                            </Select>
+                    </div>
+
+                    <CardContent className="space-y-4 py-4 px-4">
+                        <div className="grid grid-cols-2 gap-x-3">
+                            <div>
+                                <Label className="text-[11px] font-bold text-white mb-1 block uppercase tracking-wider text-left">Nível SPDA (PB)</Label>
+                                <Select
+                                    value={String(activeZone ? (activeZone.probability_overrides?.PB ?? data.probability_data.PB) : data.probability_data.PB)}
+                                    onValueChange={(val) => handleSimulatorUpdate('PB', parseFloat(val))}
+                                    options={PB_OPTIONS}
+                                    onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
+                                    wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-1' : 'relative mt-1'}
+                                >
+                                <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {PB_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="text-[11px] font-bold text-white mb-1 block uppercase tracking-wider text-left">Prot. Incêndio (rp)</Label>
+                                <Select
+                                    value={String(activeZone ? (activeZone.loss_data.rp ?? 1) : (data.zones[0]?.loss_data.rp ?? 1))}
+                                    onValueChange={(val) => activeZone ? handleZoneLossUpdate(activeZone.id, 'rp', parseFloat(val)) : handleSimulatorUpdate('rp', parseFloat(val))}
+                                    options={RP_OPTIONS}
+                                    onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
+                                    wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-1' : 'relative mt-1'}
+                                >
+                                    <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-x-3 gap-y-4 pt-1">
                             <div>
@@ -531,7 +549,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
             </div>
 
             <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
-                <CardContent className="h-[19rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={activeZone ? activeZoneChart : chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -555,7 +573,24 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
                                 <XAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                                <YAxis type="number" scale="log" domain={[1e-9, yMaxDomain]} allowDataOverflow tickFormatter={(tick) => tick.toExponential(0)} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis 
+                                    type="number" 
+                                    domain={[0, yMaxDomain * 1.1]} 
+                                    allowDataOverflow 
+                                    tickFormatter={(tick) => {
+                                        const formatPtBR = (n: number) => {
+                                            const val = Number(n || 0);
+                                            if (val > 0 && val < 0.0001) {
+                                                return formatSmartNumber(val, { useScientificBelow: 1, scientificPrecision: 2 });
+                                            }
+                                            return val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
+                                        };
+                                        return formatPtBR(tick);
+                                    }} 
+                                    tick={{ fill: '#64748b', fontSize: 10 }} 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                />
                                 {!isMobile && (
                                     <Tooltip content={<CustomTooltip data={data} ctx={activeZone ? tooltipCtx : { probCalcs: data.probability_calculations, lossCalcs: data.loss_calculations }} />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
                                 )}

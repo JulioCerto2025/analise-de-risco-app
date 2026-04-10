@@ -214,18 +214,21 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     const cellResult = `padding: 8px 10px; text-align: right; vertical-align: middle; border-bottom: 1px solid ${borderColor}; width: 30%; font-family: "Arial", monospace; font-weight: bold; color: ${textColorMain}; font-size: 11px; word-wrap: break-word;`;
     const tableStyle = `width:100%; border-collapse: collapse; font-size: 10.2px; margin-bottom: 30px; table-layout: auto; border: ${isWord ? '1pt solid black' : 'none'};`;
 
+    const nZones = data.zones.length;
+    const isGlobal = nZones > 1;
+
     const nlTotal = (c.nl_electric || 0) + (c.nl_data || 0);
     const niTotal = (c.ni_electric || 0) + (c.ni_data || 0);
 
     const rs_val = data.rs || 1;
-    const nz_val = lz.nz || 5; 
-    const nt_val = lz.nt || 5;
-    const tz_val = lz.tz || 8760;
-    const timeRatio = (nz_val / nt_val) * (tz_val / 8760);
-    
-    const LA_val = (lz.rt || 0.00001) * (lz.lt || 0.01) * timeRatio * rs_val;
-    const LB_val = (lz.rp || 0) * (lz.rf || 0) * (lz.hz || 1) * (lz.LF || 0) * timeRatio * rs_val;
-    const LC_val = (lz.LO || 0) * timeRatio * rs_val;
+
+    // Se global, não mostramos os fatores L detalhados de uma zona específica na auditoria linear,
+    // pois eles variam por zona. Mostramos o resultado final consolidado.
+    const auditNote = isGlobal
+        ? `<div style="background: ${isWord ? '#fff5f5' : 'rgba(239,68,68,0.05)'}; padding: 12px; border: 1px solid ${isWord ? '#000' : 'rgba(239,68,68,0.2)'}; border-radius: 8px; margin-bottom: 20px; font-size: 10px;">
+            <b style="color: ${isWord ? '#000' : '#f87171'};">NOTA DE AUDITORIA (MULTIZONAS):</b> Os cálculos de Probabilidade (P) e Perda (L) abaixo representam os <b>valores globais consolidados</b>. Os parâmetros específicos de cada uma das ${nZones} zonas foram processados individualmente (conforme Seção 2) e seus riscos resultantes foram somados para compor o Risco Total R1 e FD apresentados abaixo.
+           </div>`
+        : '';
 
     const pcTotalFreq = data.has_electric_line && data.has_data_line 
         ? 1 - ((1 - (pc.PC || 0)) * (1 - (pc.PCT || 0)))
@@ -234,7 +237,7 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
         ? 1 - ((1 - (pc.PM || 0)) * (1 - (pc.PMT || 0)))
         : (data.has_electric_line ? pc.PM : (pc.PMT || 0));
 
-    let mainContent = '';
+    let mainContent = auditNote;
 
     mainContent += `
 <div style="${subHeaderSection}">3.1. ESTIMATIVA DE EVENTOS PERIGOSOS ANUAIS (N)</div>
@@ -258,7 +261,21 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
   <tr><td style="${cellCode}">PZ</td><td style="${cellFormula}">P<sub>SPD</sub>:${prob.PSPD_electric} x P<sub>LI</sub>:${formatScientific(pc.Pli_electric_ext).replace(/<\/?sup>/g, '')}</td><td style="${cellResult}">${formatScientific(pc.PZ)}</td></tr>
 </table>`;
 
-    mainContent += `
+    let LA_val = 0;
+    let LB_val = 0;
+    let LC_val = 0;
+
+    if (!isGlobal) {
+        const nz_val = lz.nz || 5; 
+        const nt_val = lz.nt || 5;
+        const tz_val = lz.tz || 8760;
+        const timeRatio = (nz_val / nt_val) * (tz_val / 8760);
+        
+        LA_val = (lz.rt || 0.00001) * (lz.lt || 0.01) * timeRatio * rs_val;
+        LB_val = (lz.rp || 0) * (lz.rf || 0) * (lz.hz || 1) * (lz.LF || 0) * timeRatio * rs_val;
+        LC_val = (lz.LO || 0) * timeRatio * rs_val;
+
+        mainContent += `
 <div style="${subHeaderSection}">3.3. FATORES DE PERDAS ESTIMADOS (L)</div>
 <table style="${tableStyle}">
   <thead>
@@ -274,6 +291,9 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     <tr><td style="${cellCode}">LC/LM/LW/LZ</td><td style="${cellFormula}">[LO:${lz.LO || 0} x (nz/nt) x (tz/8760) x rs:${rs_val}]</td><td style="${cellResult}">${formatLossScientific(LC_val)}</td></tr>
   </tbody>
 </table>`;
+    }
+
+    const eqHeader = isGlobal ? "Consolidação de Riscos (Somatório de todas as Zonas)" : "Equação Auditável: N x P x L [Valores Literais]";
 
     mainContent += `
 <div style="${subHeaderSection}">3.4. MEMORIAL DE CÁLCULO DOS COMPONENTES DE RISCO (R = N x P x L)</div>
@@ -281,21 +301,23 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
   <thead>
     <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
        <th style="${cellCode}">Comp.</th>
-       <th style="${cellFormula}">Equação Auditável: N x P x L [Valores Literais]</th>
+       <th style="${cellFormula}">${eqHeader}</th>
        <th style="${cellResult}">Resultado</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PA:${formatScientific(pc.PA)} x LA:${formatLossScientific(LA_val)}]</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
-    <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)} x LB:${formatLossScientific(LB_val)}]</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
-    <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC:${formatScientific(pc.PC)} x LC:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
-    <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM:${formatScientific(pc.PM)} x LM:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
-    <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PU:${formatScientific(pc.PU)} x LU:${formatLossScientific(LA_val)}]</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
-    <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PV:${formatScientific(pc.PV)} x LV:${formatLossScientific(LB_val)}]</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
-    <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">[Nl:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)} x LW:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
-    <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">[Ni:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)} x LZ:${formatLossScientific(LC_val)}]</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
+    <tr><td style="${cellCode}">RA</td><td style="${cellFormula}">${isGlobal ? '∑ (Nd x PA x LA) por zona' : `[Nd:${formatScientific(c.nd)} x PA:${formatScientific(pc.PA)} x LA:${formatLossScientific(LA_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RA)}</td></tr>
+    <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">${isGlobal ? '∑ (Nd x PB x LB) por zona' : `[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)} x LB:${formatLossScientific(LB_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
+    <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">${isGlobal ? '∑ (Nd x PC x LC) por zona' : `[Nd:${formatScientific(c.nd)} x PC:${formatScientific(pc.PC)} x LC:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
+    <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">${isGlobal ? '∑ (Nm x PM x LM) por zona' : `[Nm:${formatScientific(c.nm)} x PM:${formatScientific(pc.PM)} x LM:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
+    <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl x PU x LU) por zona' : `[Nl:${formatScientific(c.nl_electric)} x PU:${formatScientific(pc.PU)} x LU:${formatLossScientific(LA_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
+    <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl x PV x LV) por zona' : `[Nl:${formatScientific(c.nl_electric)} x PV:${formatScientific(pc.PV)} x LV:${formatLossScientific(LB_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
+    <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl x PW x LW) por zona' : `[Nl:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)} x LW:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
+    <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">${isGlobal ? '∑ (Ni x PZ x LZ) por zona' : `[Ni:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)} x LZ:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
   </tbody>
 </table>`;
+
+    const eqHeaderFD = isGlobal ? "Consolidação de Frequências (Somatório de todas as Zonas)" : "Equação Auditável: N x P [Valores Literais]";
 
     mainContent += `
 <div style="${subHeaderSection}">3.5. COMPONENTES DA FREQUÊNCIA DE DANOS (FD = N x P)</div>
@@ -303,7 +325,7 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
   <thead>
     <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
        <th style="${cellCode}">Fator</th>
-       <th style="${cellFormula}">Equação Auditável: N x P [Valores Literais]</th>
+       <th style="${cellFormula}">${eqHeaderFD}</th>
        <th style="${cellResult}">Resultado</th>
     </tr>
   </thead>

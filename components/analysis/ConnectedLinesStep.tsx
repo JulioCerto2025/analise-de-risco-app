@@ -202,7 +202,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <div className="grid grid-cols-2 gap-6">
                                             {/* Coluna Energia L1: Al + NL */}
                                             <div className="flex flex-col items-center gap-2">
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Linha</span>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
                                                 <div className="w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>L</sub></span></span>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
                                                 </div>
@@ -223,7 +223,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
                                                 </div>
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Equipot. (PSPD)</span>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
                                                 <div className="w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_electric} unit="desc./ano" color="green" 
@@ -317,7 +317,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <div className="grid grid-cols-2 gap-6">
                                             {/* Coluna Dados L2: Al + NL */}
                                             <div className="flex flex-col items-center gap-2">
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Linha</span>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
                                                 <div className="w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>L</sub></span></span>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
                                                 </div>
@@ -338,7 +338,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
                                                 </div>
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Equipot. (PSPD)</span>
+                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
                                                 <div className="w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_data} unit="desc./ano" color="green" 

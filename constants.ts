@@ -84,7 +84,9 @@ export const PSPD_OPTIONS = [
     { value: 1, label: "Sem DPS 1" }, 
     { value: 0.05, label: "DPS III e IV 0,05" }, 
     { value: 0.02, label: "DPS II 0,02" },
-    { value: 0.01, label: "DPS I 0,01" }
+    { value: 0.01, label: "DPS I 0,01" },
+    { value: 0.005, label: "Melhor que I 0,005" },
+    { value: 0.001, label: "Melhor que I 0,001" }
 ];
 
 export const RP_OPTIONS = [
