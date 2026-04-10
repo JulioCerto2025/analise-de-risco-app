@@ -38,7 +38,7 @@ type DetectionConfig = {
     centerWeightExp: number; // exponent to strengthen center weighting in radial sampling
 };
 
-export const MapViewer = forwardRef<MapViewerHandles, MapViewerProps>(({ imageUrl, onMapClick, markerPoint, initialTransform, onTransformChange, onImageLoad }, ref) => {
+export const MapViewer = React.forwardRef<MapViewerHandles, MapViewerProps>(({ imageUrl, onMapClick, markerPoint, initialTransform, onTransformChange, onImageLoad }, ref) => {
     const [transform, setTransform] = React.useState(initialTransform || { scale: 1, x: 0, y: 0 });
     
     const lastTransformRef = React.useRef(transform);
