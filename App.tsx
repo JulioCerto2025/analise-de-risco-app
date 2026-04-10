@@ -123,7 +123,7 @@ const generateAnnualPassword = () => {
     return generateSecurePassword(`ANNUAL-${now.getFullYear()}-JULIO-2026`);
 };
 
-import { VisitorCounter } from './components/VisitorCounter';
+
 
 export default function App() {
     const isCadPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cad') !== null;
