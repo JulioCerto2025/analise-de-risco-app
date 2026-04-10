@@ -73,12 +73,12 @@ const DimensionInput = ({ icon, label, id, value, onUpdate, color, tooltipText }
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${bg}`}>
                     {icon}
                 </div>
-                <DecimalInput
+                <input
                     id={String(id)}
+                    type="number"
                     value={value}
-                    onUpdate={onUpdate}
-                    noWrapper
-                    className="flex-1"
+                    onChange={(e) => onUpdate(parseFloat(e.target.value) || 0)}
+                    className="flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400 flex-1"
                 />
             </div>
         </div>
@@ -221,11 +221,11 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                         <div className="space-y-2">
                             {data.zones.map((zone) => (
                                 <div key={zone.id} className="flex items-center gap-2">
-                                    <Input
+                                    <input
                                         value={zone.name}
                                         onChange={(e) => renameZone(zone.id, e.target.value)}
                                         placeholder="Nome da zona"
-                                        className="flex-1"
+                                        className="flex-1 h-10 rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400 outline-none"
                                     />
                                     <Button
                                         type="button"

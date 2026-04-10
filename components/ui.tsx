@@ -62,7 +62,7 @@ export const Progress = ({ value, className }: { value: number, className?: stri
   </div>
 );
 
-// Input
+// Input principal (estabilizado)
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, spellCheck, lang, ...props }, ref) => (
     <input
@@ -75,6 +75,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
   )
 );
 Input.displayName = "Input";
+
 
 // Textarea
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
@@ -450,13 +451,13 @@ export const AutoCorrectingInput = ({ id, label, value, onUpdate, placeholder, c
         <div className="space-y-1">
             <Label htmlFor={id}>{label}</Label>
             <div className="relative w-full">
-                <Input
+                <input
                     id={id}
                     value={value}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     placeholder={placeholder}
-                    className={`${isCorrecting ? 'pr-8' : ''} ${className}`}
+                    className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${isCorrecting ? 'pr-8' : ''} ${className}`}
                     {...props}
                 />
                 {isCorrecting && (
@@ -608,13 +609,13 @@ export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, sugges
         <div className="space-y-1" ref={containerRef}>
             <Label htmlFor={id}>{label}</Label>
             <div className="relative w-full">
-                <Input
+                <input
                     id={id}
                     value={value}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
-                    className={`${className}`}
+                    className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
                     {...props}
                 />
                 {open && (
