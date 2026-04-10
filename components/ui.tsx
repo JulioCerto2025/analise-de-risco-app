@@ -2,9 +2,7 @@ import React, { useState, useEffect, useRef, createContext, useContext, useCallb
 import { createPortal } from 'react-dom';
 import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
-// AutoCorrectingInput and AutoCorrectingTextarea moved to ./AutoCorrecting.tsx
-// to break the circular dependency: ui.tsx → geminiService → (heavy deps)
-export { AutoCorrectingInput, AutoCorrectingTextarea } from './AutoCorrecting';
+
 
 // Contexto global para controlar o Modo Auditoria/Fiscalização
 const AuditContext = createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
