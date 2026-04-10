@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, AutoCorrectingInput, AutoCorrectingTextarea, Label, Button, useAuditMode } from '../ui';
+import { Card, CardContent, CardHeader, CardTitle, Label, Button, useAuditMode } from '../ui';
 import { Briefcase, ShieldAlert, X, Clipboard, CheckCircle2, Save, FolderOpen, Search, ShieldCheck } from 'lucide-react';
 import { AnalysisData } from '../../types';
 import { DatePicker } from '../DatePicker';
