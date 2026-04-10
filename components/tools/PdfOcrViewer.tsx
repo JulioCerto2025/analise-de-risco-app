@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Card, CardContent, CardHeader, CardTitle, Label } from '../ui';
-import { Input } from '../input';
-
+import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input } from '../ui';
 import { ocrWordsFromSource } from '../../lib/ocr';
 
 function reconstructTextFromBoxes(boxes: { text: string; x: number; y: number; w: number; h: number; conf: number }[]): string {

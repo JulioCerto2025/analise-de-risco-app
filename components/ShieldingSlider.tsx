@@ -1,4 +1,5 @@
 import React from 'react';
+import { calculatePld } from '../utils/calculations';
 import { Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui';
 
 interface ShieldingSliderProps {
@@ -66,8 +67,7 @@ export const ShieldingSlider: React.FC<ShieldingSliderProps> = ({
                                 // Assumir blindada = true para cálculo do ponderador por faixa
                                 // O cálculo exato também depende de Uw
                                 try {
-                                    // Import dinâmico evita dependência circular
-                                    const { calculatePld } = require('../utils/calculations');
+                                    // Use imported function instead of require() which is not defined in ESM
                                     const pld = calculatePld(Number(opt.value), Number(uw), true);
                                     return String(pld);
                                 } catch {

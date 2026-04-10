@@ -14,9 +14,7 @@ Visualize seu app no AI Studio: https://ai.studio/apps/drive/1X-_lr1QRtCgsmPyp6_
 
 1. Instalar dependências:
    `npm install`
-2. Criar o arquivo `.env.local` na raiz e definir:
-   `VITE_GEMINI_API_KEY=SEU_TOKEN_AQUI`
-   - Se a variável não estiver definida, o app continua funcionando e apenas as funções de IA ficam desativadas com mensagens amigáveis.
+2. Não são necessárias chaves de API externas (100% Local-First).
 3. Rodar o app em desenvolvimento:
    `npm run dev`
 
@@ -29,11 +27,13 @@ Visualize seu app no AI Studio: https://ai.studio/apps/drive/1X-_lr1QRtCgsmPyp6_
 
 O projeto usa Vite e React. As dependências são resolvidas via bundler; não há `importmap` externo em produção.
 
-## Mudanças recentes
+## Mudanças recentes (Versão de Estabilização 2026)
 
-- Removida a funcionalidade "Consulta Preliminar (Corpo de Bombeiros)" da UI e do tipo de dados.
-- Campos de IA preliminar removidos de `types.ts`: `preliminaryAiStatus`, `preliminaryAiResult`, `preliminaryAiError`.
-- Helpers obsoletos removidos de `lib/geminiService.ts`: `getPreliminaryHeuristic` e `getPreliminaryAnalysis`.
-- O relatório técnico continua disponível via IA para formatação do texto (`generateFullReportText`); demais cálculos são feitos localmente.
+- **Remoção Total de Dependências Gemini/IA**: O arquivo `lib/geminiService.ts` foi deletado.
+- **Geração de Relatórios Local**: A função `generateFullReportText` agora é 100% local (via `lib/reportBuilder.ts`), eliminando riscos de queda de rede ou erros de API no fechamento do projeto.
+- **Heurísticas Locais**: Sugestões de população e risco de incêndio agora usam lógica determinística local, garantindo performance e confiabilidade audital.
+- **Estabilização do Build**: Removidos imports órfãos e corrigidas referências circulares para garantir deploy via Vercel sem travamentos.
 
-Não é necessário nenhuma ação adicional para usuários. Para desenvolvedores, evite introduzir dependências nos helpers removidos.
+Esta versão é focada em **estabilidade profissional** e está pronta para auditoria NBR 5419:2026 sem dependências externas de processamento inteligente.
+
+**Engº Júlio César Certo — Especialista em PDA**

@@ -1,6 +1,5 @@
-import { Input } from './input';
-import { Label } from './ui';
-
+import * as React from 'react';
+import { Input, Label } from './ui';
 
 interface DecimalInputProps {
     id?: string;
@@ -22,9 +21,9 @@ interface DecimalInputProps {
 }
 
 export function DecimalInput({ id, label, value, onUpdate, placeholder, className, readOnly, title, isAiSuggested, noWrapper, useThousands, currency, currencySymbol, min, max, blockScientific }: DecimalInputProps) {
-    const [displayValue, setDisplayValue] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [isFocused, setIsFocused] = useState(false);
+    const [displayValue, setDisplayValue] = React.useState('');
+    const [error, setError] = React.useState<string | null>(null);
+    const [isFocused, setIsFocused] = React.useState(false);
 
     const formatNumber = (num: number | undefined | null) => {
         if (num === undefined || num === null || Number.isNaN(num)) return '';

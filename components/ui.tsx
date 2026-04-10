@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, createContext, useContext, useCallback } from 'react';
+import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
 
 
 // Contexto global para controlar o Modo Auditoria/Fiscalização
-const AuditContext = createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
+const AuditContext = React.createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
     auditMode: false, 
     setAuditMode: () => {} 
 });
@@ -14,7 +14,7 @@ export const AuditProvider = ({ value, children }: { value: { auditMode: boolean
     <AuditContext.Provider value={value}>{children}</AuditContext.Provider>
 );
 
-export const useAuditMode = () => useContext(AuditContext);
+export const useAuditMode = () => React.useContext(AuditContext);
 
 // Button
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -157,19 +157,19 @@ interface SelectContextType {
   contentRef: React.RefObject<HTMLDivElement>;
 }
 
-const SelectContext = createContext<SelectContextType | null>(null);
+const SelectContext = React.createContext<SelectContextType | null>(null);
 
 export const Select = ({ children, value, onValueChange, placeholder, options: optionsProp, onOpenChange, wrapperClassName }: React.PropsWithChildren<{ value?: string | number; onValueChange?: (value: string) => void; placeholder?: string; options?: { value: any, label: string }[], onOpenChange?: (open: boolean) => void, wrapperClassName?: string }>) => {
-  const [open, setOpen] = useState(false);
-  const [internalValue, setInternalValue] = useState(value || '');
-  const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined);
-  const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const [internalValue, setInternalValue] = React.useState(value || '');
+  const [selectedLabel, setSelectedLabel] = React.useState<string | undefined>(undefined);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const options = optionsProp || [];
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const searchTimeoutRef = useRef<number | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const searchTimeoutRef = React.useRef<number | null>(null);
 
   const handleSetOpen = (newOpenState: boolean) => {
       setOpen(newOpenState);
@@ -178,7 +178,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
       }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent | Event) => {
       const target = event.target as Node | null;
       const inWrapper = !!(ref.current && target && ref.current.contains(target));
@@ -192,7 +192,7 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
     return () => document.removeEventListener("click", handleClickOutside, true);
   }, [ref]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (value !== undefined) {
       setInternalValue(value);
       // Reset selected label when value is externally controlled
@@ -269,7 +269,7 @@ export const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { hideChevron?: boolean }
 >(({ children, className, hideChevron, ...props }, ref) => {
-    const context = useContext(SelectContext);
+    const context = React.useContext(SelectContext);
     if (!context) throw new Error("SelectTrigger must be used within a Select");
     const setRefs = (node: HTMLButtonElement | null) => {
       if (!node) return;
@@ -295,7 +295,7 @@ export const SelectTrigger = React.forwardRef<
 SelectTrigger.displayName = "SelectTrigger";
 
 export const SelectValue = () => {
-    const context = useContext(SelectContext);
+    const context = React.useContext(SelectContext);
     if (!context) throw new Error("SelectValue must be used within a Select");
     
     const selectedOption = context.options.find(opt => String(opt.value) === String(context.value));
@@ -311,18 +311,18 @@ export const SelectValue = () => {
 };
 
 export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ children, className }, ref) => {
-  const context = useContext(SelectContext);
+  const context = React.useContext(SelectContext);
   if (!context || !context.open) return null;
   const rect = context.triggerRef.current?.getBoundingClientRect();
   const left = (rect?.left || 0) + window.scrollX;
   const topBelow = (rect?.bottom || 0) + window.scrollY + 4;
   const width = rect?.width || undefined;
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [position, setPosition] = React.useState<'below' | 'above'>('below');
   const [computedTop, setComputedTop] = React.useState<number>(topBelow);
   const [availableHeight, setAvailableHeight] = React.useState<number>(Math.floor(window.innerHeight * 0.6));
 
-  useEffect(() => {
+  React.useEffect(() => {
     const recalc = () => {
       const r = context.triggerRef.current?.getBoundingClientRect();
       const leftY = (r?.top || 0) + window.scrollY;
@@ -367,7 +367,7 @@ export const SelectItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { value: string | number; label: string; showRightValue?: boolean, rightText?: string }
 >(({ label, value, showRightValue = false, rightText, className, ...props }, ref) => {
-  const context = useContext(SelectContext);
+  const context = React.useContext(SelectContext);
   if (!context) throw new Error("SelectItem must be used within a Select");
   
   const handleClick = () => {
@@ -412,12 +412,12 @@ SelectItem.displayName = "SelectItem";
 
 // Autocomplete Input (typeahead)
 export const AutocompleteInput = ({ id, label, value, onUpdate, onCommit, suggestions, placeholder, className, maxSuggestions = 8, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string, onUpdate: (value: string) => void, onCommit?: (value: string) => void, suggestions: string[], maxSuggestions?: number }) => {
-    const [open, setOpen] = useState(false);
-    const [filtered, setFiltered] = useState<string[]>([]);
-    const [activeIndex, setActiveIndex] = useState<number>(-1);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [open, setOpen] = React.useState(false);
+    const [filtered, setFiltered] = React.useState<string[]>([]);
+    const [activeIndex, setActiveIndex] = React.useState<number>(-1);
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setOpen(false);
@@ -536,13 +536,13 @@ export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, childre
 
 
 export const FormulaTooltip = ({ formulas, values, children, className = "inline-block", triggerClassName = "cursor-default inline-block" }: { formulas: { [key: string]: string }, values?: { [key: string]: any }, children?: React.ReactNode, className?: string, triggerClassName?: string }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = React.useState(false);
     const { auditMode } = useAuditMode();
-    const closeTimer = useRef<NodeJS.Timeout | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const triggerRef = useRef<HTMLSpanElement>(null);
+    const closeTimer = React.useRef<any>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const triggerRef = React.useRef<HTMLSpanElement>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
@@ -740,8 +740,8 @@ export const FormulaTooltip = ({ formulas, values, children, className = "inline
 
 // Detecta se a viewport é mobile (<640px)
 export const useIsMobile = (): boolean => {
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
+    const [isMobile, setIsMobile] = React.useState(false);
+    React.useEffect(() => {
         const check = () => setIsMobile(window.innerWidth < 640);
         check();
         window.addEventListener('resize', check);
@@ -750,8 +750,8 @@ export const useIsMobile = (): boolean => {
     return isMobile;
 };
 export const InfoTooltip = ({ text, children }: { text: string; children: React.ReactNode }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const triggerRef = useRef<HTMLDivElement>(null);
+    const [isOpen, setIsOpen] = React.useState(false);
+    const triggerRef = React.useRef<HTMLDivElement>(null);
     const isMobile = useIsMobile();
     const { auditMode } = useAuditMode();
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import * as React from "react";
 import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle, MessageCircle, Users, ShieldCheck, Copy, ShieldAlert, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Alert, AlertDescription, AlertTitle, AuditProvider } from "./components/ui";
@@ -129,18 +129,21 @@ export default function App() {
     const isCadPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cad') !== null;
     
     // Autenticação: sempre exige senha ao recarregar (não usa localStorage de propósito para "sempre aparecer")
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [passwordInput, setPasswordInput] = useState("");
-    const [authError, setAuthError] = useState(false);
-    const [showAdminPanel, setShowAdminPanel] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+    const [isAdmin, setIsAdmin] = React.useState(false);
+    const [passwordInput, setPasswordInput] = React.useState("");
+    const [authError, setAuthError] = React.useState(false);
+    const [showAdminPanel, setShowAdminPanel] = React.useState(true);
 
-    const passwords = useMemo(() => ({
+    const passwords = React.useMemo(() => ({
         trial: generateTrialPassword(),
         month: generateMonthlyPassword(),
         semestral: generateSemestralPassword(),
         annual: generateAnnualPassword()
     }), []);
+
+    const { data, updateData } = useAnalysisData();
+    const results = React.useMemo(() => data.calculations, [data.calculations]);
 
     const handleAuth = (e: React.FormEvent) => {
         e.preventDefault();
@@ -168,7 +171,7 @@ export default function App() {
         navigator.clipboard.writeText(text);
         alert(`${label} copiada com sucesso!`);
     };
-    const initialStep = useMemo(() => {
+    const initialStep = React.useMemo(() => {
         try {
             const isBrowser = typeof window !== 'undefined';
             if (!isBrowser) return 1;
@@ -183,17 +186,16 @@ export default function App() {
             return 1;
         }
     }, []);
-    const [currentStep, setCurrentStep] = useState(initialStep);
+    const [currentStep, setCurrentStep] = React.useState(initialStep);
     // Removido: controle de loop por zona entre etapas 7 e 8
-    const { data, updateData } = useAnalysisData();
-    const [errors, setErrors] = useState<string[]>([]);
+    const [errors, setErrors] = React.useState<string[]>([]);
 
-    const auditProviderValue = useMemo(() => ({
+    const auditProviderValue = React.useMemo(() => ({
         auditMode: !!data.audit_mode,
         setAuditMode: (m: boolean) => updateData({ audit_mode: m })
     }), [data.audit_mode, updateData]);
 
-    const handleNext = useCallback(async () => {
+    const handleNext = React.useCallback(async () => {
         try {
             const validationErrors = validateStep(currentStep, data);
             if (validationErrors.length > 0) {
@@ -227,12 +229,12 @@ export default function App() {
         }
     }, [currentStep, data, updateData]);
 
-    const handlePrev = useCallback(() => {
+    const handlePrev = React.useCallback(() => {
         setErrors([]);
         if (currentStep > 1) setCurrentStep(prev => prev - 1);
     }, [currentStep]);
     
-    const setStep = useCallback((step: number) => {
+    const setStep = React.useCallback((step: number) => {
         if (step > 0 && step <= STEPS.length) {
             setErrors([]);
             setCurrentStep(step);
@@ -240,7 +242,7 @@ export default function App() {
     }, []);
 
     // Sincroniza a etapa atual com a URL para permitir deep-linking (?step=11)
-    useEffect(() => {
+    React.useEffect(() => {
         try {
             const isBrowser = typeof window !== 'undefined';
             if (!isBrowser) return;
