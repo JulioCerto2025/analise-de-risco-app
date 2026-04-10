@@ -626,7 +626,6 @@ export default function App() {
                         </main>
                     </div>
                 </div>
-                <VisitorCounter />
             </div>
         </AuditProvider>
     );
