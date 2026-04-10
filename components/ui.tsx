@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
 import { correctText } from '../lib/geminiService';
+export { Input } from './input';
+
 
 // Contexto global para controlar o Modo Auditoria/Fiscalização
 const AuditContext = createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
@@ -61,20 +63,6 @@ export const Progress = ({ value, className }: { value: number, className?: stri
     />
   </div>
 );
-
-// Input principal (estabilizado)
-export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, spellCheck, lang, ...props }, ref) => (
-    <input
-      className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
-      ref={ref}
-      spellCheck={spellCheck ?? false}
-      lang={lang ?? 'pt-BR'}
-      {...props}
-    />
-  )
-);
-Input.displayName = "Input";
 
 
 // Textarea

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Input, Label } from './ui';
+import { Input } from './input';
+import { Label } from './ui';
+
 
 interface DecimalInputProps {
     id?: string;
