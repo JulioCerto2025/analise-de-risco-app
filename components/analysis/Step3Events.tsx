@@ -45,102 +45,115 @@ const EVENT_FORMULAS: { [key: string]: { formula: string; vars: string[] } } = {
     NI: { formula: "Σ (Ng × Ai × Ci × Ce × Ct) × 10<sup>-6</sup>", vars: ["ni_electric", "ni_data"] },
 };
 
-const CustomTooltip = ({ active, payload, label, data }: any) => {
+const EventEditorialPortal = ({ eventKey, data, onClose }: { eventKey: string; data: AnalysisData; onClose: () => void }) => {
     const { auditMode } = useAuditMode();
     const isMobile = useIsMobile();
-    
-    if (active && payload && payload.length && auditMode && !isMobile) {
-        const eventKey = label;
-        const formulaInfo = EVENT_FORMULAS[eventKey];
-        const calculations = data.calculations;
-        const valueMap: any = { ...calculations, ng: data.ng, cd: data.cd };
+    const portalRef = React.useRef<HTMLDivElement>(null);
 
-        let valuesNodes: React.ReactNode = null;
-        if (eventKey === 'ND') {
-            const parts = [valueMap.ng || 0, valueMap.adf || 0, valueMap.cd || 0];
-            valuesNodes = (
-                <span className="font-mono">
-                    {parts.map((val: number, idx: number) => (
-                        <span key={idx} className="inline-flex items-baseline">
-                            <ScientificNotation value={val} precision={2} />
-                            {idx < parts.length - 1 ? <span className="mx-0.5">&times;</span> : null}
-                        </span>
-                    ))}
-                    <span className="mx-0.5">&times;</span>
-                    <span dangerouslySetInnerHTML={{ __html: "10<sup>-6</sup>" }} />
-                </span>
-            );
-        } else if (eventKey === 'NM') {
-            const parts = [valueMap.ng || 0, valueMap.am || 0];
-            valuesNodes = (
-                <span className="font-mono">
-                    {parts.map((val: number, idx: number) => (
-                        <span key={idx} className="inline-flex items-baseline">
-                            <ScientificNotation value={val} precision={2} />
-                            {idx < parts.length - 1 ? <span className="mx-0.5">&times;</span> : null}
-                        </span>
-                    ))}
-                    <span className="mx-0.5">&times;</span>
-                    <span dangerouslySetInnerHTML={{ __html: "10<sup>-6</sup>" }} />
-                </span>
-            );
-        } else {
-            const v1 = eventKey === 'NL' ? valueMap.nl_electric : valueMap.ni_electric;
-            const v2 = eventKey === 'NL' ? valueMap.nl_data : valueMap.ni_data;
-            valuesNodes = (
-                <span className="font-mono flex items-baseline gap-1">
-                    <ScientificNotation value={v1 || 0} precision={2} />
-                    <span>+</span>
-                    <ScientificNotation value={v2 || 0} precision={2} />
-                </span>
-            );
-        }
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (portalRef.current && !portalRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onClose]);
 
-        return createPortal(
-            <>
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(95vw,540px)] max-h-[85vh] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] overflow-auto custom-scrollbar animate-in zoom-in-95 fade-in duration-300 pointer-events-auto">
-                    <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                        <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Eventos Editorial</p>
-                    </div>
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
-                            <div className="flex flex-col">
-                                <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{eventKey}</span>
-                            </div>
-                            <div className="flex items-baseline gap-2 text-right">
-                                <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
-                                <p className="text-blue-400 font-mono font-black text-xl">
-                                    {Number(payload[0].value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaInfo?.formula || "N/A" }} />
-                            </div>
-                            {valuesNodes && (
-                                <div className="space-y-1.5">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Memória de Cálculo (Detalhado):</p>
-                                    <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                        {valuesNodes}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                        <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
-                    </div>
-                </div>
-            </>
-,
-            document.body
+    if (!auditMode || isMobile) return null;
+
+    const formulaInfo = EVENT_FORMULAS[eventKey];
+    const calculations = data.calculations;
+    const valueMap: any = { ...calculations, ng: data.ng, cd: data.cd };
+
+    let valuesNodes: React.ReactNode = null;
+    if (eventKey === 'ND') {
+        const parts = [valueMap.ng || 0, valueMap.adf || 0, valueMap.cd || 0];
+        valuesNodes = (
+            <span className="font-mono">
+                {parts.map((val: number, idx: number) => (
+                    <span key={idx} className="inline-flex items-baseline">
+                        <ScientificNotation value={val} precision={2} />
+                        {idx < parts.length - 1 ? <span className="mx-0.5">&times;</span> : null}
+                    </span>
+                ))}
+                <span className="mx-0.5">&times;</span>
+                <span dangerouslySetInnerHTML={{ __html: "10<sup>-6</sup>" }} />
+            </span>
+        );
+    } else if (eventKey === 'NM') {
+        const parts = [valueMap.ng || 0, valueMap.am || 0];
+        valuesNodes = (
+            <span className="font-mono">
+                {parts.map((val: number, idx: number) => (
+                    <span key={idx} className="inline-flex items-baseline">
+                        <ScientificNotation value={val} precision={2} />
+                        {idx < parts.length - 1 ? <span className="mx-0.5">&times;</span> : null}
+                    </span>
+                ))}
+                <span className="mx-0.5">&times;</span>
+                <span dangerouslySetInnerHTML={{ __html: "10<sup>-6</sup>" }} />
+            </span>
+        );
+    } else {
+        const v1 = eventKey === 'NL' ? valueMap.nl_electric : valueMap.ni_electric;
+        const v2 = eventKey === 'NL' ? valueMap.nl_data : valueMap.ni_data;
+        valuesNodes = (
+            <span className="font-mono flex items-baseline gap-1">
+                <ScientificNotation value={v1 || 0} precision={2} />
+                <span>+</span>
+                <ScientificNotation value={v2 || 0} precision={2} />
+            </span>
         );
     }
-    return null;
+
+    const value = (calculations as any)[eventKey.toLowerCase()] || (eventKey === 'NL' ? (calculations.nl_electric + calculations.nl_data) : (calculations.ni_electric + calculations.ni_data));
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none animate-in fade-in duration-200" />
+            <div 
+                ref={portalRef}
+                className="fixed right-6 top-[100px] w-[min(90vw,540px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-in slide-in-from-right-10 fade-in duration-300 pointer-events-auto"
+            >
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Eventos Editorial</p>
+                </div>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+                        <div className="flex flex-col">
+                            <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{eventKey}</span>
+                        </div>
+                        <div className="flex items-baseline gap-2 text-right">
+                            <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
+                            <p className="text-blue-400 font-mono font-black text-xl">
+                                {Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
+                            <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaInfo?.formula || "N/A" }} />
+                        </div>
+                        {valuesNodes && (
+                            <div className="space-y-1.5">
+                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Memória de Cálculo (Detalhado):</p>
+                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
+                                    {valuesNodes}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
 };
 
 const eventsConfig = [
@@ -153,7 +166,7 @@ const eventsConfig = [
 export function Step3Events({ data }: { data: AnalysisData }) {
     const [selectedEvent, setSelectedEvent] = React.useState<string | null>(null);
     const isMobile = useIsMobile();
-    const { auditMode } = useAuditMode();
+    const { auditMode, setActiveTooltipId } = useAuditMode();
 
     const { nd = 0, nm = 0, nl_electric = 0, nl_data = 0, ni_electric = 0, ni_data = 0 } = data.calculations;
     const nl = nl_electric + nl_data;
@@ -196,7 +209,11 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                 return (
                                     <div 
                                         key={event.name}
-                                        onClick={() => setSelectedEvent(current => current === event.name ? null : event.name)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedEvent(current => current === event.name ? null : event.name);
+                                            setActiveTooltipId(null);
+                                        }}
                                         className={`relative p-5 rounded-3xl border transition-all duration-300 cursor-pointer group hover:scale-[1.03] ${isSelected ? 'bg-blue-500/20 border-blue-500/60 shadow-xl' : 'bg-slate-950/60 border-white/10 hover:bg-slate-900/90 shadow-2xl shadow-black/40'}`}
                                     >
                                         <div className="flex items-start justify-between gap-2 mb-2">
@@ -227,12 +244,15 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                     Gráfico Comparativo de Eventos
                 </span>
             </div>
-            <Card className="relative overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl">
+            <Card 
+                className="relative overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
                  <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 opacity-20" />
                  <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} className="outline-none focus:outline-none">
                                 <defs>
                                     <linearGradient id="glassBlue" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.7} />
@@ -251,8 +271,26 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                         <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.3} />
                                     </linearGradient>
                                 </defs>
+                                <Tooltip cursor={false} content={<></>} />
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
-                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <XAxis 
+                                    dataKey="name" 
+                                    tick={(props) => {
+                                        const { x, y, payload } = props;
+                                        return (
+                                            <g transform={`translate(${x},${y})`} className="cursor-pointer group outline-none" onClick={() => {
+                                                setSelectedEvent(payload.value);
+                                                setActiveTooltipId(null);
+                                            }}>
+                                                <text x={0} y={0} dy={16} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight={700} className="group-hover:fill-white transition-colors outline-none">
+                                                    {payload.value}
+                                                </text>
+                                            </g>
+                                        );
+                                    }}
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                />
                                 <YAxis 
                                     domain={[0, yMax * 1.1]} 
                                     allowDataOverflow={true}
@@ -262,10 +300,12 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                     tickLine={false} 
                                     hide={!auditMode && !isMobile}
                                 />
-                                {!isMobile && (
-                                    <Tooltip content={<CustomTooltip data={data} />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
-                                )}
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={80}>
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[4, 4, 0, 0]} 
+                                    barSize={80}
+                                    minPointSize={10}
+                                >
                                     {chartData.map((entry, index) => {
                                         const name = entry.name.toUpperCase();
                                         let fillUrl = "url(#glassBlue)";
@@ -283,7 +323,12 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                                 strokeWidth={0.8}
                                                 strokeOpacity={1}
                                                 fillOpacity={selectedEvent === null || selectedEvent === entry.name ? 1 : 0.2}
-                                                className="transition-all duration-300"
+                                                className="transition-all duration-300 cursor-pointer outline-none"
+                                                onClick={(e: any) => {
+                                                    if (e && e.stopPropagation) e.stopPropagation();
+                                                    setSelectedEvent(entry.name);
+                                                    setActiveTooltipId(null);
+                                                }}
                                             />
                                         );
                                     })}
@@ -312,6 +357,14 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                     </div>
                 </CardContent>
             </Card>
+
+            {selectedEvent && auditMode && (
+                <EventEditorialPortal 
+                    eventKey={selectedEvent} 
+                    data={data} 
+                    onClose={() => setSelectedEvent(null)} 
+                />
+            )}
         </div>
     );
 }

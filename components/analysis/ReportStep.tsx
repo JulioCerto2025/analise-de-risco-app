@@ -153,7 +153,7 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                 .footer { margin-top: 10mm; border-top: 0.5pt solid #ccc; font-size: 8pt; text-align: center; }
             </style></head><body>
                 ${printableHtml}
-                <div class="footer">Gerado via Plataforma SPDA — ${new Date().toLocaleDateString('pt-BR')} — Engº Júlio César Certo</div>
+                <div class="footer">Gerado via Plataforma SPDA — ${new Date().toLocaleDateString('pt-BR')} — Engº Júlio César Certo — WhatsApp (35) 9 8811-3746</div>
             </body></html>`);
             win.document.close();
             setTimeout(() => { win.focus(); win.print(); }, 800);

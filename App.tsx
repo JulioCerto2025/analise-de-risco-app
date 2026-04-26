@@ -1,17 +1,17 @@
 import * as React from "react";
-import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle, MessageCircle, Users, ShieldCheck, Copy, ShieldAlert, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle, MessageCircle, Users, ShieldCheck, Copy, ShieldAlert, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Alert, AlertDescription, AlertTitle, AuditProvider } from "./components/ui";
 import { Step1Input } from './components/analysis/Step1Input';
 import { NgInputStep } from './components/analysis/NgInputStep';
-const ConnectedLinesStepLazy = React.lazy(() => import('./components/analysis/ConnectedLinesStep').then(m => ({ default: m.ConnectedLinesStep })));
-const Step3EventsLazy = React.lazy(() => import('./components/analysis/Step3Events').then(m => ({ default: m.Step3Events })));
+import { ConnectedLinesStep } from './components/analysis/ConnectedLinesStep';
+import { Step3Events } from './components/analysis/Step3Events';
 import { RiskComponentsSelection } from './components/analysis/RiskComponentsSelection';
-const ProbabilityStepLazy = React.lazy(() => import('./components/analysis/ProbabilityStep').then(m => ({ default: m.ProbabilityStep })));
+import { ProbabilityStep } from './components/analysis/ProbabilityStep';
 import { LossStep } from './components/analysis/LossStep';
-const RiskResultsStepLazy = React.lazy(() => import('./components/analysis/RiskResultsStep').then(m => ({ default: m.RiskResultsStep })));
-const ReportStepLazy = React.lazy(() => import('./components/analysis/ReportStep').then(m => ({ default: m.ReportStep })));
-const FrequencyConfigStepLazy = React.lazy(() => import('./components/analysis/FrequencyConfigStep').then(m => ({ default: m.FrequencyConfigStep })));
+import { RiskResultsStep } from './components/analysis/RiskResultsStep';
+import { ReportStep } from './components/analysis/ReportStep';
+import { FrequencyConfigStep } from './components/analysis/FrequencyConfigStep';
 import { ProjectInfoStep } from './components/analysis/ProjectInfoStep';
 import { ToolboxStep } from './components/analysis/ToolboxStep';
 import { STEPS } from "./constants";
@@ -26,7 +26,7 @@ import CadWorkspacePreview from './components/tools/CadWorkspacePreview';
 
 const SidebarNav = ({ currentStep, setStep }: { currentStep: number; setStep: (step: number) => void }) => {
     return (
-        <div className="bg-slate-950/70 backdrop-blur-lg border border-slate-500/30 p-3 rounded-xl shadow-2xl overflow-hidden font-['Outfit']">
+        <div className="bg-slate-950/70 backdrop-blur-lg border border-slate-500/30 p-3 rounded-xl shadow-xl overflow-hidden font-['Outfit']">
             <div className="flex items-center gap-3 mb-5 px-1 pt-1">
                 <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/30 shrink-0">
                     <Calculator className="w-5 h-5 text-white" />
@@ -190,10 +190,14 @@ export default function App() {
     // Removido: controle de loop por zona entre etapas 7 e 8
     const [errors, setErrors] = React.useState<string[]>([]);
 
+    const [activeTooltipId, setActiveTooltipId] = React.useState<string | null>(null);
+
     const auditProviderValue = React.useMemo(() => ({
         auditMode: !!data.audit_mode,
-        setAuditMode: (m: boolean) => updateData({ audit_mode: m })
-    }), [data.audit_mode, updateData]);
+        setAuditMode: (m: boolean) => updateData({ audit_mode: m }),
+        activeTooltipId,
+        setActiveTooltipId
+    }), [data.audit_mode, updateData, activeTooltipId]);
 
     const handleNext = React.useCallback(async () => {
         try {
@@ -271,37 +275,13 @@ export default function App() {
                 case 2: return <RiskComponentsSelection data={data} onChange={updateData} />;
                 case 3: return <NgInputStep data={data} onUpdate={updateData} />;
                 case 4: return <Step1Input data={data} onUpdate={updateData} />;
-                case 5: return (
-                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
-                        <ConnectedLinesStepLazy data={data} onUpdate={updateData} />
-                    </React.Suspense>
-                );
-                case 6: return (
-                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
-                        <Step3EventsLazy data={data} />
-                    </React.Suspense>
-                );
-                case 7: return (
-                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
-                        <ProbabilityStepLazy data={data} onChange={updateData} />
-                    </React.Suspense>
-                );
+                case 5: return <ConnectedLinesStep data={data} onUpdate={updateData} />;
+                case 6: return <Step3Events data={data} />;
+                case 7: return <ProbabilityStep data={data} onChange={updateData} />;
                 case 8: return <LossStep data={data} onChange={updateData} />;
-                case 9: return (
-                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
-                        <RiskResultsStepLazy data={data} onUpdate={updateData} />
-                    </React.Suspense>
-                );
-                case 10: return (
-                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
-                        <FrequencyConfigStepLazy data={data} onUpdate={updateData} />
-                    </React.Suspense>
-                );
-                case 11: return (
-                    <React.Suspense fallback={<div className="p-6 text-slate-300">Carregando etapa...</div>}>
-                        <ReportStepLazy data={data} onUpdate={updateData} />
-                    </React.Suspense>
-                );
+                case 9: return <RiskResultsStep data={data} onUpdate={updateData} />;
+                case 10: return <FrequencyConfigStep data={data} onUpdate={updateData} />;
+                case 11: return <ReportStep data={data} onUpdate={updateData} />;
                 case 12: return <ToolboxStep />;
                 default: return <div className="p-6 bg-slate-800 rounded-lg">
                     <h2 className="text-xl font-bold text-slate-100 mb-4">Etapa não encontrada</h2>
@@ -336,8 +316,11 @@ export default function App() {
                     {/* Header Ultra-Compacto */}
                     <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-3 text-center border-b border-white/10 shrink-0">
                         <div className="flex items-center justify-center gap-3">
-                            <div className="w-9 h-9 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
+                            <div className="relative w-9 h-9 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
                                 <Calculator className="w-5 h-5 text-white" />
+                                <div className="absolute -bottom-1.5 -right-1.5 bg-blue-700 rounded-full p-[2px] shadow-md border border-white/10">
+                                    <Settings className="w-3.5 h-3.5 text-blue-100" />
+                                </div>
                             </div>
                             <div className="text-left leading-tight">
                                 <h2 className="text-xl font-bold text-white tracking-wider uppercase">Controle de Acesso</h2>
@@ -347,16 +330,46 @@ export default function App() {
 
                     <div className="p-4 space-y-3.5 flex-1 overflow-hidden">
                         <div className="text-center py-2 space-y-1.5">
-                            <h3 className="text-blue-400 text-[13px] font-black uppercase tracking-[0.15em] leading-tight drop-shadow-sm">
+                            <h3 className="text-blue-200 text-[13px] font-black uppercase tracking-[0.15em] leading-tight drop-shadow-md">
                                 Plataforma Análise de Risco NBR 5419-2 2026
                             </h3>
-                            <p className="text-slate-400 text-[9.5px] font-bold uppercase tracking-widest leading-none opacity-80">
-                                Engº Júlio César Certo <span className="text-slate-600 mx-1">—</span> <span className="text-blue-500/60">Especialista em PDA</span>
+                            <p className="text-slate-200 text-[9.5px] font-bold uppercase tracking-widest leading-none">
+                                Engº Júlio César Certo <span className="text-slate-400 mx-1">—</span> <span className="text-blue-400 font-black">Especialista em PDA</span>
                             </p>
                         </div>
 
-                        {/* Seção 1: Planos com Cores Progressivas */}
-                        <div className="grid grid-cols-3 gap-2 py-1">
+                        {/* Seção 1: Login Form */}
+                        <form onSubmit={handleAuth} className="py-2.5">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[9.5px] uppercase font-bold tracking-widest text-slate-400 px-1 flex justify-between leading-none">
+                                    <span>Senha de Acesso</span>
+                                    {authError && <span className="text-red-400/80 text-[8px] tracking-normal font-semibold">Acesso Negado</span>}
+                                </label>
+                                <div className="flex gap-3 items-center">
+                                    <input 
+                                        type="password"
+                                        value={passwordInput}
+                                        onChange={(e) => setPasswordInput(e.target.value)}
+                                        placeholder="••••••••"
+                                        className={`flex-1 min-w-0 h-12 bg-slate-950 border ${authError ? 'border-red-500/30' : 'border-slate-800 focus:border-blue-500/30'} rounded-xl px-4 text-white text-center text-xl tracking-[0.3em] outline-none transition-all placeholder:tracking-normal placeholder:text-slate-800 font-mono`}
+                                        autoFocus
+                                    />
+                                    <button 
+                                        type="submit" 
+                                        className="shrink-0 px-6 h-12 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-[10px] rounded-xl transition-all active:scale-95 uppercase whitespace-nowrap leading-none shadow-lg shadow-blue-900/20 group"
+                                    >
+                                        Entrar no App
+                                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+
+
+                        <div className="opacity-40 hover:opacity-100 transition-opacity duration-500">
+                            {/* Seção 2: Planos com Cores Progressivas */}
+                            <div className="grid grid-cols-3 gap-2 py-1">
                             {/* Mensal: Mais sóbrio/discreto */}
                             <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-3 flex flex-col gap-1 shadow-inner relative overflow-hidden group">
                                 <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap leading-none">Plano Mensal</span>
@@ -388,89 +401,63 @@ export default function App() {
                             </div>
                         </div>
 
-                        {/* Seção 2: CPF PIX (Logo abaixo dos Planos) */}
+                        {/* Seção 3: CPF PIX (Logo abaixo dos Planos) */}
                         <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-3 space-y-2 my-1">
                             <div className="flex items-center gap-2 text-slate-400 px-1 leading-none">
                                 <CheckCircle className="w-3 h-3 text-emerald-400" />
-                                <p className="text-[8.5px] font-bold uppercase tracking-widest leading-none text-slate-300 whitespace-nowrap">Depósito PIX — Envie o Comprovante - Whatsapp 35 9 8811-3746</p>
+                                <p className="text-[8.5px] font-bold uppercase tracking-widest leading-none text-slate-300 whitespace-nowrap">Depósito PIX — Envie o Comprovante - Whatsapp (35) 9 8811-3746</p>
                             </div>
                             
                             <div 
                                 onClick={() => copyToClipboard('04727277611', 'Chave PIX')}
-                                className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center cursor-pointer hover:bg-slate-900 transition-all border-dashed group active:scale-[0.98]"
+                                className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center cursor-pointer hover:bg-slate-900 hover:border-slate-700 transition-all border-dashed group active:scale-[0.98] flex flex-col items-center justify-center gap-1.5"
                             >
-                                <p className="text-[8.5px] font-bold text-blue-400/70 uppercase tracking-widest mb-1.5 group-hover:text-blue-400/90 transition-colors italic leading-none">PIX CPF - JÚLIO CESAR CERTO</p>
-                                <span className="text-[1.65rem] font-bold text-white tracking-widest block leading-none">047.272.776-11</span>
+                                <p className="text-[8.5px] font-bold text-blue-400/70 uppercase tracking-widest group-hover:text-blue-400 transition-colors italic leading-none">PIX CPF - JÚLIO CESAR CERTO</p>
+                                <div className="flex items-center gap-2 text-slate-300 group-hover:text-white transition-colors">
+                                    <span className="text-xl font-medium tracking-widest font-mono">047.272.776-11</span>
+                                    <Copy className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                                </div>
                             </div>
 
                             <p className="text-[9.5px] text-slate-300 font-bold italic text-center px-1 leading-normal whitespace-nowrap">
                                 * Valor referente ao acesso à ferramenta. Assessorias e Projetos à combinar.
                             </p>
                         </div>
-
-                        {/* Seção 3: Login Form */}
-                        <form onSubmit={handleAuth} className="py-2.5">
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[9.5px] uppercase font-bold tracking-widest text-slate-400 px-1 flex justify-between leading-none">
-                                    <span>Senha de Acesso</span>
-                                    {authError && <span className="text-red-400/80 text-[8px] tracking-normal font-semibold">Acesso Negado</span>}
-                                </label>
-                                <div className="flex gap-3 items-center">
-                                    <input 
-                                        type="password"
-                                        value={passwordInput}
-                                        onChange={(e) => setPasswordInput(e.target.value)}
-                                        placeholder="••••••••"
-                                        className={`flex-1 min-w-0 h-12 bg-slate-950 border ${authError ? 'border-red-500/30' : 'border-slate-800 focus:border-blue-500/30'} rounded-xl px-4 text-white text-center text-xl tracking-[0.3em] outline-none transition-all placeholder:tracking-normal placeholder:text-slate-800 font-mono`}
-                                        autoFocus
-                                    />
-                                    <button 
-                                        type="submit" 
-                                        className="shrink-0 px-6 h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-[10px] rounded-xl transition-all active:scale-95 uppercase whitespace-nowrap leading-none shadow-lg shadow-blue-900/20"
-                                    >
-                                        Entrar no App
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-
-                        {/* Seção 4: Botões Tutorial e Suporte */}
-                        <div className="grid grid-cols-2 gap-2 py-1">
-                            <a 
-                                href="https://www.youtube.com/watch?v=NpSiWh-LiOk&t=131s" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="bg-slate-950/40 border border-slate-800 rounded-xl p-2 flex flex-col items-center gap-1 transition-all hover:bg-red-500/10 group"
-                            >
-                                <Users className="w-5 h-5 text-red-500/60" />
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-red-400 leading-none">Tutorial</span>
-                            </a>
-                            <a 
-                                href="https://wa.me/5535988113746" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="bg-slate-950/40 border border-slate-800 rounded-xl p-3 flex flex-col items-center gap-1 transition-all hover:bg-emerald-500/10 group"
-                            >
-                                <MessageCircle className="w-5 h-5 text-emerald-500/60" />
-                                <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-emerald-400 leading-none">WhatsApp</span>
-                            </a>
                         </div>
 
-                        {/* Seção 5: Banner Comunidade */}
-                        <a 
-                            href="https://chat.whatsapp.com/IawpsONjvohHjlE8Yhwe9s" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="w-full bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group my-1"
-                        >
-                            <div className="flex items-center gap-2.5 leading-none">
-                                <Users className="w-4 h-4 text-emerald-400/80" />
-                                <span className="text-[10.5px] font-bold text-emerald-400/90 uppercase tracking-wider">Comunidade PDA</span>
+                        <div className="py-2 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                            {/* Seção 4: Links de Apoio (Tutorial e WhatsApp) */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <a 
+                                    href="https://www.youtube.com/watch?v=NpSiWh-LiOk&t=131s" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="bg-slate-950/40 border border-slate-800 rounded-xl p-2 px-3 flex flex-row items-center justify-center gap-2.5 transition-all hover:bg-red-500/10 hover:border-red-500/30 group shadow-lg"
+                                >
+                                    <div className="p-2 bg-red-500/20 rounded-lg group-hover:bg-red-500/30 transition-colors">
+                                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-red-400 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505a3.017 3.017 0 00-2.122 2.136C0 8.055 0 12 0 12s0 3.945.501 5.814a3.017 3.017 0 002.122 2.136c1.872.505 9.377.505 9.377.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.945 24 12 24 12s0-3.945-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                        </svg>
+                                    </div>
+                                    <span className="font-black text-[9.5px] text-slate-300 uppercase tracking-widest group-hover:text-white transition-colors">Tutorial</span>
+                                </a>
+
+                                <a 
+                                    href="https://chat.whatsapp.com/IawpsONjvohHjlE8Yhwe9s" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="bg-slate-950/40 border border-slate-800 rounded-xl p-2 px-3 flex flex-row items-center justify-center gap-2.5 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/30 group shadow-lg"
+                                >
+                                    <div className="p-2 bg-emerald-500/20 rounded-lg group-hover:bg-emerald-500/30 transition-colors">
+                                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-400 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                        </svg>
+                                    </div>
+                                    <span className="font-black text-[9.5px] text-slate-300 uppercase tracking-widest group-hover:text-white transition-colors">Comunidade</span>
+                                </a>
                             </div>
-                            <p className="text-[10px] text-slate-300 font-medium text-center leading-none mt-1">
-                                Troca de informações e ajuda mútua entre usuários do app.
-                            </p>
-                        </a>
+                        </div>
+
                     </div>
 
                     <div className="bg-slate-950/90 px-8 py-2.5 border-t border-slate-800 text-[8px] text-slate-600 flex justify-between items-center shrink-0 leading-none">
@@ -517,7 +504,7 @@ export default function App() {
                             {/* Cabeçalho móvel: visível apenas no celular */}
                             <div className="md:hidden mb-4 bg-slate-950/70 backdrop-blur-lg border border-slate-500/50 p-4 rounded-lg shadow-2xl">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
                                         <Calculator className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
@@ -560,27 +547,8 @@ export default function App() {
                             </div>
 
                             {/* Convites e Conteúdo */}
-                            {currentStep === 1 && (
-                                <div className="mb-3 rounded-lg border border-slate-500/50 bg-slate-900/60 p-4 shadow-2xl">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg">
-                                            <MessageCircle className="w-5 h-5 text-white" />
-                                        </div>
-                                        <div className="flex-1 min-w-[240px]">
-                                            <div className="text-sm font-semibold text-slate-100">Comunidade SPDA (WhatsApp)</div>
-                                            <p className="text-sm text-slate-300">Participe do grupo para aprender, tirar dúvidas e compartilhar experiências.</p>
-                                        </div>
-                                        <a
-                                            href="https://chat.whatsapp.com/IawpsONjvohHjlE8Yhwe9s"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-center rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 h-10 px-4"
-                                        >
-                                            Entrar
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
+
+
 
                             <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
                                 <AnimatePresence mode="wait">

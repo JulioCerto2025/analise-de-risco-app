@@ -1,16 +1,24 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { formatSmartNumber } from '../lib/format';
 import { ChevronDown, Check, Loader2, Info } from 'lucide-react';
 
 
 // Contexto global para controlar o Modo Auditoria/Fiscalização
-const AuditContext = React.createContext<{ auditMode: boolean; setAuditMode: (m: boolean) => void }>({ 
+const AuditContext = React.createContext<{ 
+    auditMode: boolean; 
+    setAuditMode: (m: boolean) => void;
+    activeTooltipId: string | null;
+    setActiveTooltipId: (id: string | null) => void;
+}>({ 
     auditMode: false, 
-    setAuditMode: () => {} 
+    setAuditMode: () => {},
+    activeTooltipId: null,
+    setActiveTooltipId: () => {}
 });
 
-export const AuditProvider = ({ value, children }: { value: { auditMode: boolean; setAuditMode: (m: boolean) => void }; children: React.ReactNode }) => (
+export const AuditProvider = ({ value, children }: { value: any; children: React.ReactNode }) => (
     <AuditContext.Provider value={value}>{children}</AuditContext.Provider>
 );
 
@@ -536,16 +544,24 @@ export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, childre
 
 
 export const FormulaTooltip = ({ formulas, values, children, className = "inline-block", triggerClassName = "cursor-default inline-block" }: { formulas: { [key: string]: string }, values?: { [key: string]: any }, children?: React.ReactNode, className?: string, triggerClassName?: string }) => {
-    const [isOpen, setIsOpen] = React.useState(false);
-    const { auditMode } = useAuditMode();
-    const closeTimer = React.useRef<any>(null);
+    const { auditMode, activeTooltipId, setActiveTooltipId } = useAuditMode();
+    const tooltipId = React.useId();
+    const isOpen = activeTooltipId === tooltipId;
+    
     const containerRef = React.useRef<HTMLDivElement>(null);
     const triggerRef = React.useRef<HTMLSpanElement>(null);
+    const portalRef = React.useRef<HTMLDivElement>(null);
+
+    const dragControls = useDragControls();
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+            if (!isOpen) return;
+            const isClickInsideTrigger = containerRef.current && containerRef.current.contains(event.target as Node);
+            const isClickInsidePortal = portalRef.current && portalRef.current.contains(event.target as Node);
+            
+            if (!isClickInsideTrigger && !isClickInsidePortal) {
+                setActiveTooltipId(null);
             }
         };
         if (isOpen) {
@@ -553,23 +569,24 @@ export const FormulaTooltip = ({ formulas, values, children, className = "inline
         }
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
-            if (closeTimer.current) clearTimeout(closeTimer.current);
         };
-    }, [isOpen]);
+    }, [isOpen, setActiveTooltipId]);
 
     const handleMouseEnter = () => {
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-        setIsOpen(true);
+        // Agora o painel é persistente. Só abre no clique.
     };
 
     const handleMouseLeave = () => {
-        closeTimer.current = setTimeout(() => {
-            setIsOpen(false);
-        }, 150);
+        // Agora o painel é persistente. Só fecha no clique fora.
     };
 
-    const handleToggle = () => {
-        setIsOpen(!isOpen);
+    const handleToggle = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isOpen) {
+            setActiveTooltipId(null);
+        } else {
+            setActiveTooltipId(tooltipId);
+        }
     };
 
     // Componente local para notação científica em base 10 com duas casas
@@ -670,69 +687,104 @@ export const FormulaTooltip = ({ formulas, values, children, className = "inline
                     {children}
                 </span>
             )}
-            {isOpen && !isMobile && auditMode && (
-                <>
-                    {/* Backdrop */}
-                    <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
-                    
-                    {/* Tooltip Panel */}
-                    <div 
-                        onMouseEnter={handleMouseEnter}
-                        onMouseLeave={handleMouseLeave}
-                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(95vw,540px)] max-h-[85vh] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] overflow-auto custom-scrollbar animate-in zoom-in-95 fade-in duration-300 pointer-events-auto"
-                    >
-                        <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
-                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                            <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Memória de Cálculo Editorial</p>
-                        </div>
-                        
-                        <ul className="space-y-8">
-                            {Object.entries(formulas).map(([key, formula], idx) => {
-                                const populated = renderFormulaWithValues(formula);
-                                const valValue = (values as any)?.[key];
-                                const valueNode = values && (key in (values || {}) || key.toLowerCase() in (values || {}) || key.toUpperCase() in (values || {})) 
-                                    ? formatNumberNode(Number(valValue || (values as any)?.[key.toLowerCase()] || (values as any)?.[key.toUpperCase()]) || 0) 
-                                    : null;
-                                    
-                                return (
-                                    <li key={key} className="space-y-4 animate-in slide-in-from-top-2 duration-500" style={{ animationDelay: `${idx * 70}ms` }}>
-                                        {/* Valor */}
-                                        {valueNode && (
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest">Resultado</span>
-                                                <p className="text-blue-400 font-mono font-black text-lg">Valor: <span className="align-baseline">{valueNode}</span></p>
-                                            </div>
-                                        )}
-                                        {/* Fórmula */}
-                                        <div className="space-y-1.5">
-                                            <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                            <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                                <span className="align-baseline font-bold text-blue-300/90">{key}</span>
-                                                <span className="mx-2 text-slate-500">=</span>
-                                                {renderPlainFormulaSegments(formula)}
-                                            </div>
-                                        </div>
-                                        {/* Valores */}
-                                        {populated && (
-                                            <div className="space-y-1.5">
-                                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                                <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner">
-                                                    <span className="align-baseline font-bold text-blue-400">{key}</span>
-                                                    <span className="mx-2 text-blue-900/50">=</span>
-                                                    {populated}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {isOpen && !isMobile && auditMode && (
+                        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+                            {/* Backdrop */}
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 bg-black/40 backdrop-blur-[4px] pointer-events-none" 
+                            />
+                            
+                            {/* Tooltip Panel */}
+                            <motion.div 
+                                ref={portalRef}
+                                drag
+                                dragControls={dragControls}
+                                dragListener={false}
+                                dragMomentum={false}
+                                initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                                animate={{ opacity: 1, x: 0, scale: 1 }}
+                                exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                                style={{ 
+                                    position: 'fixed',
+                                    right: `24px`,
+                                    top: `80px`,
+                                    width: 'min(90vw, 540px)',
+                                    zIndex: 9999
+                                }}
+                                className="p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl overflow-visible pointer-events-auto select-none"
+                            >
+                                <div 
+                                    onPointerDown={(e) => dragControls.start(e)}
+                                    className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6 drag-handle cursor-move touch-none"
+                                >
+                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px] flex-1">Memória de Cálculo Editorial</p>
+                                    <div className="text-slate-500 text-[8px] font-bold uppercase tracking-widest border border-slate-700 px-2 py-0.5 rounded-full">Arraste para mover</div>
+                                </div>
+                                
+                                <ul className="space-y-8 select-text pr-2">
+                                    {Object.entries(formulas).map(([key, formula]) => {
+                                        const populated = renderFormulaWithValues(formula);
+                                        const valValue = (values as any)?.[key];
+                                        const valueNode = values && (key in (values || {}) || key.toLowerCase() in (values || {}) || key.toUpperCase() in (values || {})) 
+                                            ? formatNumberNode(Number(valValue || (values as any)?.[key.toLowerCase()] || (values as any)?.[key.toUpperCase()]) || 0) 
+                                            : null;
+                                            
+                                        return (
+                                            <li key={key} className="space-y-4">
+                                                {/* Valor */}
+                                                {valueNode && (
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest">Resultado</span>
+                                                        <p className="text-blue-400 font-mono font-black text-lg">Valor: <span className="align-baseline">{valueNode}</span></p>
+                                                    </div>
+                                                )}
+                                                {/* Fórmula */}
+                                                <div className="space-y-1.5">
+                                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
+                                                    <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
+                                                        <span className="align-baseline font-bold text-blue-300/90">{key}</span>
+                                                        <span className="mx-2 text-slate-500">=</span>
+                                                        {renderPlainFormulaSegments(formula)}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                        
-                        <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                                                {/* Valores */}
+                                                {populated && (
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
+                                                        <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner">
+                                                            <span className="align-baseline font-bold text-blue-400">{key}</span>
+                                                            <span className="mx-2 text-blue-900/50">=</span>
+                                                            {populated}
+                                                            <span className="mx-2 text-blue-400/50">=</span>
+                                                            <span className="text-blue-400 font-bold">{valueNode}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                
+                                <div 
+                                    onPointerDown={(e) => dragControls.start(e)}
+                                    className="mt-8 pt-4 border-t border-white/5 flex justify-center drag-handle cursor-move touch-none"
+                                >
+                                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                                </div>
+                            </motion.div>
                         </div>
-                    </div>
-                </>
+                    )}
+                </AnimatePresence>,
+                document.body
             )}
         </span>
     );
@@ -754,26 +806,51 @@ export const InfoTooltip = ({ text, children }: { text: string; children: React.
     const triggerRef = React.useRef<HTMLDivElement>(null);
     const isMobile = useIsMobile();
     const { auditMode } = useAuditMode();
+    const portalRef = React.useRef<HTMLDivElement>(null);
 
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const isClickInsideTrigger = triggerRef.current && triggerRef.current.contains(event.target as Node);
+            const isClickInsidePortal = portalRef.current && portalRef.current.contains(event.target as Node);
+            if (!isClickInsideTrigger && !isClickInsidePortal) setIsOpen(false);
+        };
+        if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
     return (
-        <div className="relative inline-block" ref={triggerRef} onMouseEnter={() => setIsOpen(true)} onMouseLeave={() => setIsOpen(false)}>
+        <div className="relative inline-block" ref={triggerRef} onMouseEnter={() => setIsOpen(true)}>
             {children}
-            {isOpen && !isMobile && auditMode && createPortal(
-                <>
-                    <div className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
-                    <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90vw,400px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl z-[9999] animate-in zoom-in-95 fade-in duration-200 pointer-events-none">
-                        <div className="flex items-center gap-3 border-b border-white/10 pb-3 mb-4">
-                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                            <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Informação Técnica</p>
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {isOpen && !isMobile && auditMode && (
+                        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 bg-black/20 backdrop-blur-[1px] pointer-events-none" 
+                            />
+                            <motion.div 
+                                ref={portalRef}
+                                initial={{ opacity: 0, scale: 0.95, x: 20 }}
+                                animate={{ opacity: 1, scale: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, x: 10 }}
+                                className="fixed right-6 top-[100px] w-[min(90vw,400px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl z-[9999] pointer-events-auto"
+                            >
+                                <div className="flex items-center gap-3 border-b border-white/10 pb-3 mb-4">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Informação Técnica</p>
+                                </div>
+                                <div className="text-sm leading-relaxed text-slate-300 font-medium">
+                                    {text}
+                                </div>
+                                <div className="mt-6 pt-3 border-t border-white/5 flex justify-center">
+                                    <p className="text-[8px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                                </div>
+                            </motion.div>
                         </div>
-                        <div className="text-sm leading-relaxed text-slate-300 font-medium">
-                            {text}
-                        </div>
-                        <div className="mt-6 pt-3 border-t border-white/5 flex justify-center">
-                            <p className="text-[8px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
-                        </div>
-                    </div>
-                </>,
+                    )}
+                </AnimatePresence>,
                 document.body
             )}
         </div>

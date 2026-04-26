@@ -39,7 +39,15 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
 
     if (formula) {
         return (
-            <FormulaTooltip formulas={formulas} values={formulaValues} className="w-full block" triggerClassName="w-full cursor-default block">
+            <FormulaTooltip 
+                formulas={formulas} 
+                values={{ 
+                    ...(formulaValues || {}), 
+                    ...(formulaKey ? { [formulaKey]: value } : {}) 
+                }} 
+                className="w-full block" 
+                triggerClassName="w-full cursor-default block"
+            >
                 {content}
             </FormulaTooltip>
         );
@@ -210,9 +218,17 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>L</sub></span></span>} value={nl_electric} unit="desc./ano" color="blue" 
-                                                        formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formula={data.line_sections_1.length > 1 
+                                                            ? `(${data.line_sections_1.map(s => `(${data.ng} × ${formatSmartNumber(40 * (s.ll || 0))} × ${s.ci} × ${s.ce} × ${s.ct})`).join(' + ')}) × 10⁻⁶`
+                                                            : "Ng × Al × Ci × Ce × Ct × 10⁻⁶"} 
                                                         formulaKey="NL"
-                                                        formulaValues={{ Ng: data.ng, Al: al1, sections: data.line_sections_1 }}
+                                                        formulaValues={{ 
+                                                            Ng: data.ng, 
+                                                            Al: al1,
+                                                            Ci: data.line_sections_1[0]?.ci,
+                                                            Ce: data.line_sections_1[0]?.ce,
+                                                            Ct: data.line_sections_1[0]?.ct
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
@@ -227,9 +243,17 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_electric} unit="desc./ano" color="green" 
-                                                        formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formula={data.line_sections_1.length > 1 
+                                                            ? `(${data.line_sections_1.map(s => `(${data.ng} × ${formatSmartNumber(4000 * (s.ll || 0))} × ${s.ci} × ${s.ce} × ${s.ct})`).join(' + ')}) × 10⁻⁶`
+                                                            : "Ng × Ai × Ci × Ce × Ct × 10⁻⁶"} 
                                                         formulaKey="NI"
-                                                        formulaValues={{ Ng: data.ng, Ai: ai1, sections: data.line_sections_1 }}
+                                                        formulaValues={{ 
+                                                            Ng: data.ng, 
+                                                            Ai: ai1,
+                                                            Ci: data.line_sections_1[0]?.ci,
+                                                            Ce: data.line_sections_1[0]?.ce,
+                                                            Ct: data.line_sections_1[0]?.ct
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
@@ -325,9 +349,17 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>L</sub></span></span>} value={nl_data} unit="desc./ano" color="blue" 
-                                                        formula="Σ (Ng × Al × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formula={data.line_sections_2.length > 1 
+                                                            ? `(${data.line_sections_2.map(s => `(${data.ng} × ${formatSmartNumber(40 * (s.ll || 0))} × ${s.ci} × ${s.ce} × ${s.ct})`).join(' + ')}) × 10⁻⁶`
+                                                            : "Ng × Al × Ci × Ce × Ct × 10⁻⁶"} 
                                                         formulaKey="NL"
-                                                        formulaValues={{ Ng: data.ng, Al: al2, sections: data.line_sections_2 }}
+                                                        formulaValues={{ 
+                                                            Ng: data.ng, 
+                                                            Al: al2,
+                                                            Ci: data.line_sections_2[0]?.ci,
+                                                            Ce: data.line_sections_2[0]?.ce,
+                                                            Ct: data.line_sections_2[0]?.ct
+                                                        }}
                                                     />
                                                 </div>
                                             </div>
@@ -342,9 +374,17 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_data} unit="desc./ano" color="green" 
-                                                        formula="Σ (Ng × Ai × Ci × Ce × Ct) × 10⁻⁶" 
+                                                        formula={data.line_sections_2.length > 1 
+                                                            ? `(${data.line_sections_2.map(s => `(${data.ng} × ${formatSmartNumber(4000 * (s.ll || 0))} × ${s.ci} × ${s.ce} × ${s.ct})`).join(' + ')}) × 10⁻⁶`
+                                                            : "Ng × Ai × Ci × Ce × Ct × 10⁻⁶"} 
                                                         formulaKey="NI"
-                                                        formulaValues={{ Ng: data.ng, Ai: ai2, sections: data.line_sections_2 }}
+                                                        formulaValues={{ 
+                                                            Ng: data.ng, 
+                                                            Ai: ai2,
+                                                            Ci: data.line_sections_2[0]?.ci,
+                                                            Ce: data.line_sections_2[0]?.ce,
+                                                            Ct: data.line_sections_2[0]?.ct
+                                                        }}
                                                     />
                                                 </div>
                                             </div>

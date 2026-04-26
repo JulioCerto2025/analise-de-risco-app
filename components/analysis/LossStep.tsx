@@ -16,36 +16,48 @@ const ScientificNotation = ({ value, precision = 2 }: { value: number; precision
     );
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const LossEditorialPortal = ({ label, description, value, onClose }: { label: string; description: string; value: number; onClose: () => void }) => {
     const { auditMode } = useAuditMode();
     const isMobile = useIsMobile();
-    const [mounted, setMounted] = React.useState(false);
+    const portalRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
-        setMounted(true);
-    }, []);
+        const handleClickOutside = (event: MouseEvent) => {
+            if (portalRef.current && !portalRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onClose]);
 
-    if (!mounted || !active || !payload || !payload.length || !auditMode || isMobile) return null;
+    if (!auditMode || isMobile) return null;
 
     return createPortal(
-        <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90vw,500px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-in zoom-in-95 fade-in duration-200">
-            <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Perda Editorial</p>
-            </div>
-            <div className="space-y-6">
-                <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
-                    <div className="flex flex-col">
-                        <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
-                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">{payload[0].payload.description}</p>
-                    </div>
-                    <p className="text-blue-400 font-mono font-black text-xl">
-                        <ScientificNotation value={Number(payload[0].value)} precision={2} />
-                    </p>
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none animate-in fade-in duration-200" />
+            <div 
+                ref={portalRef}
+                className="fixed right-6 top-[100px] w-[min(90vw,500px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-in slide-in-from-right-10 fade-in duration-300 pointer-events-auto"
+            >
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Perda Editorial</p>
                 </div>
-            </div>
-            <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+                        <div className="flex flex-col text-left">
+                            <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
+                            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">{description}</p>
+                        </div>
+                        <p className="text-blue-400 font-mono font-black text-xl">
+                            <ScientificNotation value={Number(value)} precision={2} />
+                        </p>
+                    </div>
+                </div>
+                <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                </div>
             </div>
         </div>,
         document.body
@@ -57,6 +69,8 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
     
     const [activeZoneId, setActiveZoneId] = React.useState<string>(data.last_active_zone_id || (zones.length > 0 ? zones[0].id : ''));
     const isMobile = useIsMobile();
+    const { auditMode, setActiveTooltipId } = useAuditMode();
+    const [selectedLoss, setSelectedLoss] = React.useState<any | null>(null);
 
 
     React.useEffect(() => {
@@ -118,7 +132,6 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         const finalValue = Number.isFinite(value) ? value : 0;
         
         const nextZones = zones.map(z => {
-            // Se for GLOBAL ou a zona ativa específica, atualiza
             if (activeZoneId === 'GLOBAL' || z.id === activeZoneId) {
                 const next = { ...z.loss_data, [field]: finalValue } as LossData;
                 if (['ca','cb','cc','cs','ce'].includes(field as string)) {
@@ -126,7 +139,6 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                 }
                 return { ...z, loss_data: next };
             }
-            // Sync nt (total de pessoas) se for global ou nt específico
             if (field === 'nt') return { ...z, loss_data: { ...z.loss_data, nt: finalValue } };
             
             return z;
@@ -198,8 +210,6 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                                     <SelectInput label="rp - Proteções" value={lossData.rp} options={RP_OPTIONS} onUpdate={v => handleUpdate('rp', v)} />
                                     <SelectInput label="hz - Risco Pânico" value={lossData.hz} options={HZ_OPTIONS} onUpdate={v => handleUpdate('hz', v)} />
                                 </div>
-                                <div className="space-y-4">
-                                </div>
                             </div>
                         )}
                         {activeTab === 'choque' && (
@@ -245,62 +255,93 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                     {`Gráfico de Perdas — ${activeHeading}`}
                 </span>
             </div>
-            <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
+            <Card 
+                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <CardContent className="h-[18rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }} className="outline-none focus:outline-none">
                                 <defs>
-                                    {/* Efeito Vidro Safira (Choque) */}
                                     <linearGradient id="glassShockLoss" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.7} />
                                         <stop offset="50%" stopColor="#3b82f6" stopOpacity={0.5} />
                                         <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.3} />
                                     </linearGradient>
-                                    
-                                    {/* Efeito Vidro Carmim (Incêndio) */}
                                     <linearGradient id="glassFireLoss" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.7} />
                                         <stop offset="50%" stopColor="#f43f5e" stopOpacity={0.5} />
                                         <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.3} />
                                     </linearGradient>
-                                    
-                                    {/* Efeito Vidro Nevoado (Sistemas) */}
                                     <linearGradient id="glassSystemsLoss" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.7} />
                                         <stop offset="50%" stopColor="#94a3b8" stopOpacity={0.5} />
                                         <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.3} />
                                     </linearGradient>
                                 </defs>
+                                <Tooltip cursor={false} content={<></>} />
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
-                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <XAxis 
+                                    dataKey="name" 
+                                    tick={(props) => {
+                                        const { x, y, payload, index } = props;
+                                        return (
+                                            <g transform={`translate(${x},${y})`} className="cursor-pointer group outline-none" onClick={() => {
+                                                setSelectedLoss(chartData[index]);
+                                                setActiveTooltipId(null);
+                                            }}>
+                                                <text x={0} y={0} dy={16} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight={700} className="group-hover:fill-white transition-colors outline-none">
+                                                    {payload.value}
+                                                </text>
+                                            </g>
+                                        );
+                                    }}
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                {!isMobile && (
-                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
-                                )}
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={100}>
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[4, 4, 0, 0]} 
+                                    barSize={100}
+                                    minPointSize={10}
+                                >
                                     {chartData.map((entry, index) => {
                                         const name = entry.name.toUpperCase();
                                         let fillUrl = "url(#glassSystemsLoss)";
-                                        let strokeColor = "#cbd5e1"; // Slate 300 (Cinza Claro)
+                                        let strokeColor = "#cbd5e1"; 
                                         
                                         if (name.includes('LA')) {
                                             fillUrl = "url(#glassShockLoss)";
-                                            strokeColor = "#3b82f6"; // Sapphire
+                                            strokeColor = "#3b82f6";
                                         }
                                         if (name.includes('LB')) {
                                             fillUrl = "url(#glassFireLoss)";
-                                            strokeColor = "#f43f5e"; // Carmine
+                                            strokeColor = "#f43f5e";
                                         }
                                         
-                                        return <Cell key={`cell-l-${index}`} fill={fillUrl} stroke={strokeColor} strokeWidth={0.8} strokeOpacity={1} />;
+                                        return (
+                                            <Cell 
+                                                key={`cell-l-${index}`} 
+                                                fill={fillUrl} 
+                                                stroke={strokeColor} 
+                                                strokeWidth={0.8} 
+                                                strokeOpacity={1} 
+                                                className="transition-all duration-300 cursor-pointer outline-none"
+                                                onClick={(e: any) => {
+                                                    if (e && e.stopPropagation) e.stopPropagation();
+                                                    setSelectedLoss(entry);
+                                                    setActiveTooltipId(null);
+                                                }}
+                                            />
+                                        );
                                     })}
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
 
-                    {/* Legenda Discreta e Alinhada Interna */}
                     <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/5 px-8">
                         <div className="flex items-center justify-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
@@ -317,6 +358,15 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                     </div>
                 </CardContent>
             </Card>
+
+            {selectedLoss && auditMode && (
+                <LossEditorialPortal 
+                    label={selectedLoss.name} 
+                    description={selectedLoss.description} 
+                    value={selectedLoss.value} 
+                    onClose={() => setSelectedLoss(null)} 
+                />
+            )}
         </div>
     );
 }

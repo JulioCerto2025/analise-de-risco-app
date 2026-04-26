@@ -79,7 +79,6 @@
         height: 100%;
         overscroll-behavior: none;
         overflow-x: hidden;
-        scrollbar-gutter: stable; /* Mantém a largura do gutter estável para evitar pulos no layout */
       }
       body {
         font-family: 'Outfit', sans-serif;
@@ -252,6 +251,11 @@
           -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
           -webkit-text-fill-color: #f1f5f9 !important;
           transition: background-color 5000s ease-in-out 0s;
+      }
+      
+      /* Global Focus Clean-up */
+      *:focus {
+          outline: none !important;
       }
     </style>
     

@@ -48,101 +48,116 @@ const PROBABILITY_FORMULAS: { [key: string]: { formula: string; symbols: string[
     PZT: { formula: "PSPD<sub>a</sub> × CLI<sub>a</sub>(ext) × Pli<sub>a</sub>(ext)", symbols: ["PSPD<sub>a</sub>", "CLI<sub>a</sub>(ext)", "Pli<sub>a</sub>(ext)"], vars: ["PSPD_data", "CLI_data_ext", "Pli_data_ext"] },
 };
 
-const CustomTooltip = ({ active, payload, label, probData, probCalcs }: any) => {
+const ProbEditorialPortal = ({ label, probData, probCalcs, onClose }: { label: string; probData: ProbabilityData; probCalcs: any; onClose: () => void }) => {
     const { auditMode } = useAuditMode();
     const isMobile = useIsMobile();
+    const portalRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (portalRef.current && !portalRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onClose]);
+
+    if (!auditMode || isMobile) return null;
+
+    const formulaInfo = PROBABILITY_FORMULAS[label];
+    const allValues = { ...probData, ...probCalcs };
+
+    let subComponentLabel: string | null = null;
+    if (label === 'PM') subComponentLabel = 'Pms';
+    else if (label === 'PMT') subComponentLabel = 'Pmst';
+
+    const formatPtBR = (n: number) => {
+        const val = Number(n || 0);
+        if (val > 0 && val < 0.0001) {
+            return formatSmartNumber(val, { useScientificBelow: 1, scientificPrecision: 2 });
+        }
+        return val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
+    };
+
+    const formatFormulaWithValues = (info: any, rawFormula: string) => {
+        if (!info || !rawFormula) return "N/A";
+        let result = rawFormula;
+        if (info.symbols && info.symbols.length > 0) {
+            info.symbols.forEach((symbol: string, index: number) => {
+                const varKey = info.vars[index];
+                const val = Number(allValues[varKey] || 0);
+                result = result.split(symbol).join(formatPtBR(val));
+            });
+        } else if (info.vars) {
+            return info.vars.map((v: string) => formatPtBR(Number(allValues[v] || 0))).join(' ; ');
+        }
+        return result;
+    };
+
+    const valuesString = formatFormulaWithValues(formulaInfo, formulaInfo?.formula);
     
-    if (active && payload && payload.length && auditMode && !isMobile) {
-        const formulaInfo = PROBABILITY_FORMULAS[label];
-        const allValues = { ...probData, ...probCalcs };
-
-        let subComponentLabel: string | null = null;
-        if (label === 'PM') subComponentLabel = 'Pms';
-        else if (label === 'PMT') subComponentLabel = 'Pmst';
-
-        const formatPtBR = (n: number) => {
-            const val = Number(n || 0);
-            if (val > 0 && val < 0.0001) {
-                return formatSmartNumber(val, { useScientificBelow: 1, scientificPrecision: 2 });
-            }
-            return val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
-        };
-
-        const formatFormulaWithValues = (info: any, rawFormula: string) => {
-            if (!info || !rawFormula) return "N/A";
-            let result = rawFormula;
-            if (info.symbols && info.symbols.length > 0) {
-                info.symbols.forEach((symbol: string, index: number) => {
-                    const varKey = info.vars[index];
-                    const val = Number(allValues[varKey] || 0);
-                    result = result.split(symbol).join(formatPtBR(val));
-                });
-            } else if (info.vars) {
-                return info.vars.map((v: string) => formatPtBR(Number(allValues[v] || 0))).join(' ; ');
-            }
-            return result;
-        };
-
-        const valuesString = formatFormulaWithValues(formulaInfo, formulaInfo?.formula);
-        
-        const getCalcStringForSub = (subLabel: string): React.ReactNode => {
-            const k1 = allValues.Ks1 || 0;
-            const k2 = allValues.Ks2 || 0;
-            const k3 = subLabel === 'Pms' ? (allValues.Ks3_electric_int || 0) : (allValues.Ks3_data_int || 0);
-            const k4 = subLabel === 'Pms' ? (allValues.Ks4_electric_int || 0) : (allValues.Ks4_data_int || 0);
-            const subVal = (allValues[subLabel] || Math.pow(k1 * k2 * k3 * k4, 2));
-            return (
-                <span className="inline-flex items-baseline">
-                    <span>({formatPtBR(k1)} × {formatPtBR(k2)} × {formatPtBR(k3)} × {formatPtBR(k4)})² = </span>
-                    <ScientificNotation value={Number(subVal)} precision={2} />
-                </span>
-            );
-        };
-
-        return createPortal(
-            <>
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(95vw,540px)] max-h-[85vh] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] overflow-auto custom-scrollbar animate-in zoom-in-95 fade-in duration-300 pointer-events-auto">
-                    <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                        <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Probabilidade Editorial</p>
-                    </div>
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
-                            <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
-                            <div className="flex items-baseline gap-2 text-right">
-                                <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest">Valor Final</span>
-                                <p className="text-blue-400 font-black text-xl"><ScientificNotation value={Number(payload[0].value)} precision={2} /></p>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            {formulaInfo && (
-                                <>
-                                    <div className="space-y-1.5">
-                                        <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                        <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaInfo.formula }} />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                        <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
-                                    </div>
-                                </>
-                            )}
-                            {subComponentLabel && (
-                                <div className="space-y-1.5 mt-4 pt-4 border-t border-white/5">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Cálculo de Sub-componente ({subComponentLabel}):</p>
-                                    <div className="font-mono bg-cyan-500/5 p-4 rounded-2xl text-cyan-200 text-xs sm:text-base leading-relaxed border border-cyan-500/20 shadow-inner">{getCalcStringForSub(subComponentLabel)}</div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="mt-8 pt-4 border-t border-white/5 flex justify-center"><p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p></div>
-                </div>
-            </>
-, document.body
+    const getCalcStringForSub = (subLabel: string): React.ReactNode => {
+        const k1 = allValues.Ks1 || 0;
+        const k2 = allValues.Ks2 || 0;
+        const k3 = subLabel === 'Pms' ? (allValues.Ks3_electric_int || 0) : (allValues.Ks3_data_int || 0);
+        const k4 = subLabel === 'Pms' ? (allValues.Ks4_electric_int || 0) : (allValues.Ks4_data_int || 0);
+        const subVal = (allValues[subLabel] || Math.pow(k1 * k2 * k3 * k4, 2));
+        return (
+            <span className="inline-flex items-baseline">
+                <span>({formatPtBR(k1)} × {formatPtBR(k2)} × {formatPtBR(k3)} × {formatPtBR(k4)})² = </span>
+                <ScientificNotation value={Number(subVal)} precision={2} />
+            </span>
         );
-    }
-    return null;
+    };
+
+    const finalValue = allValues[label] || 0;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none animate-in fade-in duration-200" />
+            <div 
+                ref={portalRef}
+                className="fixed right-6 top-[100px] w-[min(90vw,540px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-in slide-in-from-right-10 fade-in duration-300 pointer-events-auto"
+            >
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Probabilidade Editorial</p>
+                </div>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+                        <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
+                        <div className="flex items-baseline gap-2 text-right">
+                            <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest">Valor Final</span>
+                            <p className="text-blue-400 font-black text-xl"><ScientificNotation value={Number(finalValue)} precision={2} /></p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        {formulaInfo && (
+                            <>
+                                <div className="space-y-1.5">
+                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
+                                    <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaInfo.formula }} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
+                                    <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
+                                </div>
+                            </>
+                        )}
+                        {subComponentLabel && (
+                            <div className="space-y-1.5 mt-4 pt-4 border-t border-white/5">
+                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Cálculo de Sub-componente ({subComponentLabel}):</p>
+                                <div className="font-mono bg-cyan-500/5 p-4 rounded-2xl text-cyan-200 text-xs sm:text-base leading-relaxed border border-cyan-500/20 shadow-inner">{getCalcStringForSub(subComponentLabel)}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="mt-8 pt-4 border-t border-white/5 flex justify-center"><p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p></div>
+            </div>
+        </div>,
+        document.body
+    );
 };
 
 const RS_BLINDAGEM_OPTIONS = [
@@ -165,7 +180,9 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     const [activeTab, setActiveTab] = React.useState('structure');
     const [electricSubTab, setElectricSubTab] = React.useState<'external' | 'internal'>('external');
     const [dataSubTab, setDataSubTab] = React.useState<'external' | 'internal'>('external');
+    const [selectedProb, setSelectedProb] = React.useState<string | null>(null);
     const isMobile = useIsMobile();
+    const { auditMode, setActiveTooltipId } = useAuditMode();
 
     const { zones = [] } = data;
     const hasMultipleZones = zones.length > 1;
@@ -241,8 +258,11 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
     };
 
     return (
-        <div className="grid grid-cols-1 gap-2">
-            <Card className="border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shadow-2xl">
+        <div className="grid grid-cols-1 gap-2" onClick={() => setSelectedProb(null)}>
+            <Card 
+                className="border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="flex justify-center mt-4">
                     <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
                         {hasMultipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
@@ -298,16 +318,16 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     </div>
 
                     {activeTab === 'structure' && (
-                        <div className="grid grid-cols-[1.5fr_1.5fr_1.5fr_1fr_1fr] gap-4 pt-4 border-t border-white/5 px-2">
+                        <div className="grid grid-cols-[1.5fr_1.5fr_1.5fr_1fr_1fr] gap-4 pt-4 border-t border-white/5 px-2 text-center">
                             <SelectInput label="Nível SPDA (PB)" value={prob.PB} options={PB_OPTIONS} onUpdate={v => handleProbabilityChange({ PB: v })} />
                             <SelectInput label="Prot. PTA" value={prob.PTA} options={PTA_OPTIONS} onUpdate={v => handleProbabilityChange({ PTA: v })} />
                             <SelectInput label="Prot. PTU" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={v => handleProbabilityChange({ PTU_electric: v, PTU_data: v })} />
                             <div className="space-y-1.5 flex flex-col items-center">
-                                <DecimalInput label="wm1 (m)" value={prob.wm1} onUpdate={v => handleProbabilityChange({ wm1: v })} min={0} className="w-full max-w-[80px] text-center" />
+                                <DecimalInput label="wm1 (m)" value={prob.wm1 || 0} onUpdate={v => handleProbabilityChange({ wm1: v })} min={0} className="w-full max-w-[80px] text-center" />
                                 <span className="text-[9px] font-mono font-black text-blue-400">Ks1: {formatSmartNumber(calculatedKs1, { maxDecimals: 3 })}</span>
                             </div>
                             <div className="space-y-1.5 flex flex-col items-center">
-                                <DecimalInput label="wm2 (m)" value={prob.wm2} onUpdate={v => handleProbabilityChange({ wm2: v })} min={0} className="w-full max-w-[80px] text-center" />
+                                <DecimalInput label="wm2 (m)" value={prob.wm2 || 0} onUpdate={v => handleProbabilityChange({ wm2: v })} min={0} className="w-full max-w-[80px] text-center" />
                                 <span className="text-[9px] font-mono font-black text-blue-400">Ks2: {formatSmartNumber(calculatedKs2, { maxDecimals: 3 })}</span>
                             </div>
                         </div>
@@ -362,28 +382,68 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
             </Card>
 
             <div className="flex justify-center mt-6 mb-4"><span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">{`Gráfico de Probabilidades — ${activeHeading}`}</span></div>
-            <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
+            <Card 
+                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} className="outline-none focus:outline-none">
                                 <defs>
                                     <linearGradient id="glassShock" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.7} /><stop offset="50%" stopColor="#3b82f6" stopOpacity={0.5} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0.3} /></linearGradient>
                                     <linearGradient id="glassFire" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f43f5e" stopOpacity={0.7} /><stop offset="50%" stopColor="#f43f5e" stopOpacity={0.5} /><stop offset="100%" stopColor="#f43f5e" stopOpacity={0.3} /></linearGradient>
                                     <linearGradient id="glassSystems" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#94a3b8" stopOpacity={0.7} /><stop offset="50%" stopColor="#94a3b8" stopOpacity={0.5} /><stop offset="100%" stopColor="#94a3b8" stopOpacity={0.3} /></linearGradient>
                                 </defs>
+                                <Tooltip cursor={false} content={<></>} />
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
-                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <XAxis 
+                                    dataKey="name" 
+                                    tick={(props) => {
+                                        const { x, y, payload } = props;
+                                        return (
+                                            <g transform={`translate(${x},${y})`} className="cursor-pointer group outline-none" onClick={() => {
+                                                setSelectedProb(payload.value);
+                                                setActiveTooltipId(null);
+                                            }}>
+                                                <text x={0} y={0} dy={16} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight={700} className="group-hover:fill-white transition-colors outline-none">
+                                                    {payload.value}
+                                                </text>
+                                            </g>
+                                        );
+                                    }}
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                {!isMobile && <Tooltip content={<CustomTooltip probData={prob} probCalcs={zoneProbCalcs} />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />}
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[4, 4, 0, 0]} 
+                                    barSize={40}
+                                    minPointSize={10}
+                                >
                                     {chartData.map((entry, index) => {
                                         const name = entry.name.toUpperCase();
                                         let fillUrl = "url(#glassSystems)";
                                         let strokeColor = "#cbd5e1";
                                         if (name.includes('PA') || name.includes('PU')) { fillUrl = "url(#glassShock)"; strokeColor = "#3b82f6"; }
                                         if (name === 'PB' || name.startsWith('PV')) { fillUrl = "url(#glassFire)"; strokeColor = "#f43f5e"; }
-                                        return <Cell key={`cell-p-${index}`} fill={fillUrl} stroke={strokeColor} strokeWidth={0.8} strokeOpacity={1} />;
+                                        return (
+                                            <Cell 
+                                                key={`cell-p-${index}`} 
+                                                fill={fillUrl} 
+                                                stroke={strokeColor} 
+                                                strokeWidth={0.8} 
+                                                strokeOpacity={1} 
+                                                className="cursor-pointer outline-none transition-all duration-300" 
+                                                fillOpacity={selectedProb === null || selectedProb === entry.name ? 1 : 0.2}
+                                                onClick={(e: any) => {
+                                                    if(e && e.stopPropagation) e.stopPropagation();
+                                                    setSelectedProb(entry.name);
+                                                    setActiveTooltipId(null);
+                                                }}
+                                            />
+                                        );
                                     })}
                                 </Bar>
                             </BarChart>
@@ -396,6 +456,15 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {selectedProb && auditMode && (
+                <ProbEditorialPortal 
+                    label={selectedProb} 
+                    probData={prob} 
+                    probCalcs={zoneProbCalcs} 
+                    onClose={() => setSelectedProb(null)} 
+                />
+            )}
         </div>
     );
 }

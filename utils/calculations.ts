@@ -1,12 +1,12 @@
 import { AnalysisData, CalculationResults, ProbabilityData, Zone, ZoneCalculations } from '../types';
 
 export function calculateEvents(data: Pick<AnalysisData, 
-    'h' | 'l' | 'w' | 'hp' | 'ng' | 'cd' | 
+    'h' | 'l' | 'w' | 'hp' | 'ad_override' | 'ng' | 'cd' | 
     'has_electric_line' | 'line_sections_1' | 'use_adj_structure_1' | 'l_adj_1' | 'w_adj_1' | 'h_adj_1' | 'hp_adj_1' | 'cd_adj_1' |
     'has_data_line' | 'line_sections_2' | 'use_adj_structure_2' | 'l_adj_2' | 'w_adj_2' | 'h_adj_2' | 'hp_adj_2' | 'cd_adj_2' 
 >): CalculationResults {
     const { 
-        h = 0, l = 0, w = 0, hp = 0, ng = 0, cd = 0, 
+        h = 0, l = 0, w = 0, hp = 0, ad_override = null, ng = 0, cd = 0, 
         has_electric_line = false, line_sections_1 = [], use_adj_structure_1 = false, 
         l_adj_1 = 0, w_adj_1 = 0, h_adj_1 = 0, hp_adj_1 = 0, cd_adj_1 = 0,
         has_data_line = false, line_sections_2 = [], use_adj_structure_2 = false, 
@@ -23,7 +23,12 @@ export function calculateEvents(data: Pick<AnalysisData,
     
     // Main structure calculations
     const h3 = 3 * safeH;
-    const ad = (safeL * safeW) + (2 * h3 * (safeL + safeW)) + (Math.PI * h3 * h3);
+    let ad = (safeL * safeW) + (2 * h3 * (safeL + safeW)) + (Math.PI * h3 * h3);
+    
+    // Override Ad if manually specified
+    if (ad_override !== null && Number(ad_override) > 0) {
+        ad = Number(ad_override);
+    }
     const hp3 = 3 * safeHp;
     const adp = Math.PI * hp3 * hp3;
     const adf = Math.max(ad, adp);

@@ -13,14 +13,17 @@ import { PSPD_OPTIONS } from '../../constants';
 // Component to format numbers in scientific notation like "9.98 × 10⁻⁷"
 const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
     if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
+    if (Math.abs(value) >= 0.001 && Math.abs(value) < 1000) {
+        return <span className={className}>{value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: precision })}</span>;
+    }
     let [mantissa, exponent] = value.toExponential(precision).split('e');
     const expInt = parseInt(exponent, 10);
     
     return (
         <span className={`inline-flex items-baseline tracking-tight ${className}`}>
             <span className="font-black">{mantissa.replace('.', ',')}</span>
-            <span className="text-[0.85em] ml-2 opacity-100 font-bold">&times;10</span>
-            <sup className="text-[0.75em] leading-none -top-[0.8em] font-bold">{expInt}</sup>
+            <span className={`text-[0.85em] ml-1 opacity-80 font-bold ${expInt === 0 ? 'hidden' : ''}`}>&times;10</span>
+            <sup className={`text-[0.75em] leading-none -top-[0.8em] font-bold ${expInt === 0 ? 'hidden' : ''}`}>{expInt}</sup>
         </span>
     );
 };
@@ -37,140 +40,150 @@ const BASE_FREQUENCY_FORMULAS: { [key: string]: { formula: string; vars: string[
     FZ: { formula: "n<sub>i(e)</sub> × P<sub>Z</sub> + n<sub>i(t)</sub> × P<sub>ZT</sub>", vars: ["ni_electric", "PZ", "ni_data", "PZT"] },
 };
 
-const CustomTooltip = ({ active, payload, label, data, ctx, formulas }: any) => {
+const FreqEditorialPortal = ({ label, data, ctx, formulas, onClose }: { label: string; data: AnalysisData; ctx: any; formulas: any; onClose: () => void }) => {
     const { auditMode } = useAuditMode();
     const isMobile = useIsMobile();
+    const portalRef = React.useRef<HTMLDivElement>(null);
 
-    if (active && payload && payload.length && auditMode && !isMobile) {
-        const { calculations: cGlob, probability_calculations: pGlob, frequency_results: fGlob, frequency_config: config } = data;
-        const p = ctx?.probCalcs ?? pGlob;
-        const f = ctx?.freqCalcs ?? fGlob;
-        const isTotal = label === 'F Total';
-        
-        let formulaString = "N/A";
-        let valuesNodes: React.ReactNode = null;
-        let valuesString: string | null = null;
-
-        if (isTotal) {
-            const components = ['FC', 'FM', 'FV', 'FW', 'FZ'];
-            if (config.has_equipment_in_ZPR0A) components.unshift('FB');
-            formulaString = components.join(' + ');
-            valuesNodes = (
-                <span className="font-mono break-normal whitespace-normal">
-                    {components.map((key, idx) => (
-                        <span key={key} className="inline-flex items-baseline">
-                            <ScientificNotation value={f[key] || 0} precision={2} />
-                            {idx < components.length - 1 ? <span className="mx-0.5">+</span> : null}
-                        </span>
-                    ))}
-                </span>
-            );
-            valuesString = components.map(key => formatValue(f[key] || 0)).join(' + ');
-        } else {
-            const formulaInfo = formulas[label];
-            if (formulaInfo) {
-                formulaString = formulaInfo.formula;
-                const valueMap = { ...cGlob, ...p };
-                
-                if (label === 'FC') {
-                    const PC_total = 1 - ((1 - (valueMap.PC||0)) * (1 - (valueMap.PCT||0)));
-                    valuesNodes = (
-                        <span className="font-mono block">
-                            <span className="inline-flex items-baseline">
-                                <ScientificNotation value={valueMap.nd||0} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={PC_total} precision={2} />
-                            </span>
-                        </span>
-                    );
-                } else if (label === 'FM') {
-                    const PM_total = 1 - ((1 - (valueMap.PM||0)) * (1 - (valueMap.PMT||0)));
-                    valuesNodes = (
-                        <span className="font-mono block">
-                            <span className="inline-flex items-baseline">
-                                <ScientificNotation value={valueMap.nm||0} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={PM_total} precision={2} />
-                            </span>
-                        </span>
-                    );
-                } else {
-                    const parts = formulaInfo.vars.map((v: string) => valueMap[v] || 0);
-                    valuesNodes = (
-                        <span className="font-mono">
-                            {parts.map((val: number, idx: number) => (
-                                <span key={idx} className="inline-flex items-baseline">
-                                    <ScientificNotation value={val} precision={2} />
-                                    {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
-                                </span>
-                            ))}
-                        </span>
-                    );
-                }
-                const regex = new RegExp(`\\b(${formulaInfo.vars.join('|')})\\b`, 'gi');
-                valuesString = formulaString.replace(regex, (match) => formatValue(valueMap[match] || 0));
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (portalRef.current && !portalRef.current.contains(event.target as Node)) {
+                onClose();
             }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onClose]);
+
+    if (!auditMode || isMobile) return null;
+
+    const { calculations: cGlob, probability_calculations: pGlob, frequency_results: fGlob, frequency_config: config } = data;
+    const p = ctx?.probCalcs ?? pGlob;
+    const f = ctx?.freqCalcs ?? fGlob;
+    const isTotal = label === 'F Total';
+    
+    let formulaString = "N/A";
+    let valuesNodes: React.ReactNode = null;
+    let valuesString: string | null = null;
+
+    if (isTotal) {
+        const components = ['FC', 'FM', 'FV', 'FW', 'FZ'];
+        if (config.has_equipment_in_ZPR0A) components.unshift('FB');
+        formulaString = components.join(' + ');
+        valuesNodes = (
+            <span className="font-mono break-normal whitespace-normal">
+                {components.map((key, idx) => (
+                    <span key={key} className="inline-flex items-baseline">
+                        <ScientificNotation value={f[key] || 0} precision={2} />
+                        {idx < components.length - 1 ? <span className="mx-0.5">+</span> : null}
+                    </span>
+                ))}
+            </span>
+        );
+        valuesString = components.map(key => formatValue(f[key] || 0)).join(' + ');
+    } else {
+        const formulaInfo = formulas[label];
+        if (formulaInfo) {
+            formulaString = formulaInfo.formula;
+            const valueMap = { ...cGlob, ...p };
+            
+            if (label === 'FC') {
+                const PC_total = 1 - ((1 - (valueMap.PC||0)) * (1 - (valueMap.PCT||0)));
+                valuesNodes = (
+                    <span className="font-mono block">
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={valueMap.nd||0} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={PC_total} precision={2} />
+                        </span>
+                    </span>
+                );
+            } else if (label === 'FM') {
+                const PM_total = 1 - ((1 - (valueMap.PM||0)) * (1 - (valueMap.PMT||0)));
+                valuesNodes = (
+                    <span className="font-mono block">
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={valueMap.nm||0} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={PM_total} precision={2} />
+                        </span>
+                    </span>
+                );
+            } else {
+                const parts = formulaInfo.vars.map((v: string) => valueMap[v] || 0);
+                valuesNodes = (
+                    <span className="font-mono">
+                        {parts.map((val: number, idx: number) => (
+                            <span key={idx} className="inline-flex items-baseline">
+                                <ScientificNotation value={val} precision={2} />
+                                {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
+                            </span>
+                        ))}
+                    </span>
+                );
+            }
+            const regex = new RegExp(`\\b(${formulaInfo.vars.join('|')})\\b`, 'gi');
+            valuesString = formulaString.replace(regex, (match) => formatValue(valueMap[match] || 0));
         }
+    }
 
-        return createPortal(
-            <>
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(95vw,540px)] max-h-[85vh] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] overflow-auto custom-scrollbar animate-in zoom-in-95 fade-in duration-300 pointer-events-auto">
-                    <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                        <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Frequência Editorial</p>
-                    </div>
+    const finalValue = f[label === 'F Total' ? 'F' : label] || 0;
 
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
-                            <div className="flex flex-col">
-                                <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
-                                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">Frequência de Dano NBR 5419</p>
-                            </div>
-                            <div className="flex items-baseline gap-2 text-right">
-                                <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
-                                <p className="text-blue-400 font-black text-xl">
-                                    {Number(payload[0].value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                                </p>
-                            </div>
+    return createPortal(
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none animate-in fade-in duration-200" />
+            <div 
+                ref={portalRef}
+                className="fixed right-6 top-[100px] w-[min(90vw,540px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-in slide-in-from-right-10 fade-in duration-300 pointer-events-auto"
+            >
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Frequência Editorial</p>
+                </div>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+                        <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
+                        <div className="flex items-baseline gap-2 text-right">
+                            <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
+                            <p className="text-blue-400 font-black text-xl">
+                                <ScientificNotation value={Number(finalValue)} precision={2} />
+                            </p>
                         </div>
-
-                        <div className="space-y-4">
+                    </div>
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
+                            <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaString }} />
+                        </div>
+                        {valuesString && (
                             <div className="space-y-1.5">
-                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaString }} />
+                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
+                                <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
                             </div>
-                            {valuesString && (
-                                <div className="space-y-1.5">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                    <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
+                        )}
+                        {valuesNodes && (
+                            <div className="space-y-1.5">
+                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Memória de Cálculo (Detalhado):</p>
+                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
+                                    {valuesNodes}
                                 </div>
-                            )}
-                            {valuesNodes && (
-                                <div className="space-y-1.5">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Memória de Cálculo (Detalhado):</p>
-                                    <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                        {valuesNodes}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                        <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </>
-,
-            document.body
-        );
-    }
-    return null;
+                <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
 };
 
 export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, onUpdate: (newData: Partial<AnalysisData>) => void }) {
     const isMobile = useIsMobile();
+    const { auditMode, setActiveTooltipId } = useAuditMode();
+    const [selectedFreq, setSelectedFreq] = React.useState<string | null>(null);
     const [openSelect, setOpenSelect] = React.useState<string | null>(null);
     const config = data.frequency_config;
     const calculations = data.frequency_results;
@@ -201,21 +214,16 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
             probability_data: { ...data.probability_data, ...updatedProbData } 
         };
 
-        // Propagação Inteligente baseada no contexto (Global vs Local)
         const activeViewId = data.last_active_view_id || "GLOBAL";
         if (activeViewId === "GLOBAL") {
             nextUpdate.probability_data = { ...data.probability_data, ...updatedProbData };
             nextUpdate.zones = (data.zones || []).map(zone => {
                 const probData = { ...(zone.probability_data || data.probability_data), ...updatedProbData };
                 const overrides = { ...(zone.probability_overrides || {}) } as any;
-                
-                // Limpa overrides para o global mandar em tudo
                 Object.keys(updatedProbData).forEach(k => delete overrides[k]);
-                
                 return { ...zone, probability_data: probData, probability_overrides: overrides };
             });
         } else {
-            // Modo LOCAL: Ajusta apenas a zona ativa
             nextUpdate.zones = (data.zones || []).map(zone => {
                 if (zone.id !== activeViewId) return zone;
                 const probData = { ...(zone.probability_data || data.probability_data), ...updatedProbData };
@@ -237,7 +245,6 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
     const currentViewIndex = Math.max(0, viewOrder.indexOf(activeViewId));
     const activeZone = activeViewId === 'GLOBAL' ? undefined : data.zones.find(z => z.id === activeViewId);
     
-    // Zone Heading logic
     const makeZoneHeading = (zoneName: string | undefined, idx: number) => {
         const base = `Zona ${idx + 1}`;
         const name = (zoneName || '').trim();
@@ -246,13 +253,27 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
     };
     const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, data.zones.indexOf(activeZone!));
 
-    // Per-zone frequency calculations
     const activeData = React.useMemo(() => {
-        if (!activeZone) return { freq: calculations, p: data.probability_calculations, isAcceptable: (calculations?.F || 0) <= (config.is_critical_system ? 0.1 : 1) };
+        const tol = (config.is_critical_system ? 0.1 : 1);
+        if (!activeZone) {
+            if (config.analyze_by_most_critical_zone && data.zones.length > 0) {
+                // Calculate all zone frequencies and pick the max F
+                const zoneFrequencies = data.zones.map(z => {
+                    const pBase = calculateProbabilities(z.probability_data || data.probability_data, !!z.analyze_data_line_probabilities, data.has_data_line, !!z.analyze_electric_line_probabilities);
+                    const p = mergeZoneProbabilities(pBase, z);
+                    const f = calculateFrequencies(data.calculations, p, config, data.has_electric_line, data.has_data_line);
+                    return { f, p, name: z.name };
+                });
+                const criticalIdx = zoneFrequencies.reduce((maxIdx, current, idx, arr) => (current.f.F || 0) > (arr[maxIdx].f.F || 0) ? idx : maxIdx, 0);
+                const critical = zoneFrequencies[criticalIdx];
+                return { freq: critical.f, p: critical.p, isAcceptable: (critical.f.F || 0) <= tol, isCriticalMode: true, criticalName: critical.name };
+            }
+            return { freq: calculations, p: data.probability_calculations, isAcceptable: (calculations?.F || 0) <= tol, isCriticalMode: false };
+        }
         const pBase = calculateProbabilities(activeZone.probability_data || data.probability_data, !!activeZone.analyze_data_line_probabilities, data.has_data_line, !!activeZone.analyze_electric_line_probabilities);
         const p = mergeZoneProbabilities(pBase, activeZone);
         const f = calculateFrequencies(data.calculations, p, config, data.has_electric_line, data.has_data_line);
-        return { freq: f, p, isAcceptable: (f.F || 0) <= (config.is_critical_system ? 0.1 : 1) };
+        return { freq: f, p, isAcceptable: (f.F || 0) <= tol, isCriticalMode: false };
     }, [activeZone, calculations, data, config]);
 
     const toleranceLimit = config.is_critical_system ? 0.1 : 1;
@@ -261,7 +282,6 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
         value: Number(value) || 0 
     }));
     
-    // Position "F Total" at the end
     const chartData = [
         ...chartDataRaw.filter(d => d.name !== 'F Total'),
         ...chartDataRaw.filter(d => d.name === 'F Total')
@@ -275,11 +295,8 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 gap-4 items-stretch">
-                
-                {/* Config Card */}
                 <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-100/5 backdrop-blur-sm shadow-xl shadow-black/20 group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
-                    
                     <div className="flex justify-center mt-4">
                         <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
                             {multipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
@@ -289,7 +306,6 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                             {multipleZones && <button onClick={goNextView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-5 h-5" /></button>}
                         </div>
                     </div>
-
                     <CardContent className="space-y-4 py-4 px-4">
                         <div className="grid grid-cols-2 gap-x-3 gap-y-4 pt-1">
                             <div>
@@ -356,22 +372,21 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                     </CardContent>
                 </Card>
 
-                {/* Main Frequency Result Card */}
                 <Card className={`relative lg:col-span-2 overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl h-full transition-all duration-500 group hover:shadow-2xl rounded-[2.5rem] ${activeData.isAcceptable ? 'hover:shadow-green-500/10' : 'hover:shadow-red-500/10'}`}>
                     <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${activeData.isAcceptable ? 'from-green-500 via-emerald-400 to-green-500' : 'from-red-600 via-rose-500 to-red-600'} shadow-[0_0_15px_rgba(255,255,255,0.3)]`} />
-                    
                     <div className="pt-6 px-8 flex justify-between items-start">
-                         <FormulaTooltip formulas={{ F: "FC + FM + FV + FW + FZ" }} values={activeData.freq}>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 transition-colors leading-none mb-1">Avaliação de Frequência</span>
-                                <span className="text-base font-black text-white tracking-[0.2em] uppercase">{`Frequência Total (F) — ${activeHeading}`}</span>
-                            </div>
-                        </FormulaTooltip>
+                         <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 transition-colors leading-none mb-1">
+                                {activeData.isCriticalMode ? `Zona Crítica: ${activeData.criticalName}` : 'Avaliação de Frequência'}
+                            </span>
+                            <span className="text-base font-black text-white tracking-[0.2em] uppercase">
+                                {activeData.isCriticalMode ? `Frequência da Zona mais crítica` : `Frequência Total (F) — ${activeHeading}`}
+                            </span>
+                        </div>
                         <div className={`p-3 rounded-2xl ${activeData.isAcceptable ? 'bg-green-500/10 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)] border border-green-500/20' : 'bg-red-500/10 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)] border border-red-500/20'}`}>
                             {activeData.isAcceptable ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
                         </div>
                     </div>
-
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8 px-8 items-center">
                         <div className="flex flex-col items-center">
                             <div className={`relative z-10 text-7xl font-black mb-4 transition-transform duration-300 group-hover:scale-105 ${activeData.isAcceptable ? 'text-green-400 drop-shadow-[0_0_30px_rgba(34,197,94,0.4)]' : 'text-red-400 drop-shadow-[0_0_30px_rgba(239,68,68,0.4)]'}`}>
@@ -385,17 +400,32 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                                 {activeData.isAcceptable ? 'Aceitável' : 'Inaceitável'}
                             </div>
                         </div>
-
                         <div className="space-y-4">
+                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Regra de Tolerância</Label>
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => handleConfigChange('is_critical_system', true)} className={`py-3 px-4 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${config.is_critical_system ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/30' : 'bg-white/[0.03] border-white/5 text-slate-500'}`}>
-                                    Crítico (≤ 0,1)
+                                <button onClick={() => handleConfigChange('is_critical_system', true)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${config.is_critical_system ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
+                                    Crítico (0,1)
                                 </button>
-                                <button onClick={() => handleConfigChange('is_critical_system', false)} className={`py-3 px-4 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!config.is_critical_system ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/30' : 'bg-white/[0.03] border-white/5 text-slate-500'}`}>
-                                    Padrão (≤ 1)
+                                <button onClick={() => handleConfigChange('is_critical_system', false)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!config.is_critical_system ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
+                                    Padrão (1,0)
                                 </button>
                             </div>
-                            <label className="flex items-center space-x-3 px-5 py-3 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl border border-white/10 cursor-pointer transition-all group/check">
+                            
+                            {multipleZones && (
+                                <>
+                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Escopo de Análise (Multizonas)</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={() => handleConfigChange('analyze_by_most_critical_zone', false)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!config.analyze_by_most_critical_zone ? 'bg-slate-200 border-white text-slate-950 shadow-lg' : 'bg-slate-900/50 border-white/10 text-slate-300 hover:bg-slate-800'}`}>
+                                            Global
+                                        </button>
+                                        <button onClick={() => handleConfigChange('analyze_by_most_critical_zone', true)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${config.analyze_by_most_critical_zone ? 'bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-500/30' : 'bg-slate-900/50 border-white/10 text-red-400/80 hover:bg-slate-800'}`}>
+                                            Zona Crítica
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            <label className="flex items-center space-x-3 px-5 py-3 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl border border-white/10 cursor-pointer transition-all group/check mt-2">
                                 <Checkbox checked={config.has_equipment_in_ZPR0A} onCheckedChange={(c) => handleConfigChange('has_equipment_in_ZPR0A', !!c)} className="w-5 h-5 border-slate-500 data-[state=checked]:bg-blue-500" />
                                 <span className="text-[11px] font-black text-slate-200 group-hover/check:text-white transition-colors uppercase tracking-[0.2em]">Expos. Equip. ZPR0A</span>
                             </label>
@@ -404,17 +434,19 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                 </Card>
             </div>
 
-            {/* Bottom Chart Section */}
             <div className="flex justify-center mt-6 mb-4">
                 <span className="px-6 py-2 rounded-full bg-slate-900 border border-slate-700 text-white font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">
                     {`Gráfico de Componentes (F) — ${activeHeading}`}
                 </span>
             </div>
-            <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
+            <Card 
+                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }} className="outline-none focus:outline-none">
                                 <defs>
                                     <linearGradient id="glassFireF" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.7} />
@@ -433,21 +465,39 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                                         <stop offset="100%" stopColor="#ef4444" stopOpacity={0.3} />
                                     </linearGradient>
                                 </defs>
+                                <Tooltip cursor={false} content={<></>} />
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
-                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <XAxis 
+                                    dataKey="name" 
+                                    tick={(props) => {
+                                        const { x, y, payload } = props;
+                                        return (
+                                            <g transform={`translate(${x},${y})`} className="cursor-pointer group outline-none" onClick={() => {
+                                                setSelectedFreq(payload.value);
+                                                setActiveTooltipId(null);
+                                            }}>
+                                                <text x={0} y={0} dy={16} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight={700} className="group-hover:fill-white transition-colors outline-none">
+                                                    {payload.value}
+                                                </text>
+                                            </g>
+                                        );
+                                    }}
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                />
                                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, yMaxDomain]} />
-                                {!isMobile && (
-                                    <Tooltip content={<CustomTooltip data={data} formulas={dynamicFrequencyFormulas} ctx={{ probCalcs: activeData.p, freqCalcs: activeData.freq }} />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
-                                )}
                                 <ReferenceLine y={toleranceLimit} strokeWidth={2} stroke="#f43f5e" strokeDasharray="4 4" strokeOpacity={0.5} />
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={80}>
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[4, 4, 0, 0]} 
+                                    barSize={80}
+                                    minPointSize={10}
+                                >
                                     {chartData.map((entry, index) => {
                                         const name = entry.name.toUpperCase();
                                         const isTotal = name === 'F TOTAL';
-                                        
                                         let fillUrl = "url(#glassSystemsF)";
-                                        let strokeColor = "#cbd5e1"; // Slate 300 (Cinza Claro)
-                                        
+                                        let strokeColor = "#cbd5e1";
                                         if (name === 'FB' || name === 'FV') {
                                             fillUrl = "url(#glassFireF)";
                                             strokeColor = "#f43f5e";
@@ -455,15 +505,26 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                                             fillUrl = activeData.isAcceptable ? "url(#glassGreenF)" : "url(#glassRedF)";
                                             strokeColor = activeData.isAcceptable ? "#22c55e" : "#ef4444";
                                         }
-                                        
-                                        return <Cell key={`cell-f-${index}`} fill={fillUrl} stroke={strokeColor} strokeWidth={0.8} strokeOpacity={1} />;
+                                        return (
+                                            <Cell 
+                                                key={`cell-f-${index}`} 
+                                                fill={fillUrl} 
+                                                stroke={strokeColor} 
+                                                strokeWidth={0.8} 
+                                                strokeOpacity={1} 
+                                                className="transition-all duration-300 cursor-pointer outline-none"
+                                                onClick={(e: any) => {
+                                                    if (e && e.stopPropagation) e.stopPropagation();
+                                                    setSelectedFreq(entry.name);
+                                                    setActiveTooltipId(null);
+                                                }}
+                                            />
+                                        );
                                     })}
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-
-                    {/* Legenda Discreta e Alinhada Interna */}
                     <div className="grid grid-cols-4 gap-2 mt-2 pt-2 border-t border-white/5 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" />
@@ -484,6 +545,16 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                     </div>
                 </CardContent>
             </Card>
+
+            {selectedFreq && auditMode && (
+                <FreqEditorialPortal 
+                    label={selectedFreq} 
+                    data={data} 
+                    ctx={{ probCalcs: activeData.p, freqCalcs: activeData.freq }} 
+                    formulas={dynamicFrequencyFormulas} 
+                    onClose={() => setSelectedFreq(null)} 
+                />
+            )}
         </div>
     );
 }

@@ -76,7 +76,7 @@ const initialInputData: AnalysisInputData = {
     // Pré-seleções para facilitar o primeiro uso (Exemplo 1)
     selected_risk_components: { RA: true, RB: true, RC: true, RM: true, RU: true, RV: true, RW: true, RZ: true },
     risks_to_analyze: { R1: true, R3: false, R4: false },
-    frequency_config: { is_critical_system: false, has_equipment_in_ZPR0A: true },
+    frequency_config: { is_critical_system: false, has_equipment_in_ZPR0A: true, analyze_by_most_critical_zone: false },
     probability_data: {
         // Estrutura
         PTA: 1, PB: 1,
@@ -130,6 +130,7 @@ const initialInputData: AnalysisInputData = {
     robust_infrastructure: true,
     rs: 1,
     map_transform: { scale: 1, x: 0, y: 0 },
+    is_ng_manual: false,
 };
 
 export function useAnalysisData() {
@@ -187,9 +188,10 @@ export function useAnalysisData() {
                 line_sections_1: Array.isArray(raw?.line_sections_1) ? raw.line_sections_1 : base.line_sections_1,
                 line_sections_2: Array.isArray(raw?.line_sections_2) ? raw.line_sections_2 : base.line_sections_2,
             };
-            const numericKeys: (keyof AnalysisInputData)[] = ['h','l','w','hp','cd','l_adj_1','w_adj_1','h_adj_1','hp_adj_1','cd_adj_1','l_adj_2','w_adj_2','h_adj_2','hp_adj_2','cd_adj_2'];
+            const numericKeys: (keyof AnalysisInputData)[] = ['h','l','w','hp','ad_override','cd','l_adj_1','w_adj_1','h_adj_1','hp_adj_1','cd_adj_1','l_adj_2','w_adj_2','h_adj_2','hp_adj_2','cd_adj_2'];
             numericKeys.forEach((k) => {
                 const v = (safe as any)[k];
+                if (v === null) return;
                 if (typeof v === 'string') {
                     const n = parseFloat(v);
                     (safe as any)[k] = isNaN(n) ? (base as any)[k] : n;
@@ -276,7 +278,7 @@ export function useAnalysisData() {
 
     // Cálculos
     const eventCalculations = React.useMemo(() => calculateEvents(data), [
-        data.h, data.l, data.w, data.hp, data.ng, data.cd, 
+        data.h, data.l, data.w, data.hp, data.ad_override, data.ng, data.cd, 
         data.has_electric_line, data.line_sections_1, data.use_adj_structure_1, data.l_adj_1, data.w_adj_1, data.h_adj_1, data.hp_adj_1, data.cd_adj_1,
         data.has_data_line, data.line_sections_2, data.use_adj_structure_2, data.l_adj_2, data.w_adj_2, data.h_adj_2, data.hp_adj_2, data.cd_adj_2
     ]);
@@ -306,7 +308,24 @@ export function useAnalysisData() {
     const totalRiskResults = React.useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
 
     const frequencyResults = React.useMemo(() => {
-        return aggregateFrequenciesForZones(data.zones, eventCalculations, data.probability_data, data.analyze_data_line_probabilities, data.analyze_electric_line_probabilities, data.frequency_config, data.has_electric_line, data.has_data_line);
+        const aggregated = aggregateFrequenciesForZones(data.zones, eventCalculations, data.probability_data, data.analyze_data_line_probabilities, data.analyze_electric_line_probabilities, data.frequency_config, data.has_electric_line, data.has_data_line);
+        
+        if (data.frequency_config.analyze_by_most_critical_zone && data.zones.length > 0) {
+            // Find most critical zone frequency data
+            let maxF = -1;
+            let criticalFreq = aggregated;
+            data.zones.forEach(z => {
+                const zBase = calculateProbabilities(z.probability_data || data.probability_data, !!z.analyze_data_line_probabilities, data.has_data_line, !!z.analyze_electric_line_probabilities);
+                const pZ = mergeZoneProbabilities(zBase, z);
+                const fZ = calculateFrequencies(eventCalculations, pZ, data.frequency_config, data.has_electric_line, data.has_data_line);
+                if (fZ.F > maxF) {
+                    maxF = fZ.F;
+                    criticalFreq = fZ;
+                }
+            });
+            return criticalFreq;
+        }
+        return aggregated;
     }, [data.zones, eventCalculations, data.probability_data, data.analyze_data_line_probabilities, data.analyze_electric_line_probabilities, data.frequency_config, data.has_electric_line, data.has_data_line]);
 
     const fullAnalysisData: AnalysisData = React.useMemo(() => ({

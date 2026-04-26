@@ -64,7 +64,7 @@ const CITY_PIXEL_OVERRIDES: { [region: string]: { [uf: string]: { [city: string]
 const mapBounds: { [key: string]: { lonMin: number; lonMax: number; latMin: number; latMax: number } } = {
     // Brasil inteiro (conforme grade do mapa nacional)
     // Longitude: ~ -76 a -32; Latitude: ~ -32 a +6
-    'brasil':       { lonMin: -76.0, lonMax: -32.0, latMin: -32.0, latMax: 6.0 },
+    'brasil':       { lonMin: -76.0, lonMax: -32.0, latMin: -34.0, latMax: 8.0 },
     'centro-oeste': { lonMin: -61.0, lonMax: -46.0, latMin: -24.0, latMax: -7.0 },
     'nordeste':     { lonMin: -48.0, lonMax: -34.0, latMin: -18.0, latMax: -1.0 },
     'norte':        { lonMin: -74.0, lonMax: -46.0, latMin: -13.0, latMax: 5.5 },
@@ -72,7 +72,7 @@ const mapBounds: { [key: string]: { lonMin: number; lonMax: number; latMin: numb
     // (faixa mais ampla para casar com a figura):
     // Calibração fina da latitude para o mapa Sudeste (grade impressa)
     'sudeste':      { lonMin: -54.0, lonMax: -39.0, latMin: -26.0, latMax: -16.8 },
-    'sul':          { lonMin: -58.0, lonMax: -48.0, latMin: -34.0, latMax: -22.0 },
+    'sul':          { lonMin: -59.0, lonMax: -47.0, latMin: -35.0, latMax: -22.0 },
 };
 
 // Defines the pixel coordinates of the active map area within each image file.
@@ -96,8 +96,8 @@ const mapPixelBoundsPercent: { [key: string]: { left: number; top: number; right
   // Ajuste fino para alinhar ao retângulo da grade impresso
   // Novo ajuste: amplia a base da grade e reduz a margem superior
   'sudeste': { left: 0.072, top: 0.018, right: 0.948, bottom: 0.945 },
-  // Sul (ZCh2aYR.jpeg): semelhante, com legenda inferior
-  'sul': { left: 0.08, top: 0.04, right: 0.94, bottom: 0.86 },
+  // Sul (ZCh2aYR.jpeg): Grid expanded to match -59 to -47 and -35 to -22
+  'sul': { left: 0.065, top: 0.045, right: 0.955, bottom: 0.88 },
 };
 
 // Viés percentual pós-conversão para correção fina por região
@@ -343,7 +343,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     const ngBgRgba = React.useMemo(() => {
         const rgb = hexToRgb(ngColorHex);
-        return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)` : ngColorHex;
+        // Retornando à cor dinâmica da legenda para consistência visual solicitada
+        return rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : 'rgba(15, 23, 42, 0.2)'; 
     }, [ngColorHex]);
     
     // Inicialização: carrega UFs (preserva região se já existir)
@@ -492,9 +493,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     // Posiciona o marcador para a cidade/UF informados (Brasil como mapa)
     const positionMarkerForCityUf = React.useCallback(async (city: string, uf: string, attempt: number = 0) => {
-        const region = 'brasil';
-        const pixelBounds = getDynamicPixelBounds(region);
         if (!city || !uf) return;
+        const region = getRegionFromState(uf) || 'brasil';
+        const pixelBounds = getDynamicPixelBounds(region);
+        
         if (!pixelBounds) {
             // Aguarda canvas/bounds ficarem prontos e tenta novamente algumas vezes
             if (attempt < 8) {
@@ -778,20 +780,43 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
                             {/* NG (w-full para igualar largura) */}
                             <div
-                                className="w-full px-4 py-2.5 rounded-xl text-white text-2xl md:text-3xl font-extrabold shadow-lg border-2"
+                                className={`w-full px-4 py-2.5 rounded-xl text-white border-2 transition-all backdrop-blur-md ${data.is_ng_manual ? 'ring-2 ring-yellow-400/50 ring-offset-2 ring-offset-slate-950' : ''}`}
                                 style={{ backgroundColor: ngBgRgba, borderColor: ngColorHex }}
                                 aria-label="Valor NG atual"
                             >
-                                <div className="grid grid-cols-[auto_auto_auto] gap-x-3 items-center justify-center">
+                                <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 items-center">
                                     <div className="flex items-center justify-center">
-                                        <Zap className="h-8 w-8 text-white" aria-hidden="true" />
+                                        <Zap className={`h-8 w-8 ${data.is_ng_manual ? 'text-yellow-400' : 'text-white'}`} aria-hidden="true" />
                                     </div>
-                                    <span className="tracking-wide">NG</span>
-                                    <span className="font-mono tabular-nums">{typeof data.ng === 'number' && data.ng > 0 ? data.ng.toFixed(2) : '--'}</span>
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex items-center gap-2">
+                                            <span className="tracking-wide text-2xl md:text-3xl font-extrabold">NG</span>
+                                            <DecimalInput
+                                                value={data.ng}
+                                                onUpdate={(val) => onUpdate({ ng: val, is_ng_manual: true })}
+                                                className="bg-transparent border-none text-white font-mono tabular-nums w-24 text-center focus:outline-none focus:ring-0 text-2xl md:text-3xl font-extrabold p-0 h-auto"
+                                                noWrapper
+                                            />
+                                        </div>
+                                    </div>
+                                    {data.is_ng_manual && (
+                                        <button 
+                                            onClick={async () => {
+                                                const ngAuto = await getNgByCity(selectedUf, selectedCity);
+                                                onUpdate({ ng: ngAuto || 0, is_ng_manual: false });
+                                            }}
+                                            className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                                            title="Restaurar valor automático da norma"
+                                        >
+                                            <RefreshCw className="h-4 w-4 text-white/70" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
-                            <Label className="block w-full whitespace-nowrap text-center text-[10px] md:text-[11px] text-slate-300 font-bold tracking-wider uppercase opacity-80">(Ng) Dens. Desc. (raios/km²/ano)</Label>
+                            <Label className="block w-full whitespace-nowrap text-center text-[10px] md:text-[11px] text-slate-300 font-bold tracking-wider uppercase opacity-80">
+                                {data.is_ng_manual ? 'Dens. Desc. (Definida pelo Usuário)' : '(Ng) Dens. Desc. (raios/km²/ano)'}
+                            </Label>
                         </div>
 
                         {/* Campo redundante de NG removido para priorizar captura por clique */}

@@ -41,6 +41,7 @@ export interface SelectedRiskComponents {
 export interface FrequencyConfig {
   is_critical_system: boolean;
   has_equipment_in_ZPR0A: boolean;
+  analyze_by_most_critical_zone?: boolean;
 }
 
 export interface ProbabilityData {
@@ -123,6 +124,7 @@ export interface LossData {
   cs?: number;
   ce?: number;
   ct_economic?: number;
+  is_ng_manual?: boolean;
 }
 
 export interface Zone {
@@ -171,6 +173,7 @@ export interface AnalysisInputData {
   l: number;
   w: number;
   hp: number;
+  ad_override?: number | null;
   ng?: number;
   location: string;
   mapRegion: string;

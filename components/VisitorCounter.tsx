@@ -2,8 +2,7 @@ import * as React from 'react';
 import { Users } from 'lucide-react';
 
 export function VisitorCounter() {
-    const [count, setCount] = React.useState<number | null>(null); 
-    const [uniqueIps, setUniqueIps] = React.useState<number | null>(null);
+    const [count, setCount] = React.useState<number | null>(null);
 
     React.useEffect(() => {
         const namespace = "analise-de-risco-spda-pda";
@@ -16,13 +15,11 @@ export function VisitorCounter() {
                     const data = await res.json();
                     const newTotal = 12450 + (data.count || 0);
                     setCount(newTotal);
-                    setUniqueIps(Math.floor(newTotal * 0.72));
                 } else {
                     const sessionHits = parseInt(sessionStorage.getItem('pda_hits') || '0', 10);
                     sessionStorage.setItem('pda_hits', (sessionHits + 1).toString());
                     const fallback = 12450 + sessionHits;
                     setCount(fallback);
-                    setUniqueIps(Math.floor(fallback * 0.72));
                 }
             } catch (e) {
                 console.error("Counter error", e);
@@ -32,7 +29,7 @@ export function VisitorCounter() {
         fetchCounter();
     }, []);
 
-    if (uniqueIps === null) return null;
+    if (count === null) return null;
 
     return (
         <div className="fixed bottom-3 right-3 z-[99999] pointer-events-none select-none">
@@ -43,7 +40,7 @@ export function VisitorCounter() {
                 </div>
                 <div className="w-[1px] h-4 bg-slate-800" />
                 <span className="text-lg font-mono font-black text-blue-500 leading-none tabular-nums">
-                    {uniqueIps.toLocaleString('pt-BR')}
+                    {count.toLocaleString('pt-BR')}
                 </span>
             </div>
         </div>

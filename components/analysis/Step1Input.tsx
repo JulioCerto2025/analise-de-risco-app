@@ -13,9 +13,9 @@ interface Step1InputProps {
 
 const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValues, extraFormulas, extraValues }: { label: React.ReactNode; value: number; unit: string; color: string; formula?: string; formulaKey?: string; formulaValues?: { [key: string]: any }, extraFormulas?: { [key: string]: string }, extraValues?: { [key: string]: any } }) => {
     const colorClasses: { [key: string]: { bg: string, text: string } } = {
-        blue: { bg: "bg-blue-950/80", text: "text-white" },
-        purple: { bg: "bg-purple-950/80", text: "text-white" },
-        green: { bg: "bg-green-950/80", text: "text-white" },
+        blue: { bg: "bg-slate-500/10 backdrop-blur-sm border border-white/5", text: "text-white" },
+        purple: { bg: "bg-purple-500/10 backdrop-blur-sm border border-white/5", text: "text-white" },
+        green: { bg: "bg-emerald-500/10 backdrop-blur-sm border border-white/5", text: "text-white" },
     };
     const { bg, text } = colorClasses[color] || colorClasses.blue;
 
@@ -37,6 +37,7 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const valuesObj = {
         ...(extraValues || {}),
         ...(formulaValues || {}),
+        ...(formulaKey ? { [formulaKey]: value } : {}),
     };
 
     if (Object.keys(formulasObj).length > 0) {
@@ -137,6 +138,25 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                 <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
                                 <DimensionInput icon="Hp" label="Altura Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" tooltipText="Refere-se a caixas d'água, chaminés ou torres. IMPORTANTE: Meça sempre do nível do solo (chão) até o topo da estrutura, mesmo que ela esteja sobre o telhado ou na lateral da edificação. Insira o valor total acumulado do chão ao topo." />
                             </div>
+
+                            <div className="p-4 rounded-2xl bg-blue-950/30 border border-slate-700/50 shadow-inner group transition-all hover:border-amber-500/30 mt-2">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/80 leading-none">Área Manual (A<sub>D</sub>)</span>
+                                        <span className="text-[9px] font-medium text-slate-500 uppercase tracking-wider italic">Opcional • Método Gráfico NBR 5419</span>
+                                    </div>
+                                    <div className="relative w-36">
+                                        <input
+                                            type="number"
+                                            value={data.ad_override ?? ""}
+                                            onChange={(e) => onUpdate({ ad_override: e.target.value ? parseFloat(e.target.value) : null })}
+                                            className="w-full h-9 bg-black border border-slate-700/50 rounded-xl px-4 text-sm text-center font-bold text-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500/30 transition-all placeholder:text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="Digitar m²"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-amber-500/20 uppercase pointer-events-none">m²</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     <div className="hidden sm:block pt-2 border-t border-slate-700/50 mt-4">
                         <div className="grid grid-cols-2 gap-8">
@@ -150,12 +170,13 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                         formula="max(Ad, Adp)" formulaKey="Adf" 
                                         formulaValues={{ Ad: ad, Adp: adp }}
                                         extraFormulas={{
-                                            Ad: "L×W+2(3×H)(L+W)+π(3×H)²",
-                                            "Ad'": "π(3×Hp)²",
+                                            Ad: data.ad_override ? "Valor Manual (Método Gráfico)" : "L×W+2(3×H)(L+W)+π(3×H)²",
+                                            Adp: "π(3×Hp)²", // Usando Adp para dar match com o valor calculado
                                         }}
                                         extraValues={{
                                             L: data.l, W: data.w, H: data.h, Hp: data.hp,
                                             Ad: ad, Adp: adp, Adf: adf,
+                                            ...(data.ad_override ? { ad_override: data.ad_override } : {})
                                         }}
                                     />
                                 </div>

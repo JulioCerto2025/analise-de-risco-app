@@ -88,7 +88,17 @@ function buildVariablesTable(data: AnalysisData, isWord: boolean = false): strin
     const alTotal = (c.al1 || 0) + (c.al2 || 0);
     const aiTotal = (c.ai1 || 0) + (c.ai2 || 0);
 
+    const ngLabel = data.is_ng_manual ? 'Ng (Manual)' : 'Ng';
+    const ngDetail = data.is_ng_manual ? 'Densidade de descargas (Sob responsabilidade técnica do usuário)' : 'Densidade de descargas (Regional)';
+    const ngRowColor = data.is_ng_manual ? (isWord ? 'background-color: #fffbeb;' : 'background-color: rgba(251,191,36,0.05);') : '';
+    const ngNote = data.is_ng_manual 
+        ? `<div style="margin-bottom: 24px; padding: 12px; border: 1px solid ${isWord ? '#000' : 'rgba(251,191,36,0.3)'}; background: ${isWord ? '#fffbeb' : 'rgba(251,191,36,0.02)'}; border-radius: 8px; font-size: 10px; line-height: 1.5;">
+            <b style="color: ${isWord ? '#92400e' : '#fbbf24'};">NOTA TÉCNICA (SOBREPOSIÇÃO DE DADOS):</b> Informamos que o valor de densidade de descargas (Ng) nesta análise foi definido manualmente pelo usuário responsável técnico. Esta opção é utilizada quando existem fontes de dados locais mais precisas ou consultas a versões específicas da normativa, sendo integralmente mantida para fins de cálculo e memória técnica sob responsabilidade do profissional.
+           </div>` 
+        : '';
+
     return `### 2.1. PARÂMETROS FÍSICOS E AMBIENTAIS (ESTRUTURA)
+${ngNote}
 <table style="${tableStyle}">
   <thead>
     <tr style="border-bottom: ${isWord ? '1.5pt solid black' : '2px solid #0f172a'};">
@@ -102,7 +112,7 @@ function buildVariablesTable(data: AnalysisData, isWord: boolean = false): strin
     <tr><td style="${cellStyleCenter}">L</td><td style="${cellStyleLeft}">Comprimento da estrutura (Longitudinal)</td><td style="${cellStyleCenter}"><b>${data.l}</b></td><td style="${cellStyleCenter}">m</td></tr>
     <tr><td style="${cellStyleCenter}">W</td><td style="${cellStyleLeft}">Largura da estrutura (Transversal)</td><td style="${cellStyleCenter}"><b>${data.w}</b></td><td style="${cellStyleCenter}">m</td></tr>
     <tr><td style="${cellStyleCenter}">H</td><td style="${cellStyleLeft}">Altura máxima da estrutura</td><td style="${cellStyleCenter}"><b>${data.h}</b></td><td style="${cellStyleCenter}">m</td></tr>
-    <tr><td style="${cellStyleCenter}">Ng</td><td style="${cellStyleLeft}">Densidade de descargas (Regional)</td><td style="${cellStyleCenter}"><b>${data.ng}</b></td><td style="${cellStyleCenter}">/km².ano</td></tr>
+    <tr style="${ngRowColor}"><td style="${cellStyleCenter}">${ngLabel}</td><td style="${cellStyleLeft}">${ngDetail}</td><td style="${cellStyleCenter}"><b>${data.ng}</b></td><td style="${cellStyleCenter}">/km².ano</td></tr>
     <tr><td style="${cellStyleCenter}">Cd</td><td style="${cellStyleLeft}">Fator de localização ambiental</td><td style="${cellStyleCenter}"><b>${data.cd}</b></td><td style="${cellStyleCenter}">-</td></tr>
     <tr><td style="${cellStyleCenter}">rs</td><td style="${cellStyleLeft}">Tipo de Construção (<b>${data.rs === 1 ? 'Robusta' : 'Simples'}</b>)</td><td style="${cellStyleCenter}"><b>${data.rs}</b></td><td style="${cellStyleCenter}">-</td></tr>
   </tbody>
@@ -317,10 +327,20 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
   </tbody>
 </table>`;
 
-    const eqHeaderFD = isGlobal ? "Consolidação de Frequências (Somatório de todas as Zonas)" : "Equação Auditável: N x P [Valores Literais]";
+    const isCriticalMode = data.frequency_config.analyze_by_most_critical_zone && data.zones.length > 1;
+    const eqHeaderFD = isCriticalMode 
+        ? "Análise por Zona Crítica (Valor Máximo Encontrado)" 
+        : (isGlobal ? "Consolidação de Frequências (Somatório de todas as Zonas)" : "Equação Auditável: N x P [Valores Literais]");
+
+    const fdNote = isCriticalMode
+        ? `<div style="background: ${isWord ? '#fffaf5' : 'rgba(245,158,11,0.05)'}; padding: 10px; border: 1px solid ${isWord ? '#000' : 'rgba(245,158,11,0.2)'}; border-radius: 6px; margin-bottom: 12px; font-size: 9px; line-height: 1.4;">
+            <b style="color: ${isWord ? '#000' : '#f59e0b'};">CRITÉRIO DE ZONA CRÍTICA ATIVO:</b> Para fins de segurança e conformidade normativa, está sendo considerada a freqüência da **zona mais crítica** do projeto. Este método prioriza o controle do risco máximo pontual sobre o somatório global, garantindo que nenhuma área individual exceda os limites toleráveis.
+           </div>`
+        : '';
 
     mainContent += `
 <div style="${subHeaderSection}">3.5. COMPONENTES DA FREQUÊNCIA DE DANOS (FD = N x P)</div>
+${fdNote}
 <table style="${tableStyle}">
   <thead>
     <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.5)'}; color: ${isWord ? '#000000' : '#60a5fa'};">
@@ -403,6 +423,8 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
 
 export async function generateFullReportText(data: AnalysisData, isWord: boolean = false): Promise<string> {
     const { risk_results: r, frequency_results: f } = data;
+    const isCriticalMode = data.frequency_config.analyze_by_most_critical_zone && data.zones.length > 1;
+    
     const isOk = !Object.entries(data.risks_to_analyze)
         .some(([k, v]) => v && (data.risk_results as any)[k] > ({ R1: 1e-5, R3: 1e-3, R4: 1e-3 } as any)[k]);
     const fdLimit = data.frequency_config.is_critical_system ? 0.1 : 1.0;
@@ -458,7 +480,7 @@ export async function generateFullReportText(data: AnalysisData, isWord: boolean
     <td style="padding: 6px; border: 1px solid ${isWord ? 'black' : 'rgba(248,250,252,0.1)'}; text-align: center; color: ${r1Ok ? '#059669' : '#dc2626'}; font-weight: bold;">${r1Ok ? 'CONFORME' : 'CRÍTICO'}</td>
   </tr>
   <tr>
-    <td style="padding: 6px; border: 1px solid ${isWord ? 'black' : 'rgba(248,250,252,0.1)'}; color: ${isWord ? 'black' : '#f8fafc'};">Frequência de Danos (FD)</td>
+    <td style="padding: 6px; border: 1px solid ${isWord ? 'black' : 'rgba(248,250,252,0.1)'}; color: ${isWord ? 'black' : '#f8fafc'};">${isCriticalMode ? 'FD (Zona mais Crítica)' : 'Frequência de Danos (FD)'}</td>
     <td colspan="2" style="padding: 6px; border: 1px solid ${isWord ? 'black' : 'rgba(248,250,252,0.1)'}; text-align: center; color: ${isWord ? 'black' : '#f8fafc'}; font-family: monospace;"><b>${formatFD(f.F)} ${fOk ? '≤' : '>'} ${formatFD(fdLimitVal)}</b></td>
     <td style="padding: 6px; border: 1px solid ${isWord ? 'black' : 'rgba(248,250,252,0.1)'}; text-align: center; color: ${fOk ? '#059669' : '#dc2626'}; font-weight: bold;">${fOk ? 'CONFORME' : 'CRÍTICO'}</td>
   </tr>

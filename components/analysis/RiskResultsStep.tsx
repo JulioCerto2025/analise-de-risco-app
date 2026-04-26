@@ -39,201 +39,217 @@ const RISK_FORMULAS: { [key: string]: { formula: string; symbols: string[]; vars
     RZ: { formula: "(N<sub>i(e)</sub> × P<sub>Z</sub> × L<sub>Z</sub>) + (N<sub>i(t)</sub> × P<sub>ZT</sub> × L<sub>Z</sub>)", symbols: ["N<sub>i(e)</sub>", "P<sub>Z</sub>", "L<sub>Z</sub>", "N<sub>i(t)</sub>", "P<sub>ZT</sub>"], vars: ["ni_electric", "PZ", "LZ", "ni_data", "PZT"] },
 };
 
-const CustomTooltip = ({ active, payload, label, data, ctx }: any) => {
+const RiskEditorialPortal = ({ label, data, ctx, onClose }: { label: string; data: AnalysisData; ctx: any; onClose: () => void }) => {
     const { auditMode } = useAuditMode();
     const isMobile = useIsMobile();
+    const portalRef = React.useRef<HTMLDivElement>(null);
 
-    if (active && payload && payload.length && auditMode && !isMobile) {
-        const { calculations: c, probability_calculations: pGlobal, loss_calculations: lGlobal, selected_risk_components: selected } = data;
-        const p = ctx?.probCalcs ?? pGlobal;
-        const l = ctx?.lossCalcs ?? lGlobal;
-        const componentDef = RISK_COMPONENTS_DEFS[label];
-        const isTotalRisk = ['R1', 'R3', 'R4'].includes(label);
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (portalRef.current && !portalRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [onClose]);
 
-        let formulaString = "N/A";
-        let valuesNodes: React.ReactNode = null;
-        let valuesString: string | null = null;
-        
-        if (isTotalRisk) {
-            const components = ALL_RISK_COMPONENTS.filter(key => selected[key]);
-            formulaString = components.join(' + ');
-            valuesNodes = (
-                <span className="font-mono break-normal whitespace-normal">
-                    {components.map((key, idx) => (
-                        <span key={key} className="inline-flex items-baseline">
-                            <ScientificNotation value={data.risk_results[key] || 0} precision={2} />
-                            {idx < components.length - 1 ? <span className="mx-0.5">+</span> : null}
-                        </span>
-                    ))}
-                </span>
-            );
-            valuesString = components.map(key => formatValue(data.risk_results[key] || 0)).join(' + ');
-        } else {
-            const formulaInfo = RISK_FORMULAS[label];
-            if (formulaInfo) {
-                formulaString = formulaInfo.formula;
-                const valueMap: { [key: string]: number } = { ...c, ...p, ...l };
+    if (!auditMode || isMobile) return null;
 
-                if (formulaInfo.symbols && formulaInfo.symbols.length > 0) {
-                    let res = formulaString;
-                    const valueMapCombined: { [key: string]: number } = { 
-                        ...valueMap, 
-                        PC_total: 1 - ((1 - (valueMap.PC || 0)) * (1 - (valueMap.PCT || 0))),
-                        PM_total: 1 - ((1 - (valueMap.PM || 0)) * (1 - (valueMap.PMT || 0)))
-                    };
-                    formulaInfo.symbols.forEach((symbol, index) => {
-                        const varKey = formulaInfo.vars[index];
-                        const val = valueMapCombined[varKey] || 0;
-                        res = res.split(symbol).join(formatValue(val));
+    const { calculations: c, probability_calculations: pGlobal, loss_calculations: lGlobal, selected_risk_components: selected } = data;
+    const p = ctx?.probCalcs ?? pGlobal;
+    const l = ctx?.lossCalcs ?? lGlobal;
+    const componentDef = RISK_COMPONENTS_DEFS[label];
+    const isTotalRisk = ['R1', 'R2', 'R3', 'R4'].includes(label);
+
+    let formulaString = "N/A";
+    let valuesNodes: React.ReactNode = null;
+    let valuesString: string | null = null;
+    
+    const riskResults = ctx?.riskResults || data.risk_results;
+
+    if (isTotalRisk) {
+        const components = ALL_RISK_COMPONENTS.filter(key => selected[key]);
+        formulaString = components.join(' + ');
+        valuesNodes = (
+            <span className="font-mono break-normal whitespace-normal">
+                {components.map((key, idx) => (
+                    <span key={key} className="inline-flex items-baseline">
+                        <ScientificNotation value={riskResults[key] || 0} precision={2} />
+                        {idx < components.length - 1 ? <span className="mx-0.5">+</span> : null}
+                    </span>
+                ))}
+            </span>
+        );
+        valuesString = components.map(key => formatValue(riskResults[key] || 0)).join(' + ');
+    } else {
+        const formulaInfo = RISK_FORMULAS[label];
+        if (formulaInfo) {
+            formulaString = formulaInfo.formula;
+            const valueMap: { [key: string]: number } = { ...c, ...p, ...l };
+
+            if (formulaInfo.symbols && formulaInfo.symbols.length > 0) {
+                let res = formulaString;
+                const valueMapCombined: { [key: string]: number } = { 
+                    ...valueMap, 
+                    PC_total: 1 - ((1 - (valueMap.PC || 0)) * (1 - (valueMap.PCT || 0))),
+                    PM_total: 1 - ((1 - (valueMap.PM || 0)) * (1 - (valueMap.PMT || 0)))
+                };
+                formulaInfo.symbols.forEach((symbol, index) => {
+                    const varKey = formulaInfo.vars[index];
+                    const val = valueMapCombined[varKey] || 0;
+                    res = res.split(symbol).join(formatValue(val));
+                });
+                valuesString = res;
+            } else {
+                try {
+                    const regex = new RegExp(`\\b(${formulaInfo.vars.join('|')})\\b`, 'gi');
+                    valuesString = formulaString.replace(regex, (match) => {
+                        const val = valueMap[match] || valueMap[match.toLowerCase()] || valueMap[match.toUpperCase()] || 0;
+                        return formatValue(val);
                     });
-                    valuesString = res;
-                } else {
-                    try {
-                        const regex = new RegExp(`\\b(${formulaInfo.vars.join('|')})\\b`, 'gi');
-                        valuesString = formulaString.replace(regex, (match) => {
-                            const val = valueMap[match] || valueMap[match.toLowerCase()] || valueMap[match.toUpperCase()] || 0;
-                            return formatValue(val);
-                        });
-                    } catch {
-                        valuesString = null;
-                    }
-                }
-
-                if (["RU","RV","RW","RZ"].includes(label)) {
-                    const term1 = [valueMap[formulaInfo.vars[0]] || 0, valueMap[formulaInfo.vars[1]] || 0, valueMap[formulaInfo.vars[2]] || 0];
-                    const term2 = [valueMap[formulaInfo.vars[3]] || 0, valueMap[formulaInfo.vars[4]] || 0, valueMap[formulaInfo.vars[5]] || 0];
-                    valuesNodes = (
-                        <span className="font-mono break-normal whitespace-normal">
-                            <span className="inline-flex items-baseline">
-                                <ScientificNotation value={term1[0]} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={term1[1]} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={term1[2]} precision={2} />
-                            </span>
-                            <span className="mx-0.5">+</span>
-                            <span className="inline-flex items-baseline">
-                                <ScientificNotation value={term2[0]} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={term2[1]} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={term2[2]} precision={2} />
-                            </span>
-                        </span>
-                    );
-                } else if (label === "RC") {
-                    const nd = valueMap["nd"] || 0;
-                    const LC = valueMap["LC"] || 0;
-                    const PC = valueMap["PC"] || 0;
-                    const PCT = valueMap["PCT"] || 0;
-                    const PC_total = 1 - ((1 - PC) * (1 - PCT));
-                    valuesNodes = (
-                        <span className="font-mono break-normal whitespace-normal leading-tight">
-                            <span className="inline-flex items-baseline">
-                                <ScientificNotation value={nd} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={PC_total} precision={2} />
-                                <span className="mx-0.5">×</span>
-                                <ScientificNotation value={LC} precision={2} />
-                            </span>
-                            <span className="block mt-1 text-xs leading-tight">
-                                PC_total = 1 − (1 − <ScientificNotation value={PC} precision={2} />) × (1 − <ScientificNotation value={PCT} precision={2} />) = <ScientificNotation value={PC_total} precision={2} />
-                            </span>
-                        </span>
-                    );
-                } else if (label === "RM") {
-                    const nm = valueMap["nm"] || 0;
-                    const LM = valueMap["LM"] || 0;
-                    const PM = valueMap["PM"] || 0;
-                    const PMT = valueMap["PMT"] || 0;
-                    const PM_total = 1 - ((1 - PM) * (1 - PMT));
-                    valuesNodes = (
-                        <span className="font-mono">
-                            <span className="inline-flex items-baseline">
-                            <ScientificNotation value={nm} precision={2} />
-                            <span className="mx-0.5">×</span>
-                            <ScientificNotation value={PM_total} precision={2} />
-                            <span className="mx-0.5">×</span>
-                                <ScientificNotation value={LM} precision={2} />
-                            </span>
-                            <span className="block mt-1 text-xs">
-                                PM_total = 1 − (1 − <ScientificNotation value={PM} precision={2} />) × (1 − <ScientificNotation value={PMT} precision={2} />) = <ScientificNotation value={PM_total} precision={2} />
-                            </span>
-                        </span>
-                    );
-                } else {
-                    const parts = formulaInfo.vars.map(v => valueMap[v] || 0);
-                    valuesNodes = (
-                        <span className="font-mono">
-                            {parts.map((val, idx) => (
-                                <span key={idx} className="inline-flex items-baseline">
-                                <ScientificNotation value={val} precision={2} />
-                                {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
-                                </span>
-                            ))}
-                        </span>
-                    );
+                } catch {
+                    valuesString = null;
                 }
             }
+
+            if (["RU","RV","RW","RZ"].includes(label)) {
+                const term1 = [valueMap[formulaInfo.vars[0]] || 0, valueMap[formulaInfo.vars[1]] || 0, valueMap[formulaInfo.vars[2]] || 0];
+                const term2 = [valueMap[formulaInfo.vars[3]] || 0, valueMap[formulaInfo.vars[4]] || 0, valueMap[formulaInfo.vars[5]] || 0];
+                valuesNodes = (
+                    <span className="font-mono break-normal whitespace-normal">
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={term1[0]} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={term1[1]} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={term1[2]} precision={2} />
+                        </span>
+                        <span className="mx-0.5">+</span>
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={term2[0]} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={term2[1]} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={term2[2]} precision={2} />
+                        </span>
+                    </span>
+                );
+            } else if (label === "RC") {
+                const nd = valueMap["nd"] || 0;
+                const LC = valueMap["LC"] || 0;
+                const PC = valueMap["PC"] || 0;
+                const PCT = valueMap["PCT"] || 0;
+                const PC_total = 1 - ((1 - PC) * (1 - PCT));
+                valuesNodes = (
+                    <span className="font-mono break-normal whitespace-normal leading-tight">
+                        <span className="inline-flex items-baseline">
+                            <ScientificNotation value={nd} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={PC_total} precision={2} />
+                            <span className="mx-0.5">×</span>
+                            <ScientificNotation value={LC} precision={2} />
+                        </span>
+                        <span className="block mt-1 text-xs leading-tight">
+                            PC_total = 1 − (1 − <ScientificNotation value={PC} precision={2} />) × (1 − <ScientificNotation value={PCT} precision={2} />) = <ScientificNotation value={PC_total} precision={2} />
+                        </span>
+                    </span>
+                );
+            } else if (label === "RM") {
+                const nm = valueMap["nm"] || 0;
+                const LM = valueMap["LM"] || 0;
+                const PM = valueMap["PM"] || 0;
+                const PMT = valueMap["PMT"] || 0;
+                const PM_total = 1 - ((1 - PM) * (1 - PMT));
+                valuesNodes = (
+                    <span className="font-mono">
+                        <span className="inline-flex items-baseline">
+                        <ScientificNotation value={nm} precision={2} />
+                        <span className="mx-0.5">×</span>
+                        <ScientificNotation value={PM_total} precision={2} />
+                        <span className="mx-0.5">×</span>
+                            <ScientificNotation value={LM} precision={2} />
+                        </span>
+                        <span className="block mt-1 text-xs">
+                            PM_total = 1 − (1 − <ScientificNotation value={PM} precision={2} />) × (1 − <ScientificNotation value={PMT} precision={2} />) = <ScientificNotation value={PM_total} precision={2} />
+                        </span>
+                    </span>
+                );
+            } else {
+                const parts = formulaInfo.vars.map(v => valueMap[v] || 0);
+                valuesNodes = (
+                    <span className="font-mono">
+                        {parts.map((val, idx) => (
+                            <span key={idx} className="inline-flex items-baseline">
+                            <ScientificNotation value={val} precision={2} />
+                            {idx < parts.length - 1 ? <span className="mx-0.5">×</span> : null}
+                            </span>
+                        ))}
+                    </span>
+                );
+            }
         }
+    }
 
-        return createPortal(
-            <>
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[9998] pointer-events-none animate-in fade-in duration-200" />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(95vw,540px)] max-h-[85vh] p-5 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] overflow-auto custom-scrollbar animate-in zoom-in-95 fade-in duration-300 pointer-events-auto">
-                    <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
-                        <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Risco Editorial</p>
+    const finalValue = riskResults[label] || 0;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-[1px] pointer-events-none animate-in fade-in duration-200" />
+            <div 
+                ref={portalRef}
+                className="fixed right-6 top-[100px] w-[min(90vw,540px)] p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-in slide-in-from-right-10 fade-in duration-300 pointer-events-auto"
+            >
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                    <p className="font-black text-slate-100 uppercase tracking-[0.2em] text-[10px]">Detalhamento de Risco Editorial</p>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between bg-slate-900/40 p-4 rounded-2xl border border-white/5">
+                        <div className="flex flex-col">
+                            <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
+                            {componentDef && <p className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">{componentDef.description}</p>}
+                        </div>
+                        <div className="flex items-baseline gap-2 text-right">
+                            <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
+                            <p className="text-blue-400 font-black text-xl">
+                                <ScientificNotation value={Number(finalValue)} precision={2} />
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between bg-slate-900/40 p-3 rounded-xl border border-white/5">
-                            <div className="flex flex-col">
-                                <span className="font-black text-slate-100 text-lg uppercase tracking-wider">{label}</span>
-                                {componentDef && <p className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">{componentDef.description}</p>}
-                            </div>
-                            <div className="flex items-baseline gap-2 text-right">
-                                <span className="text-[10px] uppercase font-black text-blue-500/70 tracking-widest text-right">Valor Final</span>
-                                <p className="text-blue-400 font-black text-xl">
-                                    Valor: <ScientificNotation value={Number(payload[0].value)} precision={2} />
-                                </p>
-                            </div>
+                    <div className="space-y-3">
+                        <div className="space-y-1.5">
+                            <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
+                            <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaString }} />
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="space-y-1.5">
-                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Fórmula (Variáveis):</p>
-                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: formulaString }} />
-                            </div>
-
-                            {valuesString && (
-                                    <div className="space-y-1.5">
-                                        <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
-                                        <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
-                                    </div>
-                            )}
-
-                            {valuesNodes && (
+                        {valuesString && (
                                 <div className="space-y-1.5">
-                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Memória de Cálculo (Detalhado):</p>
-                                    <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
-                                        {valuesNodes}
-                                    </div>
+                                    <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Aplicação de Valores:</p>
+                                    <div className="font-mono bg-blue-500/5 p-4 rounded-2xl text-blue-100 text-xs sm:text-base leading-relaxed border border-blue-500/20 shadow-inner" dangerouslySetInnerHTML={{ __html: valuesString }} />
                                 </div>
-                            )}
-                        </div>
-                    </div>
+                        )}
 
-                    <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                        <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                        {valuesNodes && (
+                            <div className="space-y-1.5">
+                                <p className="text-slate-500 text-[9px] uppercase font-black tracking-[0.2em] ml-1">Memória de Cálculo (Detalhado):</p>
+                                <div className="font-mono bg-slate-900/40 p-4 rounded-2xl text-slate-200 text-xs sm:text-base leading-relaxed border border-white/5 shadow-inner">
+                                    {valuesNodes}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </>
-,
-    document.body
-);
-    }
-    return null;
+
+                <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">NBR 5419-2:2026 Audit Ready</p>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
 };
 
 const ALL_RISK_COMPONENTS: (keyof AnalysisData['selected_risk_components'])[] = ['RA', 'RB', 'RC', 'RM', 'RU', 'RV', 'RW', 'RZ'];
@@ -247,6 +263,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     const [openSelect, setOpenSelect] = React.useState<string | null>(null);
     const { risk_results, risks_to_analyze, selected_risk_components } = data;
     const isMobile = useIsMobile();
+    const { auditMode, setActiveTooltipId } = useAuditMode();
+    const [selectedRisk, setSelectedRisk] = React.useState<string | null>(null);
 
     const handleSimulatorUpdate = (
         field: keyof ProbabilityData | keyof LossData,
@@ -348,12 +366,13 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     const activeZone = activeZoneIndex >= 0 ? data.zones[activeZoneIndex] : undefined;
     const activeHeading = activeViewId === 'GLOBAL' ? 'Global' : makeZoneHeading(activeZone?.name, Math.max(0, activeZoneIndex));
 
+
     const goPrevView = () => onUpdate({ last_active_view_id: viewOrder[(currentViewIndex - 1 + viewOrder.length) % viewOrder.length] });
     const goNextView = () => onUpdate({ last_active_view_id: viewOrder[(currentViewIndex + 1) % viewOrder.length] });
 
     let activeZoneRisk: { [key: string]: number } | null = null;
     let activeZoneChart: { name: string; value: number }[] = [];
-    let tooltipCtx: { probCalcs: any; lossCalcs: any } | null = null;
+    let tooltipCtx: { probCalcs: any; lossCalcs: any; riskResults: any } | null = null;
     if (activeZone) {
         const lossCalcs = calculateLossesForZone(activeZone);
         const zoneBaseProbCalcs = calculateProbabilities(
@@ -365,7 +384,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         const zoneProbCalcs = mergeZoneProbabilities(zoneBaseProbCalcs, activeZone);
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
         activeZoneRisk = r;
-        tooltipCtx = { probCalcs: zoneProbCalcs, lossCalcs };
+        tooltipCtx = { probCalcs: zoneProbCalcs, lossCalcs, riskResults: r };
         activeZoneChart = ALL_RISK_COMPONENTS.map(key => ({
             name: key,
             value:
@@ -499,7 +518,6 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         const riskTolerance = TOLERABLE_RISKS[riskKey];
                         const currentTotalRiskValue = activeZone ? (activeZoneRisk?.[riskKey] || 0) : (risk_results[riskKey] || 0);
                         const isAcceptable = currentTotalRiskValue <= riskTolerance;
-                        const formula = riskFormulas[riskKey];
                         return (
                             <Card key={riskKey} className={`relative lg:col-span-2 overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl h-full transition-all duration-500 group hover:shadow-2xl rounded-[2.5rem] ${isAcceptable ? 'hover:shadow-green-500/10' : 'hover:shadow-red-500/10'}`}>
                                 <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${isAcceptable ? 'from-green-500 via-emerald-400 to-green-500' : 'from-red-600 via-rose-500 to-red-600'}`} />
@@ -548,11 +566,18 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                 </span>
             </div>
 
-            <Card className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group">
+            <Card 
+                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={activeZone ? activeZoneChart : chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
+                            <BarChart 
+                                data={activeZone ? activeZoneChart : chartData} 
+                                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                className="outline-none focus:outline-none"
+                            >
                                 <defs>
                                     <linearGradient id="glassShockR" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.7} />
@@ -571,17 +596,37 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         <stop offset="100%" stopColor="#a78bfa" stopOpacity={0.3} />
                                     </linearGradient>
                                 </defs>
+                                <Tooltip cursor={false} content={<></>} />
                                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" vertical={false} strokeOpacity={0.1} />
-                                <XAxis type="category" dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <XAxis 
+                                    type="category" 
+                                    dataKey="name" 
+                                    tick={(props) => {
+                                        const { x, y, payload } = props;
+                                        return (
+                                            <g transform={`translate(${x},${y})`} className="cursor-pointer group outline-none" onClick={() => {
+                                                setSelectedRisk(payload.value);
+                                                setActiveTooltipId(null);
+                                            }}>
+                                                <text x={0} y={0} dy={16} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight={700} className="group-hover:fill-white transition-colors outline-none">
+                                                    {payload.value}
+                                                </text>
+                                            </g>
+                                        );
+                                    }}
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                />
                                 <YAxis 
                                     type="number" 
                                     domain={[0, yMaxDomain * 1.1]} 
                                     allowDataOverflow 
                                     tickFormatter={(tick) => {
-                                        const formatPtBR = (n: number) => {
-                                            const val = Number(n || 0);
-                                            if (val > 0 && val < 0.0001) {
-                                                return formatSmartNumber(val, { useScientificBelow: 1, scientificPrecision: 2 });
+                                        const formatPtBR = (val: number) => {
+                                            if (val === 0) return '0';
+                                            if (Math.abs(val) < 0.0001) {
+                                                const [m, e] = val.toExponential(1).split('e');
+                                                return `${m}×10${e}`;
                                             }
                                             return val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
                                         };
@@ -591,11 +636,13 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                     axisLine={false} 
                                     tickLine={false} 
                                 />
-                                {!isMobile && (
-                                    <Tooltip content={<CustomTooltip data={data} ctx={activeZone ? tooltipCtx : { probCalcs: data.probability_calculations, lossCalcs: data.loss_calculations }} />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
-                                )}
                                 <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#f43f5e" strokeDasharray="4 4" strokeOpacity={0.5} />
-                                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={80}>
+                                <Bar 
+                                    dataKey="value" 
+                                    radius={[4, 4, 0, 0]} 
+                                    barSize={80}
+                                    minPointSize={10}
+                                >
                                     {(activeZone ? activeZoneChart : chartData).map((entry, index) => {
                                         const name = entry.name.toUpperCase();
                                         let fillUrl = "url(#glassSystemsR)";
@@ -612,7 +659,21 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                             strokeColor = "#a78bfa";
                                         }
                                         
-                                        return <Cell key={`cell-r-${index}`} fill={fillUrl} stroke={strokeColor} strokeWidth={0.8} strokeOpacity={1} />;
+                                        return (
+                                            <Cell 
+                                                key={`cell-r-${index}`} 
+                                                fill={fillUrl} 
+                                                stroke={strokeColor} 
+                                                strokeWidth={0.8} 
+                                                strokeOpacity={1} 
+                                                className="transition-all duration-300 cursor-pointer outline-none"
+                                                onClick={(e: any) => {
+                                                    if (e && e.stopPropagation) e.stopPropagation();
+                                                    setSelectedRisk(entry.name);
+                                                    setActiveTooltipId(null);
+                                                }}
+                                            />
+                                        );
                                     })}
                                 </Bar>
                             </BarChart>
@@ -639,6 +700,15 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {selectedRisk && auditMode && (
+                <RiskEditorialPortal 
+                    label={selectedRisk} 
+                    data={data} 
+                    ctx={activeZone ? tooltipCtx : { probCalcs: data.probability_calculations, lossCalcs: data.loss_calculations, riskResults: data.risk_results }} 
+                    onClose={() => setSelectedRisk(null)} 
+                />
+            )}
         </div>
     );
 }
