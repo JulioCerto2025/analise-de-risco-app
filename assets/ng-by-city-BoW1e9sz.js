@@ -225,7 +225,7 @@ Mocajuba,PA,22\r
 Moju,PA,24\r
 Mojuí dos Campos,PA,14\r
 Monte Alegre,PA,10\r
-Muaná,PA,24
+Muaná,PA,24\r
 Nova Esperança do Piriá,PA,16\r
 Nova Ipixuna,PA,14\r
 Nova Timboteua,PA,14\r
@@ -430,7 +430,7 @@ Santa Rita do Tocantins,TO,28\r
 Santa Rosa do Tocantins,TO,22\r
 Santa Tereza do Tocantins,TO,20\r
 Santa Terezinha do Tocantins,TO,12\r
-São Bento do Tocantins,TO,10
+São Bento do Tocantins,TO,10\r
 São Félix do Tocantins,TO,20\r
 São Miguel do Tocantins,TO,14\r
 São Salvador do Tocantins,TO,16\r
@@ -633,7 +633,7 @@ São João do Paraíso,MA,14\r
 São João do Soter,MA,12\r
 São João dos Patos,MA,10\r
 São José de Ribamar,MA,8\r
-São José dos Basílios,MA,10
+São José dos Basílios,MA,10\r
 São Luís,MA,12\r
 São Luís Gonzaga do Maranhão,MA,14\r
 São Mateus do Maranhão,MA,14\r
@@ -834,7 +834,7 @@ Porto,PI,22\r
 Porto Alegre do Piauí,PI,8\r
 Prata do Piauí,PI,12\r
 Queimada Nova,PI,4\r
-Redenção do Gurguéia,PI,12
+Redenção do Gurguéia,PI,12\r
 Regeneração,PI,10\r
 Riacho Frio,PI,12\r
 Ribeira do Piauí,PI,10\r
@@ -1076,7 +1076,7 @@ Várzea Alegre,CE,8\r
 Viçosa do Ceará,CE,10\r
 Acari,RN,8\r
 Açu,RN,10\r
-Afonso Bezerra,RN,8
+Afonso Bezerra,RN,8\r
 Água Nova,RN,6\r
 Alexandria,RN,6\r
 Almino Afonso,RN,6\r
@@ -1311,7 +1311,7 @@ Cubati,PB,4\r
 Cuité,PB,4\r
 Cuitegi,PB,2\r
 Cuité de Mamanguape,PB,2\r
-Curral de Cima,PB,2
+Curral de Cima,PB,2\r
 Curral Velho,PB,8\r
 Damião,PB,2\r
 Desterro,PB,6\r
@@ -1524,7 +1524,7 @@ Dormentes,PE,4\r
 Escada,PE,2\r
 Exu,PE,4\r
 Feira Nova,PE,2\r
-Fernando de Noronha,PE,2
+Fernando de Noronha,PE,2\r
 Ferreiros,PE,2\r
 Flores,PE,6\r
 Floresta,PE,6\r
@@ -1560,7 +1560,7 @@ Joaquim Nabuco,PE,2\r
 Jucati,PE,4\r
 Jupi,PE,4\r
 Jurema,PE,2\r
-Lagoa do Carro,PE,2
+Lagoa do Carro,PE,2\r
 Lagoa de Itaenga,PE,2\r
 Lagoa do Ouro,PE,2\r
 Lagoa dos Gatos,PE,2\r
@@ -2052,7 +2052,7 @@ Lafaiete Coutinho,BA,6\r
 Lagoa Real,BA,6\r
 Laje,BA,2\r
 Lajedão,BA,6\r
-Lajedinho,BA,4
+Lajedinho,BA,4\r
 Lajedo do Tabocal,BA,6\r
 Lamarão,BA,2\r
 Lapão,BA,6\r
@@ -2286,7 +2286,7 @@ Araponga,MG,10\r
 Araporã,MG,16\r
 Arapuá,MG,10\r
 Araújos,MG,12\r
-Araxá,MG,14
+Araxá,MG,14\r
 Arceburgo,MG,16\r
 Arcos,MG,14\r
 Areado,MG,10\r
@@ -2508,7 +2508,7 @@ Douradoquara,MG,12\r
 Durandé,MG,12\r
 Elói Mendes,MG,12\r
 Engenheiro Caldas,MG,10\r
-Engenheiro Navarro,MG,8
+Engenheiro Navarro,MG,8\r
 Entre Folhas,MG,10\r
 Entre Rios de Minas,MG,16\r
 Ervália,MG,12\r
@@ -2753,7 +2753,7 @@ Muriaé,MG,16\r
 Mutum,MG,12\r
 Muzambinho,MG,14\r
 Nacip Raydan,MG,12\r
-Nanuque,MG,6
+Nanuque,MG,6\r
 Naque,MG,10\r
 Natalândia,MG,12\r
 Natércia,MG,10\r
@@ -2961,7 +2961,7 @@ São Francisco de Sales,MG,16\r
 São Francisco do Glória,MG,12\r
 São Geraldo,MG,14\r
 São Geraldo da Piedade,MG,14\r
-São Geraldo do Baixio,MG,8
+São Geraldo do Baixio,MG,8\r
 São Gonçalo do Abaeté,MG,16\r
 São Gonçalo do Pará,MG,10\r
 São Gonçalo do Rio Abaixo,MG,16\r
@@ -3164,7 +3164,7 @@ São Domingos do Norte,ES,8\r
 São Gabriel da Palha,ES,10\r
 São José do Calçado,ES,14\r
 São Mateus,ES,10\r
-São Roque do Canaã,ES,6
+São Roque do Canaã,ES,6\r
 Serra,ES,8\r
 Sooretama,ES,6\r
 Vargem Alta,ES,12\r
@@ -3397,7 +3397,7 @@ Catiguá,SP,16\r
 Cedral,SP,14\r
 Cerqueira César,SP,16\r
 Cerquilho,SP,16\r
-Cesário Lange,SP,16
+Cesário Lange,SP,16\r
 Charqueada,SP,16\r
 Clementina,SP,12\r
 Colina,SP,14\r
@@ -3643,7 +3643,7 @@ Nova Guataporanga,SP,18\r
 Nova Independência,SP,18\r
 Novais,SP,16\r
 Nova Luzitânia,SP,12\r
-Nova Odessa,SP,18
+Nova Odessa,SP,18\r
 Novo Horizonte,SP,14\r
 Nuporanga,SP,14\r
 Ocauçu,SP,18\r
@@ -3860,7 +3860,7 @@ Taguaí,SP,12\r
 Taiaçu,SP,16\r
 Taiúva,SP,14\r
 Tambaú,SP,16\r
-Tanabi,SP,12
+Tanabi,SP,12\r
 Tapiraí,SP,20\r
 Tapiratiba,SP,14\r
 Taquaral,SP,14\r
@@ -4091,7 +4091,7 @@ Jesuítas,PR,20\r
 Joaquim Távora,PR,12\r
 Jundiaí do Sul,PR,14\r
 Juranda,PR,20\r
-Jussara,PR,20
+Jussara,PR,20\r
 Kaloré,PR,16\r
 Lapa,PR,14\r
 Laranjal,PR,20\r
@@ -4302,7 +4302,7 @@ União da Vitória,PR,16\r
 Uniflor,PR,18\r
 Uraí,PR,12\r
 Wenceslau Braz,PR,12\r
-Ventania,PR,16
+Ventania,PR,16\r
 Vera Cruz do Oeste,PR,22\r
 Verê,PR,20\r
 Alto Paraíso,PR,24\r
@@ -4539,7 +4539,7 @@ Saltinho,SC,18\r
 Salto Veloso,SC,18\r
 Sangão,SC,14\r
 Santa Cecília,SC,18\r
-Santa Helena,SC,22
+Santa Helena,SC,22\r
 Santa Rosa de Lima,SC,16\r
 Santa Rosa do Sul,SC,14\r
 Santa Terezinha,SC,16\r
@@ -4758,7 +4758,7 @@ Erechim,RS,18\r
 Ernestina,RS,18\r
 Herval,RS,18\r
 Erval Grande,RS,18\r
-Erval Seco,RS,20
+Erval Seco,RS,20\r
 Esmeralda,RS,12\r
 Esperança do Sul,RS,22\r
 Espumoso,RS,16\r
@@ -4982,7 +4982,7 @@ Santa Vitória do Palmar,RS,12\r
 Santiago,RS,28\r
 Santo Ângelo,RS,24\r
 Santo Antônio do Palma,RS,18\r
-Santo Antônio da Patrulha,RS,14
+Santo Antônio da Patrulha,RS,14\r
 Santo Antônio das Missões,RS,28\r
 Santo Antônio do Planalto,RS,18\r
 Santo Augusto,RS,22\r
@@ -5199,7 +5199,7 @@ Arenápolis,MT,18\r
 Aripuanã,MT,22\r
 Barão de Melgaço,MT,22\r
 Barra do Bugres,MT,20\r
-Barra do Garças,MT,16
+Barra do Garças,MT,16\r
 Bom Jesus do Araguaia,MT,18\r
 Brasnorte,MT,14\r
 Cáceres,MT,20\r
@@ -5411,7 +5411,7 @@ Faina,GO,16\r
 Fazenda Nova,GO,14\r
 Firminópolis,GO,16\r
 Flores de Goiás,GO,16\r
-Formosa,GO,14
+Formosa,GO,14\r
 Formoso,GO,16\r
 Gameleira de Goiás,GO,16\r
 Divinópolis de Goiás,GO,16\r
@@ -5570,5 +5570,5 @@ Vianópolis,GO,14\r
 Vicentinópolis,GO,16\r
 Vila Boa,GO,14\r
 Vila Propício,GO,18\r
-Brasília,DF,16
+Brasília,DF,16\r
 `;export{r as default};
