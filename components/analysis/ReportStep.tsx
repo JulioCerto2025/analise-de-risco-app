@@ -204,6 +204,7 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                                 </div>
                             </div>
                             <div className="flex flex-col gap-2">
+                                {/* Somente Mobile: Controles de Zoom */}
                                 <div className="flex justify-end px-2 sm:hidden">
                                     <button 
                                         onClick={() => setIsZoomed(!isZoomed)}
@@ -213,28 +214,38 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                                         {isZoomed ? 'VISTA GERAL' : 'ZOOM INTERATIVO'}
                                     </button>
                                 </div>
+
                                 <div 
-                                    className="bg-slate-950 p-2 sm:p-8 rounded-2xl border border-slate-800 max-h-[750px] overflow-hidden flex justify-center items-start touch-none relative"
+                                    className="bg-slate-950 p-2 sm:p-8 rounded-2xl border border-slate-800 max-h-[750px] overflow-y-auto sm:overflow-y-auto flex justify-center items-start relative"
                                     style={{ height: '70vh' }}
                                 >
+                                    {/* Versão Notebook: Simples, Rola com Scroll do Mouse */}
+                                    <div className="hidden sm:block w-full">
+                                        <div 
+                                            className="prose-container"
+                                            dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
+                                        />
+                                    </div>
+
+                                    {/* Versão Mobile: Interativa com Pan/Zoom */}
                                     <motion.div 
                                         drag
                                         dragMomentum={false}
                                         onClick={() => setIsZoomed(!isZoomed)}
                                         animate={{ 
-                                            scale: isZoomed ? 0.95 : (window.innerWidth < 640 ? 0.45 : 1),
-                                            y: isZoomed ? 0 : 0
+                                            scale: isZoomed ? 0.95 : 0.45,
                                         }}
-                                        className="relative transition-shadow duration-300 cursor-grab active:cursor-grabbing"
+                                        className="sm:hidden relative transition-shadow duration-300 cursor-grab active:cursor-grabbing"
                                         style={{ 
                                             width: '800px',
                                             transformOrigin: 'top center',
-                                            marginLeft: window.innerWidth < 640 ? '0' : '0',
                                         }}
                                         dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
                                     />
+
+                                    {/* Dica visual apenas no Mobile */}
                                     {!isZoomed && (
-                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none opacity-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700">
+                                        <div className="sm:hidden absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none opacity-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700">
                                             Toque para Zoom • Arraste para Pan
                                         </div>
                                     )}
