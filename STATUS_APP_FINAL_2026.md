@@ -22,6 +22,7 @@ O projeto atingiu o estado de maturidade "Audit-Ready Pro 2026".
 4. **Infraestrutura e Deploy**:
    - Build de produção validada (Vite build).
    - **DEPLOY OFICIAL VERCEL FINALIZADO.**
+   - **Otimização Mobile**: Preview do relatório com zoom interativo e pan (arrasto) para melhor UX.
 
 ## 🛑 ALERTAS PARA IA (FUTURAS SESSÕES)
 - **NÃO** utilize versões de pastas com nomes similares a menos que explicitamente ordenado pelo usuário.
