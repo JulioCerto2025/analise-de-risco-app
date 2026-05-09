@@ -16,6 +16,18 @@ function getOptionLabel(options: {value: any, label: string}[], value: any): str
     return option ? option.label : `Valor ${value}`;
 }
 
+function formatProfessionalName(name: string | undefined): string {
+    if (!name || name.trim() === '') return 'Responsável Técnico';
+    const trimmed = name.trim();
+    const lower = trimmed.toLowerCase();
+    // Se o usuário já inseriu o título, mantemos do jeito que ele escreveu
+    if (/^(eng|arq|t[eé]c|dr|prof)/.test(lower)) {
+        return trimmed;
+    }
+    // Caso contrário, adicionamos o prefixo genérico
+    return `Responsável Técnico ${trimmed}`;
+}
+
 function formatScientific(val: number | undefined): string {
     if (val === undefined || isNaN(val)) return '0,00';
     if (val === 0) return '0,00';
@@ -523,7 +535,7 @@ export async function generateFullReportText(data: AnalysisData, isWord: boolean
 <div style="background: ${isWord ? '#f1f5f9' : 'rgba(30,41,59,0.5)'}; border: 1px solid ${isWord ? '#000000' : 'rgba(148,163,184,0.2)'}; border-radius: 12px; padding: 24px; margin-bottom: 30px;">
 <table style="width:100%; border-collapse: collapse; font-size: 11.5px; table-layout: auto;">
   <tr><td style="padding: 6px 12px; width: 26%; color: ${isWord ? '#000000' : '#94a3b8'}; vertical-align: top;"><b>CLIENTE:</b></td><td style="padding: 6px 12px; border-bottom: 1px solid ${isWord ? '#000000' : 'rgba(148,163,184,0.1)'}; color: ${isWord ? '#000000' : '#f8fafc'};">${data.clientName || 'N/A'}</td></tr>
-  <tr><td style="padding: 6px 12px; color: ${isWord ? '#000000' : '#94a3b8'}; vertical-align: top;"><b>RESPONSÁVEL:</b></td><td style="padding: 6px 12px; border-bottom: 1px solid ${isWord ? '#000000' : 'rgba(148,163,184,0.1)'}; color: ${isWord ? '#000000' : '#f8fafc'};">Engº ${data.technicalManagerName || 'N/A'}</td></tr>
+  <tr><td style="padding: 6px 12px; color: ${isWord ? '#000000' : '#94a3b8'}; vertical-align: top;"><b>RESPONSÁVEL:</b></td><td style="padding: 6px 12px; border-bottom: 1px solid ${isWord ? '#000000' : 'rgba(148,163,184,0.1)'}; color: ${isWord ? '#000000' : '#f8fafc'};">${formatProfessionalName(data.technicalManagerName)}</td></tr>
   <tr><td style="padding: 6px 12px; color: ${isWord ? '#000000' : '#94a3b8'}; vertical-align: top;"><b>LOCALIDADE:</b></td><td style="padding: 6px 12px; border-bottom: 1px solid ${isWord ? '#000000' : 'rgba(148,163,184,0.1)'}; color: ${isWord ? '#000000' : '#f8fafc'};">${data.location || 'Brasil'}</td></tr>
   <tr><td style="padding: 6px 12px; color: ${isWord ? '#000000' : '#94a3b8'}; vertical-align: top;"><b>DATA EMISSÃO:</b></td><td style="padding: 6px 12px; color: ${isWord ? '#000000' : '#f8fafc'};">${formatDateBR(data.projectDate)}</td></tr>
 </table>
@@ -548,7 +560,7 @@ ${freqChart}
 ${buildConclusion()}
 
 <div style="text-align: center; margin-top: 120px; padding-top: 6px; border-top: 1px solid #000000; max-width: 320px; margin-left: auto; margin-right: auto;">
-  <p style="font-size: 14px; margin-bottom: 0; color: ${isWord ? '#000000' : '#f8fafc'};"><b>Engº ${data.technicalManagerName || 'Responsável Técnico'}</b></p>
+  <p style="font-size: 14px; margin-bottom: 0; color: ${isWord ? '#000000' : '#f8fafc'};"><b>${formatProfessionalName(data.technicalManagerName)}</b></p>
   <p style="font-size: 11px; color: ${isWord ? '#475569' : '#94a3b8'}; margin-top: 4px;">Analista Especialista em PDA — NBR 5419:2:2026</p>
 </div>
 `.trim();

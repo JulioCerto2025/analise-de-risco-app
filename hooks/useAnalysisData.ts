@@ -359,5 +359,9 @@ export function useAnalysisData() {
         setData({ ...initialInputData });
     }, []);
 
-    return { data: fullAnalysisData, updateData, restoreDefaultPreset, resetToInitialPreset };
+    const loadProject = React.useCallback((projectData: any) => {
+        setData(sanitizeData(projectData));
+    }, []);
+
+    return { data: fullAnalysisData, updateData, restoreDefaultPreset, resetToInitialPreset, loadProject };
 }

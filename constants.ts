@@ -1,6 +1,6 @@
 export const CD_OPTIONS = [
-    { value: 0.25, label: 'Estrut. cercada p/ estrut. maiores 0,25' },
-    { value: 0.5, label: 'Estrut. cercada p obj  alt igual ou menores 0,5' },
+    { value: 0.25, label: 'Estrut. cercada (maiores) 0,25' },
+    { value: 0.5, label: 'Estrut. cercada (menores) 0,5' },
     { value: 1, label: 'Estrutura isolada em terreno plano 1' },
     { value: 2, label: 'Estrutura isolada no topo de um morro ou colina 2' }
 ];
@@ -163,9 +163,9 @@ export const RF_OPTIONS = [
 export const HZ_OPTIONS = [{ value: 1, label: "Nenhum 1" }, { value: 2, label: "Baixo 2" }, { value: 5, label: "Médio 5" }, { value: 10, label: "Alto 10" }];
 export const LF_OPTIONS = [
     { value: 0, label: 'Sem risco 0' },
-    { value: 0.1, label: 'Hospital, hotel, school, edifício cívico 0,1' },
+    { value: 0.1, label: 'Hosp, hotel, escola, ed. cívico 0,1' },
     { value: 0.1, label: 'Risco de explosão 0,1' },
-    { value: 0.05, label: 'Entretenimento público, igreja, museu 0,05' },
+    { value: 0.05, label: 'Entret. público, igreja, museu 0,05' },
     { value: 0.02, label: 'Industrial, comercial 0,02' },
     { value: 0.01, label: 'Outros 0,01' }
 ];

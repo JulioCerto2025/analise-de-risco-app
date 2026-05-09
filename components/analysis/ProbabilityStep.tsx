@@ -263,25 +263,42 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 className="border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex justify-center mt-4">
-                    <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
-                        {hasMultipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
-                        <span className="text-white font-black text-[10px] uppercase tracking-[0.3em] min-w-[200px] text-center">
-                            {activeViewId === 'GLOBAL' ? 'Ajustar Proteções — GLOBAL' : `Proteções — ${currentZone?.name || 'ZONA'}`}
+                <div className="flex justify-center mt-3">
+                    <div className="flex items-center gap-2 sm:gap-4 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
+                        {hasMultipleZones && <button onClick={goPrevView} className="p-1 sm:p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" /></button>}
+                        <span className="text-white font-black text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.3em] min-w-[140px] sm:min-w-[200px] text-center">
+                            <span className="sm:hidden">
+                                {activeViewId === 'GLOBAL' ? 'Proteções — GLOBAL' : `Prot. — ${currentZone?.name || 'ZONA'}`}
+                            </span>
+                            <span className="hidden sm:inline">
+                                {activeViewId === 'GLOBAL' ? 'Ajustar Proteções — GLOBAL' : `Proteções — ${currentZone?.name || 'ZONA'}`}
+                            </span>
                         </span>
-                        {hasMultipleZones && <button onClick={goNextView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-5 h-5" /></button>}
+                        {hasMultipleZones && <button onClick={goNextView} className="p-1 sm:p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>}
                     </div>
                 </div>
-                <CardContent className="space-y-4 py-4 px-4">
-                    <div className="flex items-center justify-between gap-4 mb-4">
-                        <div className="flex space-x-2 p-1.5 bg-slate-800/40 rounded-xl w-fit">
-                            <TabButton isActive={activeTab === 'structure'} onClick={() => setActiveTab('structure')} className="py-2 px-4 text-[11px]">Estrutura</TabButton>
-                            {data.has_electric_line && <TabButton isActive={activeTab === 'electric'} onClick={() => setActiveTab('electric')} className="py-2 px-4 text-[11px]">L. Elétrica</TabButton>}
-                            {data.has_data_line && <TabButton isActive={activeTab === 'data'} onClick={() => setActiveTab('data')} className="py-2 px-4 text-[11px]">L. Dados</TabButton>}
+                <CardContent className="space-y-3 py-3 px-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                        <div className="flex space-x-1 p-1 bg-slate-800/40 rounded-xl w-fit mx-auto sm:mx-0">
+                            <TabButton isActive={activeTab === 'structure'} onClick={() => setActiveTab('structure')} className="py-1.5 px-2 sm:px-4 text-[10px] sm:text-[11px] min-w-[55px] sm:min-w-0">
+                                <span className="sm:hidden">Estrut.</span>
+                                <span className="hidden sm:inline">Estrutura</span>
+                            </TabButton>
+                            {data.has_electric_line && (
+                                <TabButton isActive={activeTab === 'electric'} onClick={() => setActiveTab('electric')} className="py-1.5 px-2 sm:px-4 text-[10px] sm:text-[11px] min-w-[55px] sm:min-w-0">
+                                    <span className="sm:hidden">Elétr.</span>
+                                    <span className="hidden sm:inline">Elétrica</span>
+                                </TabButton>
+                            )}
+                            {data.has_data_line && (
+                                <TabButton isActive={activeTab === 'data'} onClick={() => setActiveTab('data')} className="py-1.5 px-2 sm:px-4 text-[10px] sm:text-[11px] min-w-[55px] sm:min-w-0">
+                                    Dados
+                                </TabButton>
+                            )}
                         </div>
                         <AnimatePresence mode="wait">
                             {activeTab === 'electric' && (
-                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center space-x-4 px-6 py-2 bg-blue-500/5 hover:bg-blue-500/10 rounded-full border border-blue-500/30 shadow-lg shadow-blue-500/5 transition-all group cursor-pointer" onClick={() => {
+                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center space-x-4 px-6 py-1.5 bg-blue-500/5 hover:bg-blue-500/10 rounded-full border border-blue-500/30 shadow-lg shadow-blue-500/5 transition-all group cursor-pointer" onClick={() => {
                                     const newVal = !zoneAnalyzeElectric;
                                     if (activeViewId === 'GLOBAL') {
                                         const updatedZones = zones.map(z => ({ ...z, analyze_electric_line_probabilities: newVal }));
@@ -298,7 +315,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 </motion.div>
                             )}
                             {activeTab === 'data' && (
-                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center space-x-4 px-6 py-2 bg-amber-500/5 hover:bg-amber-500/10 rounded-full border border-amber-500/30 shadow-lg shadow-amber-500/5 transition-all group cursor-pointer" onClick={() => {
+                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center space-x-4 px-6 py-1.5 bg-amber-500/5 hover:bg-amber-500/10 rounded-full border border-amber-500/30 shadow-lg shadow-amber-500/5 transition-all group cursor-pointer" onClick={() => {
                                     const newVal = !zoneAnalyzeData;
                                     if (activeViewId === 'GLOBAL') {
                                         const updatedZones = zones.map(z => ({ ...z, analyze_data_line_probabilities: newVal }));
@@ -318,15 +335,17 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     </div>
 
                     {activeTab === 'structure' && (
-                        <div className="grid grid-cols-[1.5fr_1.5fr_1.5fr_1fr_1fr] gap-4 pt-4 border-t border-white/5 px-2 text-center">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-3 pt-2.5 border-t border-white/5 px-2 text-center">
                             <SelectInput label="Nível SPDA (PB)" value={prob.PB} options={PB_OPTIONS} onUpdate={v => handleProbabilityChange({ PB: v })} />
                             <SelectInput label="Prot. PTA" value={prob.PTA} options={PTA_OPTIONS} onUpdate={v => handleProbabilityChange({ PTA: v })} />
-                            <SelectInput label="Prot. PTU" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={v => handleProbabilityChange({ PTU_electric: v, PTU_data: v })} />
-                            <div className="space-y-1.5 flex flex-col items-center">
+                            <div className="col-span-2 sm:col-span-1">
+                                <SelectInput label="Prot. PTU" value={prob.PTU_electric} options={PTU_OPTIONS} onUpdate={v => handleProbabilityChange({ PTU_electric: v, PTU_data: v })} />
+                            </div>
+                            <div className="space-y-1 flex flex-col items-center">
                                 <DecimalInput label="wm1 (m)" value={prob.wm1 || 0} onUpdate={v => handleProbabilityChange({ wm1: v })} min={0} className="w-full max-w-[80px] text-center" />
                                 <span className="text-[9px] font-mono font-black text-blue-400">Ks1: {formatSmartNumber(calculatedKs1, { maxDecimals: 3 })}</span>
                             </div>
-                            <div className="space-y-1.5 flex flex-col items-center">
+                            <div className="space-y-1 flex flex-col items-center">
                                 <DecimalInput label="wm2 (m)" value={prob.wm2 || 0} onUpdate={v => handleProbabilityChange({ wm2: v })} min={0} className="w-full max-w-[80px] text-center" />
                                 <span className="text-[9px] font-mono font-black text-blue-400">Ks2: {formatSmartNumber(calculatedKs2, { maxDecimals: 3 })}</span>
                             </div>
@@ -334,20 +353,20 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     )}
 
                     {activeTab === 'electric' && (
-                        <div className="space-y-4 pt-3 border-t border-white/5">
-                            <div className={`flex flex-wrap items-center justify-start gap-8 bg-slate-950/30 p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''}`}>
-                                <div className="flex flex-col items-center gap-1.5 pr-8 border-r border-white/10">
+                        <div className="space-y-3 pt-2.5 border-t border-white/5">
+                            <div className={`flex flex-col lg:flex-row lg:items-center justify-start gap-4 lg:gap-6 bg-slate-950/30 p-2.5 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''}`}>
+                                <div className="flex flex-col items-center gap-1.5 lg:pr-6 lg:border-r border-white/10">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-white/90">Localização</Label>
                                     <div className="flex p-1 bg-slate-900/60 rounded-xl border border-white/5">
                                         <TabButton isActive={electricSubTab === 'internal'} onClick={() => setElectricSubTab('internal')} className="py-1 px-4 text-[10px]">Interna</TabButton>
                                         <TabButton isActive={electricSubTab === 'external'} onClick={() => setElectricSubTab('external')} className="py-1 px-4 text-[10px]">Externa</TabButton>
                                     </div>
                                 </div>
-                                <div className="min-w-[140px]"><SelectInput label="Equipot. (PEB)" value={prob.PEB_electric} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PEB_electric: v })} /></div>
-                                <div className="min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_electric: v })} /></div>
-                                <div className="min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_electric_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric_ext: v, Uw_electric_int: v })} /></div>
+                                <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PEB)" value={prob.PEB_electric} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PEB_electric: v })} /></div>
+                                <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_electric: v })} /></div>
+                                <div className="w-full lg:min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_electric_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric_ext: v, Uw_electric_int: v })} /></div>
                             </div>
-                            <div className={`grid gap-4 items-end bg-slate-900/40 p-4 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''} ${electricSubTab === 'internal' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                            <div className={`grid gap-3 items-end bg-slate-900/40 p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''} ${electricSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
                                 <SelectInput label="Fator CLD" value={electricSubTab === 'external' ? prob.CLD_electric_ext : prob.CLD_electric_int} options={CLD_ONLY_OPTIONS} onUpdate={v => handleProbabilityChange(electricSubTab === 'external' ? { CLD_electric_ext: v } : { CLD_electric_int: v })} />
                                 <SelectInput label="Fator CLI" value={electricSubTab === 'external' ? prob.CLI_electric_ext : prob.CLI_electric_int} options={CLI_OPTIONS} onUpdate={v => handleProbabilityChange(electricSubTab === 'external' ? { CLI_electric_ext: v } : { CLI_electric_int: v })} />
                                 {electricSubTab === 'internal' && <SelectInput label="Ks3 (Fiação)" value={prob.Ks3_electric_int || 0} options={KS3_OPTIONS} onUpdate={v => handleProbabilityChange({ Ks3_electric_int: v })} />}
@@ -357,20 +376,20 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                     )}
 
                     {activeTab === 'data' && (
-                        <div className="space-y-4 pt-3 border-t border-white/5">
-                            <div className={`flex flex-wrap items-center justify-start gap-8 bg-slate-950/30 p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''}`}>
-                                <div className="flex flex-col items-center gap-1.5 pr-8 border-r border-white/10">
+                        <div className="space-y-3 pt-2.5 border-t border-white/5">
+                            <div className={`flex flex-col lg:flex-row lg:items-center justify-start gap-4 lg:gap-6 bg-slate-950/30 p-2.5 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''}`}>
+                                <div className="flex flex-col items-center gap-1.5 lg:pr-6 lg:border-r border-white/10">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-white/90">Localização</Label>
                                     <div className="flex p-1 bg-slate-900/60 rounded-xl border border-white/5">
                                         <TabButton isActive={dataSubTab === 'internal'} onClick={() => setDataSubTab('internal')} className="py-1 px-4 text-[10px]">Interna</TabButton>
                                         <TabButton isActive={dataSubTab === 'external'} onClick={() => setDataSubTab('external')} className="py-1 px-4 text-[10px]">Externa</TabButton>
                                     </div>
                                 </div>
-                                <div className="min-w-[140px]"><SelectInput label="Equipot. (PEB)" value={prob.PEB_data} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PEB_data: v })} /></div>
-                                <div className="min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_data: v })} /></div>
-                                <div className="min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_data_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data_ext: v, Uw_data_int: v })} /></div>
+                                <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PEB)" value={prob.PEB_data} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PEB_data: v })} /></div>
+                                <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_data: v })} /></div>
+                                <div className="w-full lg:min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_data_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data_ext: v, Uw_data_int: v })} /></div>
                             </div>
-                            <div className={`grid gap-4 items-end bg-slate-900/40 p-4 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''} ${dataSubTab === 'internal' ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                            <div className={`grid gap-3 items-end bg-slate-900/40 p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''} ${dataSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
                                 <SelectInput label="Fator CLD" value={dataSubTab === 'external' ? prob.CLD_data_ext : prob.CLD_data_int} options={CLD_ONLY_OPTIONS} onUpdate={v => handleProbabilityChange(dataSubTab === 'external' ? { CLD_data_ext: v } : { CLD_data_int: v })} />
                                 <SelectInput label="Fator CLI" value={dataSubTab === 'external' ? prob.CLI_data_ext : prob.CLI_data_int} options={CLI_OPTIONS} onUpdate={v => handleProbabilityChange(dataSubTab === 'external' ? { CLI_data_ext: v } : { CLI_data_int: v })} />
                                 {dataSubTab === 'internal' && <SelectInput label="Ks3 (Fiação)" value={prob.Ks3_data_int || 0} options={KS3_OPTIONS} onUpdate={v => handleProbabilityChange({ Ks3_data_int: v })} />}
@@ -381,12 +400,12 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-center mt-6 mb-4"><span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">{`Gráfico de Probabilidades — ${activeHeading}`}</span></div>
+            <div className="flex justify-center mt-3 mb-2"><span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">{`Gráfico de Probabilidades — ${activeHeading}`}</span></div>
             <Card 
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[10.5rem] pt-4 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} className="outline-none focus:outline-none">
@@ -472,10 +491,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 function SelectInput({ label, value, options, onUpdate }: { label: string; value: number | undefined; options: { value: number; label: string }[]; onUpdate: (val: number) => void }) {
     const stringValue = value !== undefined ? value.toString() : "";
     return (
-        <div className="space-y-1.5 w-full flex flex-col items-center text-center">
-            <Label className="text-[11px] font-black uppercase tracking-widest text-white leading-none mb-1">{label}</Label>
+        <div className="space-y-1 w-full flex flex-col items-center text-center">
+            <Label className="text-[11px] font-black uppercase tracking-widest text-white leading-none mb-0.5">{label}</Label>
             <Select value={stringValue} onValueChange={(v) => onUpdate(parseFloat(v))} options={options}>
-                <SelectTrigger className="h-8 text-[11px] px-3 bg-slate-950/70 border-slate-700 w-full max-w-[320px] focus:ring-1 focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-7 text-[11px] px-3 bg-slate-950/70 border-slate-700 w-full max-w-[320px] focus:ring-1 focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
                 <SelectContent>{options.map(opt => <SelectItem key={opt.value} value={opt.value.toString()} label={opt.label} />)}</SelectContent>
             </Select>
         </div>

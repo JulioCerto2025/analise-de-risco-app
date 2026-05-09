@@ -400,7 +400,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     }
 
     return (
-        <div className="max-w-6xl w-full mx-auto space-y-6 overflow-hidden pb-8">
+        <div className="max-w-6xl w-full mx-auto space-y-6 overflow-visible pb-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
                 <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-100/5 backdrop-blur-sm shadow-xl shadow-black/20 group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
@@ -530,9 +530,9 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         {isAcceptable ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
                                     </div>
                                 </div>
-                                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8 px-8 items-center">
+                                <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-2 pb-4 px-8 items-center">
                                     <div className="flex flex-col items-center">
-                                        <div className={`relative z-10 text-6xl md:text-7xl font-black mb-4 transition-transform ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
+                                        <div className={`relative z-10 text-5xl md:text-6xl lg:text-7xl font-black mb-4 transition-transform ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
                                             <ScientificNotation value={currentTotalRiskValue} precision={2} />
                                         </div>
                                         <div className={`relative z-10 py-2.5 px-10 rounded-full text-[11px] font-black uppercase tracking-[0.35em] border-2 ${isAcceptable ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>
@@ -567,7 +567,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
             </div>
 
             <Card 
-                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
+                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
                 <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
@@ -680,7 +680,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2 mt-2 pt-2 border-t border-white/5 px-4 text-center">
+                    <div className="overflow-x-auto no-scrollbar w-full">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2 pt-2 border-t border-white/5 px-4 text-center min-w-[500px] lg:min-w-0">
                         <div className="flex items-center justify-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
                             <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Choque (RA, RU)</span>
@@ -696,6 +697,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         <div className="flex items-center justify-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#a78bfa]" />
                             <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Riscos Totais (RT)</span>
+                        </div>
                         </div>
                     </div>
                 </CardContent>

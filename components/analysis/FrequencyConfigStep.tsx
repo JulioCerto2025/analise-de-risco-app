@@ -387,7 +387,7 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                             {activeData.isAcceptable ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
                         </div>
                     </div>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8 px-8 items-center">
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2 pb-4 px-8 items-center">
                         <div className="flex flex-col items-center">
                             <div className={`relative z-10 text-7xl font-black mb-4 transition-transform duration-300 group-hover:scale-105 ${activeData.isAcceptable ? 'text-green-400 drop-shadow-[0_0_30px_rgba(34,197,94,0.4)]' : 'text-red-400 drop-shadow-[0_0_30px_rgba(239,68,68,0.4)]'}`}>
                                 {(activeData.freq.F || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -401,18 +401,20 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                             </div>
                         </div>
                         <div className="space-y-4">
-                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Regra de Tolerância</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => handleConfigChange('is_critical_system', true)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${config.is_critical_system ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
-                                    Crítico (0,1)
-                                </button>
-                                <button onClick={() => handleConfigChange('is_critical_system', false)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!config.is_critical_system ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
-                                    Padrão (1,0)
-                                </button>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Regra de Tolerância</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => handleConfigChange('is_critical_system', true)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${config.is_critical_system ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
+                                        Crítico (0,1)
+                                    </button>
+                                    <button onClick={() => handleConfigChange('is_critical_system', false)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!config.is_critical_system ? 'bg-blue-600/90 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900/50 border-white/10 text-slate-400 hover:bg-slate-800'}`}>
+                                        Padrão (1,0)
+                                    </button>
+                                </div>
                             </div>
                             
                             {multipleZones && (
-                                <>
+                                <div className="space-y-1.5">
                                     <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Escopo de Análise (Multizonas)</Label>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button onClick={() => handleConfigChange('analyze_by_most_critical_zone', false)} className={`py-2 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${!config.analyze_by_most_critical_zone ? 'bg-slate-200 border-white text-slate-950 shadow-lg' : 'bg-slate-900/50 border-white/10 text-slate-300 hover:bg-slate-800'}`}>
@@ -422,7 +424,7 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                                             Zona Crítica
                                         </button>
                                     </div>
-                                </>
+                                </div>
                             )}
 
                             <label className="flex items-center space-x-3 px-5 py-3 bg-white/[0.04] hover:bg-white/[0.08] rounded-2xl border border-white/10 cursor-pointer transition-all group/check mt-2">

@@ -84,10 +84,15 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
         const rta = data.risks_to_analyze || { R1: false, R3: false, R4: false };
         const tabs = [];
         if (rta.R1) {
-            tabs.push({ id: 'populacao', label: 'População (R1)' }, { id: 'choque', label: 'Choque (R1)' }, { id: 'incendio', label: 'Incêndio (R1)' }, { id: 'equipamentos', label: 'Equipamentos (R1)' });
+            tabs.push(
+                { id: 'populacao', label: 'População', shortLabel: 'Pop.' }, 
+                { id: 'choque', label: 'Choque', shortLabel: 'Chq.' }, 
+                { id: 'incendio', label: 'Incêndio', shortLabel: 'Inc.' }, 
+                { id: 'equipamentos', label: 'Sistemas', shortLabel: 'Sist.' }
+            );
         }
-        if (rta.R3) tabs.push({ id: 'cultural', label: 'Patrimônio (R3)' });
-        if (rta.R4) tabs.push({ id: 'economica', label: 'Perda Econ. (R4)' });
+        if (rta.R3) tabs.push({ id: 'cultural', label: 'Patrimônio', shortLabel: 'Patrim.' });
+        if (rta.R4) tabs.push({ id: 'economica', label: 'Econômica', shortLabel: 'Econ.' });
         return tabs;
     }, [data.risks_to_analyze]);
 
@@ -167,25 +172,31 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
     };
 
     return (
-        <div className="grid grid-cols-1 gap-2 animate-in fade-in duration-500 max-w-6xl w-full mx-auto overflow-hidden">
+        <div className="grid grid-cols-1 gap-2 animate-in fade-in duration-500 max-w-6xl w-full mx-auto overflow-visible">
             <Card className="w-full border-slate-700/50 bg-slate-900/60 backdrop-blur-sm shadow-2xl">
                 <div className="flex justify-center mt-4 mb-2">
-                    <div className="flex items-center gap-4 px-6 py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
-                        {hasMultipleZones && <button onClick={goPrevView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-5 h-5" /></button>}
-                        <span className="text-white font-black text-[10px] uppercase tracking-[0.3em] min-w-[200px] text-center">
-                            {`Parâmetros de Perda — ${activeHeading}`}
+                    <div className="flex items-center gap-2 sm:gap-4 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-slate-950 border border-slate-800 shadow-2xl">
+                        {hasMultipleZones && <button onClick={goPrevView} className="p-1 sm:p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" /></button>}
+                        <span className="text-white font-black text-[9px] sm:text-[10px] uppercase tracking-[0.1em] sm:tracking-[0.3em] min-w-[140px] sm:min-w-[200px] text-center">
+                            <span className="sm:hidden">
+                                {`Perdas — ${activeHeading}`}
+                            </span>
+                            <span className="hidden sm:inline">
+                                {`Parâmetros de Perda — ${activeHeading}`}
+                            </span>
                         </span>
-                        {hasMultipleZones && <button onClick={goNextView} className="p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-5 h-5" /></button>}
+                        {hasMultipleZones && <button onClick={goNextView} className="p-1 sm:p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><ChevronRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" /></button>}
                     </div>
                 </div>
                 <CardContent className="space-y-2 py-2 px-4">
 
                     {availableTabs.length > 0 && (
                         <div className="flex justify-center mb-2">
-                            <div className="flex space-x-2 p-1.5 bg-slate-800/40 rounded-xl w-fit min-w-[500px] justify-center overflow-x-auto no-scrollbar">
+                            <div className="flex space-x-1 p-1 bg-slate-800/40 rounded-xl w-full sm:w-fit max-w-full justify-center overflow-x-hidden">
                                 {availableTabs.map(tab => (
-                                    <TabButton key={tab.id} isActive={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className="py-2 min-w-[120px]">
-                                        {tab.label}
+                                    <TabButton key={tab.id} isActive={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className="py-2 px-1 min-w-[60px] sm:min-w-[120px] text-[9px] sm:text-[11px]">
+                                        <span className="sm:hidden">{tab.shortLabel}</span>
+                                        <span className="hidden sm:inline">{tab.label}</span>
                                     </TabButton>
                                 ))}
                             </div>
@@ -195,7 +206,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                     <div className="min-h-[140px] pt-4">
                         {activeTab === 'populacao' && (
                             <div className="space-y-4">
-                                <div className="grid grid-cols-[1fr_1fr_1fr] gap-4 px-2 pt-2 border-t border-white/5">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 px-2 pt-2 border-t border-white/5">
                                     <DecimalInput label="Pessoas (nz)" value={lossData.nz ?? 0} onUpdate={v => handleUpdate('nz', v)} min={0} className="w-full max-w-[100px] mx-auto text-center" />
                                     <DecimalInput label="Total (nt)" value={lossData.nt ?? 1} onUpdate={v => handleUpdate('nt', v)} min={1} className="w-full max-w-[100px] mx-auto text-center" />
                                     <DecimalInput label="Horas (tz)" value={lossData.tz ?? 8760} onUpdate={v => handleUpdate('tz', v)} min={0} max={8760} className="w-full max-w-[100px] mx-auto text-center" />
@@ -204,7 +215,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         )}
                         {activeTab === 'incendio' && (
                             <div className="space-y-6 pt-2 border-t border-white/5">
-                                <div className="grid grid-cols-[1.8fr_1fr_1fr_1fr] gap-4 px-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-2">
                                     <SelectInput label="LF - Danos Físicos" value={lossData.LF} options={LF_OPTIONS} onUpdate={v => handleUpdate('LF', v)} />
                                     <SelectInput label="rf - Risco Incêndio" value={lossData.rf} options={RF_OPTIONS} onUpdate={v => handleUpdate('rf', v)} />
                                     <SelectInput label="rp - Proteções" value={lossData.rp} options={RP_OPTIONS} onUpdate={v => handleUpdate('rp', v)} />
@@ -213,7 +224,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                             </div>
                         )}
                         {activeTab === 'choque' && (
-                            <div className="grid grid-cols-2 gap-8 max-w-2xl mx-auto pt-2 border-t border-white/5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto pt-2 border-t border-white/5">
                                 <SelectInput label="rt - Resistência Piso" value={lossData.rt ?? 0.01} options={RT_OPTIONS} onUpdate={v => handleUpdate('rt', v)} />
                                 <SelectInput label="LT - Choque" value={(lossData as any).lt ?? 0.01} options={LT_OPTIONS} onUpdate={v => handleUpdate('lt' as any, v)} />
                             </div>
@@ -224,7 +235,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                             </div>
                         )}
                         {activeTab === 'cultural' && (
-                            <div className="grid grid-cols-[1.5fr_1fr_1fr] gap-6 pt-2 border-t border-white/5">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 border-t border-white/5">
                                 <SelectInput label="Lf3 - Tipo Dano" value={lossData.lf3} options={LF3_OPTIONS} onUpdate={v => handleUpdate('lf3', v)} />
                                 <DecimalInput label="cz - Patrimônio" value={lossData.cz ?? 0} onUpdate={v => handleUpdate('cz', v)} className="w-full max-w-[120px] mx-auto text-center" />
                                 <DecimalInput label="ct - Valor Total" value={lossData.ct_cultural ?? 1} onUpdate={v => handleUpdate('ct_cultural', v)} className="w-full max-w-[120px] mx-auto text-center" />
@@ -232,12 +243,12 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         )}
                         {activeTab === 'economica' && (
                             <div className="space-y-6 pt-2 border-t border-white/5">
-                                <div className="grid grid-cols-3 gap-4">
-                                    <SelectInput label="Lf4 - Dano Físico" value={lossData.lf4} options={LF4_OPTIONS} onUpdate={v => handleUpdate('lf4', v)} />
-                                    <SelectInput label="Lo4 - Falha Perda" value={lossData.lo4} options={LO4_OPTIONS} onUpdate={v => handleUpdate('lo4', v)} />
-                                    <SelectInput label="LT4 - Choque" value={(lossData as any).lt4} options={LT_OPTIONS} onUpdate={v => handleUpdate('lt4' as any, v)} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <SelectInput label="lf4 - Dano Físico" value={lossData.lf4} options={LF4_OPTIONS} onUpdate={v => handleUpdate('lf4', v)} />
+                                    <SelectInput label="lo4 - Falha Perda" value={lossData.lo4} options={LO4_OPTIONS} onUpdate={v => handleUpdate('lo4', v)} />
+                                    <SelectInput label="lt4 - Choque" value={(lossData as any).lt4} options={LT_OPTIONS} onUpdate={v => handleUpdate('lt4' as any, v)} />
                                 </div>
-                                <div className="grid grid-cols-5 gap-2 pt-4 border-t border-white/5">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-4 border-t border-white/5">
                                     <DecimalInput label="Anim. (ca)" value={lossData.ca ?? 0} onUpdate={v => handleUpdate('ca', v)} className="w-full max-w-[100px] mx-auto text-center" />
                                     <DecimalInput label="Edif. (cb)" value={lossData.cb ?? 0} onUpdate={v => handleUpdate('cb', v)} className="w-full max-w-[100px] mx-auto text-center" />
                                     <DecimalInput label="Cont. (cc)" value={lossData.cc ?? 0} onUpdate={v => handleUpdate('cc', v)} className="w-full max-w-[100px] mx-auto text-center" />
@@ -250,16 +261,16 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                 </CardContent>
             </Card>
 
-            <div className="flex justify-center mt-4 mb-2">
+            <div className="flex justify-center mt-3 mb-2">
                 <span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-white font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">
                     {`Gráfico de Perdas — ${activeHeading}`}
                 </span>
             </div>
             <Card 
-                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
+                className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[18rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[13.5rem] pt-4 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }} className="outline-none focus:outline-none">

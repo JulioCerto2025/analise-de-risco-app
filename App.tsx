@@ -27,7 +27,7 @@ import CadWorkspacePreview from './components/tools/CadWorkspacePreview';
 const SidebarNav = ({ currentStep, setStep }: { currentStep: number; setStep: (step: number) => void }) => {
     return (
         <div className="bg-slate-950/70 backdrop-blur-lg border border-slate-500/30 p-3 rounded-xl shadow-xl overflow-hidden font-['Outfit']">
-            <div className="flex items-center gap-3 mb-5 px-1 pt-1">
+            <div className="flex items-center gap-3 mb-3 px-1 pt-1">
                 <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/30 shrink-0">
                     <Calculator className="w-5 h-5 text-white" />
                 </div>
@@ -142,7 +142,7 @@ export default function App() {
         annual: generateAnnualPassword()
     }), []);
 
-    const { data, updateData } = useAnalysisData();
+    const { data, updateData, loadProject } = useAnalysisData();
     const results = React.useMemo(() => data.calculations, [data.calculations]);
 
     const handleAuth = (e: React.FormEvent) => {
@@ -265,6 +265,7 @@ export default function App() {
                     <ProjectInfoStep 
                         data={data} 
                         onUpdate={updateData} 
+                        onLoadProject={loadProject}
                         isAdmin={isAdmin}
                         showAdminPanel={showAdminPanel}
                         setShowAdminPanel={setShowAdminPanel}
@@ -331,7 +332,7 @@ export default function App() {
                     <div className="p-4 space-y-3.5 flex-1 overflow-hidden">
                         <div className="text-center py-2 space-y-1.5">
                             <h3 className="text-blue-200 text-[13px] font-black uppercase tracking-[0.15em] leading-tight drop-shadow-md">
-                                Plataforma Análise de Risco NBR 5419-2 2026
+                                <span className="hidden sm:inline">Plataforma </span>Análise de Risco NBR 5419-2 2026
                             </h3>
                             <p className="text-slate-200 text-[9.5px] font-bold uppercase tracking-widest leading-none">
                                 Engº Júlio César Certo <span className="text-slate-400 mx-1">—</span> <span className="text-blue-400 font-black">Especialista em PDA</span>
@@ -369,33 +370,33 @@ export default function App() {
 
                         <div className="opacity-40 hover:opacity-100 transition-opacity duration-500">
                             {/* Seção 2: Planos com Cores Progressivas */}
-                            <div className="grid grid-cols-3 gap-2 py-1">
+                            <div className="grid grid-cols-3 gap-1.5 py-1">
                             {/* Mensal: Mais sóbrio/discreto */}
-                            <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-3 flex flex-col gap-1 shadow-inner relative overflow-hidden group">
-                                <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap leading-none">Plano Mensal</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-[11px] font-bold text-slate-600 uppercase leading-none">R$</span>
-                                    <span className="text-2xl font-bold text-slate-300 tracking-tight leading-none">50,00</span>
+                            <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-2 sm:p-3 flex flex-col gap-0.5 sm:gap-1 shadow-inner relative overflow-hidden group">
+                                <span className="text-[7.5px] sm:text-[8.5px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap leading-none">Plano Mensal</span>
+                                <div className="flex items-baseline gap-0.5 sm:gap-1">
+                                    <span className="text-[9px] sm:text-[11px] font-bold text-slate-600 uppercase leading-none">R$</span>
+                                    <span className="text-lg sm:text-2xl font-bold text-slate-300 tracking-tight leading-none">50,00</span>
                                 </div>
                             </div>
                             
                             {/* Semestral: Intermediário */}
-                            <div className="bg-blue-900/10 border border-blue-500/10 rounded-xl p-3 flex flex-col gap-1 shadow-inner relative overflow-hidden group">
+                            <div className="bg-blue-900/10 border border-blue-500/10 rounded-xl p-2 sm:p-3 flex flex-col gap-0.5 sm:gap-1 shadow-inner relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
-                                <span className="text-[8.5px] font-bold text-blue-400/70 uppercase tracking-widest whitespace-nowrap leading-none relative z-10">Premium Semestral</span>
-                                <div className="flex items-baseline gap-1 relative z-10">
-                                    <span className="text-[11px] font-bold text-blue-500/50 uppercase leading-none">R$</span>
-                                    <span className="text-2xl font-bold text-blue-100 tracking-tight leading-none">200,00</span>
+                                <span className="text-[7.5px] sm:text-[8.5px] font-bold text-blue-400/70 uppercase tracking-widest whitespace-nowrap leading-none relative z-10">Premium Semestral</span>
+                                <div className="flex items-baseline gap-0.5 sm:gap-1 relative z-10">
+                                    <span className="text-[9px] sm:text-[11px] font-bold text-blue-500/50 uppercase leading-none">R$</span>
+                                    <span className="text-lg sm:text-2xl font-bold text-blue-100 tracking-tight leading-none">200,00</span>
                                 </div>
                             </div>
 
                             {/* Anual: O mais convidativo/chamativo */}
-                            <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3 flex flex-col gap-1 shadow-[0_0_15px_-5px_rgba(16,185,129,0.4)] relative overflow-hidden group ring-1 ring-emerald-500/30">
+                            <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-2 sm:p-3 flex flex-col gap-0.5 sm:gap-1 shadow-[0_0_15px_-5px_rgba(16,185,129,0.4)] relative overflow-hidden group ring-1 ring-emerald-500/30">
                                 <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-transparent to-teal-500/10 pointer-events-none" />
-                                <span className="text-[8.5px] font-bold text-emerald-400 uppercase tracking-widest whitespace-nowrap leading-none relative z-10">Especial Anual</span>
-                                <div className="flex items-baseline gap-1 relative z-10">
-                                    <span className="text-[11px] font-bold text-emerald-500 uppercase leading-none font-black">R$</span>
-                                    <span className="text-2xl font-black text-white tracking-tight leading-none">300,00</span>
+                                <span className="text-[7.5px] sm:text-[8.5px] font-bold text-emerald-400 uppercase tracking-widest whitespace-nowrap leading-none relative z-10">Especial Anual</span>
+                                <div className="flex items-baseline gap-0.5 sm:gap-1 relative z-10">
+                                    <span className="text-[9px] sm:text-[11px] font-bold text-emerald-500 uppercase leading-none font-black">R$</span>
+                                    <span className="text-lg sm:text-2xl font-black text-white tracking-tight leading-none">300,00</span>
                                 </div>
                                 <div className="absolute -right-2 -top-2 w-10 h-10 bg-emerald-500/20 blur-xl rounded-full group-hover:bg-emerald-500/40 transition-all" />
                             </div>
@@ -405,7 +406,7 @@ export default function App() {
                         <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-3 space-y-2 my-1">
                             <div className="flex items-center gap-2 text-slate-400 px-1 leading-none">
                                 <CheckCircle className="w-3 h-3 text-emerald-400" />
-                                <p className="text-[8.5px] font-bold uppercase tracking-widest leading-none text-slate-300 whitespace-nowrap">Depósito PIX — Envie o Comprovante - Whatsapp (35) 9 8811-3746</p>
+                                <p className="text-[8.5px] font-bold uppercase tracking-widest leading-tight text-slate-300">Depósito PIX — Envie o Comprovante - Whatsapp (35) 9 8811-3746</p>
                             </div>
                             
                             <div 
@@ -419,7 +420,7 @@ export default function App() {
                                 </div>
                             </div>
 
-                            <p className="text-[9.5px] text-slate-300 font-bold italic text-center px-1 leading-normal whitespace-nowrap">
+                            <p className="text-[9.5px] text-slate-300 font-bold italic text-center px-1 leading-normal">
                                 * Valor referente ao acesso à ferramenta. Assessorias e Projetos à combinar.
                             </p>
                         </div>
@@ -473,17 +474,17 @@ export default function App() {
     return (
         <AuditProvider value={auditProviderValue}>
             <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
-                <div className="w-full flex justify-center py-2 px-1">
-                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-4 items-start pt-6 pb-6 px-4">
+                <div className="w-full flex justify-center py-1 px-1">
+                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-3 items-start pt-2 pb-2 px-4">
                         <aside className="hidden md:block">
-                            <div className="sticky top-6 w-full flex flex-col gap-4 pb-4">
+                            <div className="sticky top-2 w-full flex flex-col gap-2 pb-2">
                                 <SidebarNav currentStep={currentStep} setStep={setStep}/>
-                                <div className="flex items-center gap-3 pt-4 border-t border-slate-700/30">
+                                <div className="flex items-center gap-2 pt-2 border-t border-slate-700/30">
                                     <Button
                                         variant="outline"
                                         onClick={handlePrev}
                                         disabled={currentStep === 1}
-                                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl hover:bg-slate-800/80 transition-all border-slate-700/50 min-h-[48px] flex-1"
+                                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold rounded-xl hover:bg-slate-800/80 transition-all border-slate-700/50 min-h-[40px] flex-1"
                                     >
                                         <ArrowLeft className="w-4 h-4" />
                                         <span className="uppercase tracking-widest text-[11px]">Anterior</span>
@@ -491,7 +492,7 @@ export default function App() {
                                     <Button
                                         onClick={handleNext}
                                         disabled={currentStep === STEPS.length}
-                                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[48px] flex-[1.5]"
+                                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[40px] flex-[1.5]"
                                     >
                                         <span className="uppercase tracking-widest text-[11px]">{currentStep === STEPS.length ? "Finalizar" : "Próximo"}</span>
                                         <ArrowRight className="w-4 h-4" />
@@ -550,7 +551,7 @@ export default function App() {
 
 
 
-                            <div className="min-h-full md:pb-0" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>
+                            <div className="min-h-full max-md:pb-[calc(56px+env(safe-area-inset-bottom))]">
                                 <AnimatePresence mode="wait">
                                     <motion.div
                                         key={currentStep}

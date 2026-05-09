@@ -71,7 +71,7 @@ export function ToolboxStep() {
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-4 lg:p-6 pb-4">
+                <CardContent className="p-4 lg:p-6 lg:pb-2 pb-2">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
                         {tools.map((tool, index) => (
                             <motion.div
@@ -92,7 +92,7 @@ export function ToolboxStep() {
                                         </div>
                                     </div>
                                     
-                                    <p className="text-slate-500 leading-tight mb-3 text-[11px] h-6 overflow-hidden line-clamp-2">
+                                    <p className="text-slate-500 leading-tight mb-1 text-[11px] h-6 overflow-hidden line-clamp-2">
                                         {tool.description}
                                     </p>
 
@@ -111,11 +111,7 @@ export function ToolboxStep() {
                         ))}
                     </div>
 
-                    <div className="mt-4 py-2 border-t border-slate-800/50 text-center">
-                        <p className="text-slate-600 text-[9px] font-bold uppercase tracking-[0.2em]">
-                            Soluções integradas • NBR 5419 • NBR 15751
-                        </p>
-                    </div>
+
                 </CardContent>
             </Card>
         </div>

@@ -24,10 +24,11 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     
     // Formatação consistente: sempre decimal, sem notação científica
     const displayValue = formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 });
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
     const content = (
-        <div className={`w-full p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
-            <div className={`font-black text-xl md:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
+        <div className={`w-full p-2 md:p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
+            <div className={`font-black text-lg md:text-xl lg:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
             {!hideInfo && (
                 <div className={`font-black text-[9px] uppercase tracking-[0.2em] text-slate-400 mt-1 flex items-center justify-center gap-1 mr-[-0.2em]`}>
                     {label}
@@ -161,7 +162,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
     return (
         <div className="space-y-3">
-            <div className="grid md:grid-cols-2 gap-3 items-start">
+            <div className="grid lg:grid-cols-2 gap-3 items-start">
                 {/* Card: Linha Elétrica com toggle embutido */}
                 <Card>
                     <CardHeader className="py-2 px-4">
@@ -206,16 +207,16 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="hidden sm:block pt-4 border-t border-slate-700/50 mt-2">
-                                        <div className="grid grid-cols-2 gap-6">
+                                    <div className="block pt-4 border-t border-slate-700/50 mt-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             {/* Coluna Energia L1: Al + NL */}
                                             <div className="flex flex-col items-center gap-2">
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>L</sub></span></span>} value={al1} unit="m²" color="blue" formula="40 * L1_total" formulaKey="Al" formulaValues={{ "L1_total": total_ll_1 }} />
                                                 </div>
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. Linha</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. Linha</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>L</sub></span></span>} value={nl_electric} unit="desc./ano" color="blue" 
                                                         formula={data.line_sections_1.length > 1 
@@ -235,12 +236,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
                                             {/* Coluna Energia I1: Ai + NI */}
                                             <div className="flex flex-col items-center gap-2">
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Indução</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Indução</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
                                                 </div>
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_electric} unit="desc./ano" color="green" 
                                                         formula={data.line_sections_1.length > 1 
@@ -273,7 +274,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                     exit={{ opacity: 0, height: 0 }}
                                                     className="mt-1 md:mt-2 pl-1 md:pl-2 border-l-2 border-slate-600 space-y-1 md:space-y-2"
                                                 >
-                                                    <div className="grid grid-cols-2 gap-1 md:gap-2">
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 md:gap-2">
                                                         <DecimalInput label="L (adj)" value={data.l_adj_1} onUpdate={val => onUpdate({ l_adj_1: val })} />
                                                         <DecimalInput label="W (adj)" value={data.w_adj_1} onUpdate={val => onUpdate({ w_adj_1: val })} />
                                                         <DecimalInput label="H (adj)" value={data.h_adj_1} onUpdate={val => onUpdate({ h_adj_1: val })} />
@@ -324,7 +325,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                     </Button>
                                                 </div>
                                             )}
-                                            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-2 gap-y-1.5">
                                                 <DecimalInput label="Comp. (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_2', section.id, 'll', val)} />
                                                 <SelectField label="CI (A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ci', val)} />
                                                 <SelectField label="CE (A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ce', val)} />
@@ -337,16 +338,16 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="hidden sm:block pt-4 border-t border-slate-700/50 mt-2">
-                                        <div className="grid grid-cols-2 gap-6">
+                                    <div className="block pt-4 border-t border-slate-700/50 mt-2">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                             {/* Coluna Dados L2: Al + NL */}
                                             <div className="flex flex-col items-center gap-2">
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>L</sub></span></span>} value={al2} unit="m²" color="blue" formula="40 * L2_total" formulaKey="Al" formulaValues={{ "L2_total": total_ll_2 }}/>
                                                 </div>
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. Linha</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. Linha</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>L</sub></span></span>} value={nl_data} unit="desc./ano" color="blue" 
                                                         formula={data.line_sections_2.length > 1 
@@ -366,12 +367,12 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
 
                                             {/* Coluna Dados I2: Ai + NI */}
                                             <div className="flex flex-col items-center gap-2">
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Indução</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Indução</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai2} unit="m²" color="green" formula="4000 * L2_total" formulaKey="Ai" formulaValues={{ "L2_total": total_ll_2 }}/>
                                                 </div>
-                                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
-                                                <div className="w-[210px]">
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
+                                                <div className="w-full max-w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_data} unit="desc./ano" color="green" 
                                                         formula={data.line_sections_2.length > 1 

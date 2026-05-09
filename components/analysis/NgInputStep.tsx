@@ -283,8 +283,20 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
         if (data.lat && data.lon && geoBounds && pixelBounds) {
             const px = convertGeoToPixel(data.lat, data.lon, geoBounds, pixelBounds);
-            if (px && (!markerPoint || Math.abs(px.x - markerPoint.x) > 1 || Math.abs(px.y - markerPoint.y) > 1)) {
-                 setMarkerPoint(px);
+            if (px) {
+                const bias = regionPixelBiasPercent[region] || {};
+                const width = (pixelBounds.x2 - pixelBounds.x1);
+                const height = (pixelBounds.y2 - pixelBounds.y1);
+                const bx = Math.round((bias.x || 0) * width);
+                const by = Math.round((bias.y || 0) * height);
+                const biased = { x: px.x + bx, y: px.y + by };
+
+                const ref = mapViewerRef.current;
+                const finalPoint = ref?.findNearestContentPoint(biased, 14) || biased;
+
+                if (!markerPoint || Math.abs(finalPoint.x - markerPoint.x) > 1 || Math.abs(finalPoint.y - markerPoint.y) > 1) {
+                     setMarkerPoint(finalPoint);
+                }
             }
         }
     }, [data.lat, data.lon, mapRegion, getDynamicPixelBounds, imageDims, markerPoint]);
@@ -388,8 +400,11 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 
                 setCityInput(matchedCity);
                 setSelectedCity(matchedCity);
-                // Posiciona o marcador visual no mapa baseado na cidade detectada
-                positionMarkerForCityUf(matchedCity, uf);
+                
+                const region = getRegionFromState(uf) || 'brasil';
+                if (data.mapRegion !== region) {
+                    onUpdate({ mapRegion: region });
+                }
 
                 // Força atualização automática do Ng (se disponível) para evitar valores residuais (ex: 20)
                 const presetNg = await getNgByCity(uf, matchedCity);
@@ -491,49 +506,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
 
-    // Posiciona o marcador para a cidade/UF informados (Brasil como mapa)
-    const positionMarkerForCityUf = React.useCallback(async (city: string, uf: string, attempt: number = 0) => {
-        if (!city || !uf) return;
-        const region = getRegionFromState(uf) || 'brasil';
-        const pixelBounds = getDynamicPixelBounds(region);
-        
-        if (!pixelBounds) {
-            // Aguarda canvas/bounds ficarem prontos e tenta novamente algumas vezes
-            if (attempt < 8) {
-                setTimeout(() => positionMarkerForCityUf(city, uf, attempt + 1), 200);
-            }
-            return;
-        }
 
-        try {
-            // 1) Coordenadas locais (override) têm prioridade
-            const byUf = CITY_COORDS_OVERRIDES[uf.toUpperCase()] || {};
-            let coords = byUf[city] || null;
-            if (!coords) {
-                coords = await geocodeCityWithOSM(city, uf);
-            }
-            if (!coords) return;
-
-            const geoBounds = mapBounds[region];
-            const px = convertGeoToPixel(coords.lat, coords.lon, geoBounds, pixelBounds);
-            if (!px) return;
-
-            const bias = regionPixelBiasPercent[region] || {};
-            const width = (pixelBounds.x2 - pixelBounds.x1);
-            const height = (pixelBounds.y2 - pixelBounds.y1);
-            const bx = Math.round((bias.x || 0) * width);
-            const by = Math.round((bias.y || 0) * height);
-            const biased = { x: px.x + bx, y: px.y + by };
-
-            // Snap ao conteúdo colorido (terra) para evitar cair em bordas/legenda
-            const ref = mapViewerRef.current;
-            const snapped = ref?.findNearestContentPoint(biased, 14) || biased;
-            setMarkerPoint(snapped);
-            onUpdate({ mapRegion: region });
-        } catch (_) {
-            // silencioso
-        }
-    }, [getDynamicPixelBounds, mapViewerRef]);
 
     // Removido: calibração OCR e conversões geo↔pixel
 
@@ -576,8 +549,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         setAvailableCities(cities);
         setSelectedCity('');
         setCityInput('');
-        // Não troca automaticamente para regiões; mantém Brasil como padrão
-        onUpdate({ mapRegion: 'brasil' });
+        const region = getRegionFromState(code) || 'brasil';
+        onUpdate({ mapRegion: region });
     };
 
     const handleUfInputUpdate = async (val: string) => {
@@ -629,7 +602,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             }
             
             onUpdate(updates);
-            positionMarkerForCityUf(city, ufToUse);
         }
     };
 
@@ -645,8 +617,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         }
 
         const { city, uf } = parsed;
-        // Mantém Brasil como região de visualização padrão
-        onUpdate({ mapRegion: 'brasil' });
 
         // Primeiro comitar UF para carregar cidades, depois cidade
         await commitUf(uf);
@@ -708,7 +678,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                     <CardContent className="space-y-2.5 p-4">
                         {/* Controles de calibração removidos: a detecção agora é automática e robusta */}
                         <div className="space-y-1">
-                           <Label className="pl-0.5">Região para Visualização no Mapa</Label>
+                           <Label className="pl-0.5">Visualização - Região Mapa</Label>
                             <Select value={mapRegion} onValueChange={handleRegionChange} placeholder="Selecione uma região..." options={regionOptions}>
                                 <SelectTrigger>
                                     <SelectValue />
@@ -774,10 +744,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                 </div>
                             </div>
 
-                            <div className="text-[10.5px] text-slate-300/80 leading-tight">
-                                Posicione o marcador manualmente no mapa.
-                            </div>
-
                             {/* NG (w-full para igualar largura) */}
                             <div
                                 className={`w-full px-4 py-2.5 rounded-xl text-white border-2 transition-all backdrop-blur-md ${data.is_ng_manual ? 'ring-2 ring-yellow-400/50 ring-offset-2 ring-offset-slate-950' : ''}`}
@@ -823,7 +789,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                     </CardContent>
                 </Card>
 
-                <Card className="hidden sm:block">
+                <Card className="block">
                     <CardHeader className="py-3 px-4">
                         <CardTitle>Legenda do Mapa (Ng)</CardTitle>
                     </CardHeader>
@@ -904,8 +870,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                 imageUrl={mapUrls[mapRegion] || mapUrls['brasil']}
                                 onMapClick={handleMapClick}
                                 markerPoint={markerPoint}
-                                initialTransform={data.map_transform}
-                                onTransformChange={(t) => onUpdate({ map_transform: t })}
                                 onImageLoad={(dims) => setImageDims(dims)}
                             />
                         </React.Suspense>

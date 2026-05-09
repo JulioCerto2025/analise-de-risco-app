@@ -185,6 +185,26 @@ export const MapViewer = React.forwardRef<MapViewerHandles, MapViewerProps>(({ i
         return dE;
     };
 
+    const isContentPixelImpl = (point: { x: number; y: number }) => {
+        const canvas = canvasRef.current;
+        const context = canvas?.getContext('2d', { willReadFrequently: true });
+        if (!context || !canvas) return false;
+        const { width, height } = canvas;
+        const ignoreBottom = Math.floor(height * 0.15);
+        if (point.x < 0 || point.y < 0 || point.x >= width || point.y >= height - ignoreBottom) return false;
+        let p: Uint8ClampedArray;
+        try {
+            p = context.getImageData(point.x, point.y, 1, 1).data;
+        } catch (err) {
+            return false;
+        }
+        const r = p[0], g = p[1], b = p[2];
+        const maxRGB = Math.max(r, g, b), minRGB = Math.min(r, g, b);
+        const saturationApprox = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
+        const valueApprox = maxRGB / 255;
+        return valueApprox > 0.25 && saturationApprox > 0.25;
+    };
+
     React.useImperativeHandle(ref, () => ({
         zoomIn: () => handleZoom(1.3),
         zoomOut: () => handleZoom(0.85),
@@ -299,32 +319,12 @@ export const MapViewer = React.forwardRef<MapViewerHandles, MapViewerProps>(({ i
             const pad = 4;
             return { x1: Math.max(0, minX + pad), y1: Math.max(0, minY + pad), x2: Math.min(width, maxX - pad), y2: Math.min(height, maxY - pad) };
         },
-        isContentPixel: (point: { x: number; y: number }) => {
-            const canvas = canvasRef.current;
-            const context = canvas?.getContext('2d', { willReadFrequently: true });
-            if (!context || !canvas) return false;
-            const { width, height } = canvas;
-            const ignoreBottom = Math.floor(height * 0.15);
-            if (point.x < 0 || point.y < 0 || point.x >= width || point.y >= height - ignoreBottom) return false;
-            let p: Uint8ClampedArray;
-            try {
-                p = context.getImageData(point.x, point.y, 1, 1).data;
-            } catch (err) {
-                if (import.meta.env.DEV) console.error('MapViewer.isContentPixel failed:', err);
-                return false;
-            }
-            const r = p[0], g = p[1], b = p[2];
-            // rápido teste de conteúdo colorido
-            const maxRGB = Math.max(r, g, b), minRGB = Math.min(r, g, b);
-            const saturationApprox = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
-            const valueApprox = maxRGB / 255;
-            return valueApprox > 0.25 && saturationApprox > 0.25;
-        },
+        isContentPixel: isContentPixelImpl,
         findNearestContentPoint: (point: { x: number; y: number }, maxRadius: number = 25) => {
             const canvas = canvasRef.current;
             const context = canvas?.getContext('2d', { willReadFrequently: true });
             if (!context || !canvas) return null;
-            if ((ref as any).isContentPixel(point)) return { x: Math.round(point.x), y: Math.round(point.y) };
+            if (isContentPixelImpl(point)) return { x: Math.round(point.x), y: Math.round(point.y) };
             const { width, height } = canvas;
             const ignoreBottom = Math.floor(height * 0.15);
             

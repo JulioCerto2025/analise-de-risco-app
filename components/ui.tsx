@@ -534,8 +534,10 @@ interface TabButtonProps {
 export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, children, className }) => (
     <button
         onClick={onClick}
-        className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors flex-1 whitespace-nowrap min-w-[100px] ${
-            isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'bg-slate-700/40 text-slate-300 hover:bg-slate-600/50'
+        className={`px-6 py-2.5 text-[12px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex-1 whitespace-nowrap min-w-[100px] border ${
+            isActive 
+                ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' 
+                : 'bg-slate-800/40 text-slate-400 border-white/5 hover:bg-slate-700/60 hover:text-slate-200'
         } ${className || ''}`}
     >
         {children}

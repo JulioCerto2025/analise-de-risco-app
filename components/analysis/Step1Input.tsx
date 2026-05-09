@@ -158,12 +158,12 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                 </div>
                             </div>
                         </div>
-                    <div className="hidden sm:block pt-2 border-t border-slate-700/50 mt-4">
-                        <div className="grid grid-cols-2 gap-8">
+                    <div className="block pt-2 border-t border-slate-700/50 mt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                             {/* Coluna 1: Estrutura (Adf + Nd) */}
                             <div className="flex flex-col items-center gap-2">
-                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Expos.</span>
-                                <div className="w-[210px]">
+                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área Expos.</span>
+                                <div className="w-full max-w-[210px]">
                                     <ResultBox 
                                         label={<span className="flex items-center gap-1.5"><span className="text-blue-400">A<sub>DF</sub></span></span>} 
                                         value={adf} unit="m² (max)" color="blue" 
@@ -180,8 +180,8 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                         }}
                                     />
                                 </div>
-                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. (Estrutura)</span>
-                                <div className="w-[210px]">
+                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. (Estrutura)</span>
+                                <div className="w-full max-w-[210px]">
                                     <ResultBox 
                                         label={<span className="flex items-center gap-1.5"><span className="text-blue-400">N<sub>D</sub></span></span>} 
                                         value={nd} unit="desc./ano" color="blue" 
@@ -194,16 +194,16 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
 
                             {/* Coluna 2: Próximo (Am + Nm) */}
                             <div className="flex flex-col items-center gap-2">
-                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Magnética</span>
-                                <div className="w-[210px]">
+                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Geom. Magnética</span>
+                                <div className="w-full max-w-[210px]">
                                     <ResultBox 
                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>M</sub></span></span>} 
                                         value={am} unit="m²" color="green" 
                                         formula="2×500(L+W)+π(500)²" formulaKey="Am" formulaValues={{ L: data.l, W: data.w }}
                                     />
                                 </div>
-                                <span className="w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. (Próximo)</span>
-                                <div className="w-[210px]">
+                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Freq. (Próximo)</span>
+                                <div className="w-full max-w-[210px]">
                                     <ResultBox 
                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>M</sub></span></span>} 
                                         value={nm} unit="desc./ano" color="green" 
