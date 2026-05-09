@@ -59,6 +59,7 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
     const [reportText, setReportText] = React.useState('');
     const [copySuccess, setCopySuccess] = React.useState(false);
     const [generationStep, setGenerationStep] = React.useState('');
+    const [isZoomed, setIsZoomed] = React.useState(false);
 
     const formatPrefs = {
         h2FontSizeRem: 1.15,
@@ -191,20 +192,54 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                         </motion.div>
                     ) : (
                         <motion.div key="report-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 bg-slate-900 border border-slate-700 rounded-3xl p-5">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                                    <FileText className="w-6 h-6 text-blue-400" /> Relatório Técnico
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                                <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2 truncate">
+                                    <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 shrink-0" /> 
+                                    <span className="truncate">Relatório Técnico</span>
                                 </h3>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" onClick={handleDownloadWord}>Word</Button>
-                                    <Button variant="outline" size="sm" onClick={handlePrint}>PDF</Button>
-                                    <Button variant="outline" size="icon" onClick={() => setReportText('')}><X className="w-4 h-4" /></Button>
+                                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                    <Button variant="outline" size="sm" onClick={handleDownloadWord} className="h-8 px-2 sm:px-4 text-[10px] sm:text-xs">Word</Button>
+                                    <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 px-2 sm:px-4 text-[10px] sm:text-xs">PDF</Button>
+                                    <Button variant="outline" size="icon" onClick={() => setReportText('')} className="h-8 w-8"><X className="w-4 h-4" /></Button>
                                 </div>
                             </div>
-                            <div 
-                                className="bg-slate-950 p-8 rounded-2xl border border-slate-800 max-h-[600px] overflow-y-auto"
-                                dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
-                            />
+                            <div className="flex flex-col gap-2">
+                                <div className="flex justify-end px-2 sm:hidden">
+                                    <button 
+                                        onClick={() => setIsZoomed(!isZoomed)}
+                                        className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-[10px] font-black py-1.5 px-3 rounded-full border border-blue-500/30 transition-all flex items-center gap-2"
+                                    >
+                                        {isZoomed ? <Layers className="w-3 h-3" /> : <BoxIcon className="w-3 h-3" />}
+                                        {isZoomed ? 'VISTA GERAL' : 'ZOOM INTERATIVO'}
+                                    </button>
+                                </div>
+                                <div 
+                                    className="bg-slate-950 p-2 sm:p-8 rounded-2xl border border-slate-800 max-h-[750px] overflow-hidden flex justify-center items-start touch-none relative"
+                                    style={{ height: '70vh' }}
+                                >
+                                    <motion.div 
+                                        drag
+                                        dragMomentum={false}
+                                        onClick={() => setIsZoomed(!isZoomed)}
+                                        animate={{ 
+                                            scale: isZoomed ? 0.95 : (window.innerWidth < 640 ? 0.45 : 1),
+                                            y: isZoomed ? 0 : 0
+                                        }}
+                                        className="relative transition-shadow duration-300 cursor-grab active:cursor-grabbing"
+                                        style={{ 
+                                            width: '800px',
+                                            transformOrigin: 'top center',
+                                            marginLeft: window.innerWidth < 640 ? '0' : '0',
+                                        }}
+                                        dangerouslySetInnerHTML={{ __html: markdownToHtml(reportText, formatPrefs) }}
+                                    />
+                                    {!isZoomed && (
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none opacity-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700">
+                                            Toque para Zoom • Arraste para Pan
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

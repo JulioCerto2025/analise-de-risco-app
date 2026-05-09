@@ -126,7 +126,7 @@ ${ngNote}
     <tr><td style="${cellStyleCenter}">H</td><td style="${cellStyleLeft}">Altura máxima da estrutura</td><td style="${cellStyleCenter}"><b>${data.h}</b></td><td style="${cellStyleCenter}">m</td></tr>
     <tr style="${ngRowColor}"><td style="${cellStyleCenter}">${ngLabel}</td><td style="${cellStyleLeft}">${ngDetail}</td><td style="${cellStyleCenter}"><b>${data.ng}</b></td><td style="${cellStyleCenter}">/km².ano</td></tr>
     <tr><td style="${cellStyleCenter}">Cd</td><td style="${cellStyleLeft}">Fator de localização ambiental</td><td style="${cellStyleCenter}"><b>${data.cd}</b></td><td style="${cellStyleCenter}">-</td></tr>
-    <tr><td style="${cellStyleCenter}">rs</td><td style="${cellStyleLeft}">Tipo de Construção (<b>${data.rs === 1 ? 'Robusta' : 'Simples'}</b>)</td><td style="${cellStyleCenter}"><b>${data.rs}</b></td><td style="${cellStyleCenter}">-</td></tr>
+    <tr><td style="${cellStyleCenter}">rs</td><td style="${cellStyleLeft}">Tipo de Construção (<b>${data.rs === 1 ? 'Robusta' : 'Simples / Frágil'}</b>)</td><td style="${cellStyleCenter}"><b>${data.rs}</b></td><td style="${cellStyleCenter}">-</td></tr>
   </tbody>
 </table>
 

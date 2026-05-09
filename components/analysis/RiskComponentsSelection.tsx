@@ -126,7 +126,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                                     <div className="flex flex-col">
                                         <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-white leading-none mb-1.5">Tipo de Construção</h4>
                                         <p className="text-[9px] text-slate-300 uppercase font-black tracking-widest opacity-80 leading-tight pr-4">
-                                            {!robust_infrastructure ? 'Risco Elevado (rs = 2)' : 'Simples (rs = 1)'}
+                                            {!robust_infrastructure ? 'Simples / Frágil (rs = 2)' : 'Robusta (rs = 1)'}
                                         </p>
                                     </div>
                                 </div>
