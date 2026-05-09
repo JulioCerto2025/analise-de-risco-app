@@ -7,10 +7,18 @@
     <link rel="icon" type="image/png" href="/icon.png" />
     <link rel="apple-touch-icon" href="/icon.png" />
     <link rel="shortcut icon" href="/icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SPDA Risco" />
     <meta name="theme-color" content="#020617" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
     <link rel="canonical" href="https://analise-de-risco-app.vercel.app/" />
     <meta name="description" content="O software mais profissional para Análise de Risco SPDA conforme a NBR 5419:2026. Cálculos automáticos de Frequência de Dano (FD), memorial descritivo e relatórios técnicos premium gerados por IA. Ideal para engenheiros e projetistas que buscam precisão e agilidade." />
     <meta name="robots" content="index,follow" />
