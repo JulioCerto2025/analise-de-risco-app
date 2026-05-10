@@ -856,14 +856,14 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                             </Button>
                          </div>
                     </CardHeader>
-                    <CardContent className="relative p-4 flex-1 flex flex-col min-h-[500px]">
+                    <CardContent className="relative p-4 flex-1 flex flex-col overflow-hidden">
                         {isLoading && (
                             <div className="absolute inset-0 bg-slate-900/70 z-10 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm">
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
                                 <p className="mt-4 text-slate-300 font-semibold">Analisando e Mapeando...</p>
                             </div>
                         )}
-                        <React.Suspense fallback={<div className="flex-1 w-full flex items-center justify-center min-h-[450px]"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>
+                        <React.Suspense fallback={<div className="flex-1 w-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>
                             <MapViewerLazy
                                 key={mapRegion}
                                 ref={mapViewerRef}
