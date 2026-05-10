@@ -487,8 +487,22 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                                     axisLine={false} 
                                     tickLine={false} 
                                 />
-                                <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, yMaxDomain]} />
-                                <ReferenceLine y={toleranceLimit} strokeWidth={2} stroke="#f43f5e" strokeDasharray="4 4" strokeOpacity={0.5} />
+                                <YAxis tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} domain={[0, yMaxDomain]} width={40} />
+                                <ReferenceLine 
+                                    y={toleranceLimit} 
+                                    strokeWidth={2} 
+                                    stroke="#ef4444" 
+                                    strokeDasharray="4 4" 
+                                    strokeOpacity={1}
+                                    label={{ 
+                                        value: 'LIMITE TOLERÁVEL', 
+                                        position: 'top', 
+                                        fill: '#ef4444', 
+                                        fontSize: 9, 
+                                        fontWeight: '900',
+                                        offset: 8
+                                    }}
+                                />
                                 <Bar 
                                     dataKey="value" 
                                     radius={[4, 4, 0, 0]} 
