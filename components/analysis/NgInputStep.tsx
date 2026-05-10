@@ -670,12 +670,12 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     return (
         <div className="flex flex-col lg:flex-row gap-4 items-start">
             {/* Left Panel: Inputs */}
-            <div className="w-full lg:w-1/3 flex-shrink-0 space-y-2">
+            <div className="w-full lg:w-1/3 flex-shrink-0 space-y-3">
                 <Card>
-                    <CardHeader className="py-1.5 px-4">
+                    <CardHeader className="py-2 px-4">
                         <CardTitle>Descargas Atmosféricas (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-1.5 p-2.5">
+                    <CardContent className="space-y-2 p-3">
                         {/* Controles de calibração removidos: a detecção agora é automática e robusta */}
                         <div className="space-y-1">
                            <Label className="pl-0.5">Visualização - Região Mapa</Label>
@@ -790,10 +790,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 </Card>
 
                 <Card className="block">
-                    <CardHeader className="py-1.5 px-4">
+                    <CardHeader className="py-2 px-4">
                         <CardTitle>Legenda do Mapa (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-2.5">
+                    <CardContent className="p-3">
                         <div className="space-y-2">
                             {/* Linha superior (2..16) ocupando todo o card */}
                             <div className="grid grid-cols-8 gap-x-2 justify-items-center">
