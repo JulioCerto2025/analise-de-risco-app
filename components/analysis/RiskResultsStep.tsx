@@ -570,7 +570,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[15.2rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[18.3rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart 
