@@ -19,30 +19,32 @@ root.render(
 );
 
 // Auto-reload: se ao retornar o foco/visibilidade o app não estiver montado, recarrega.
-const AUTO_RELOAD_CHECK_DELAY = 350; // pequeno atraso para evitar checagem antes do paint
+const AUTO_RELOAD_CHECK_DELAY = 1500; // Aumentado para dar tempo ao hardware mais lento
 let lastReloadTs = 0;
 
 const checkAppMounted = () => {
+  const rootElement = document.getElementById('root');
   const hasChildren = !!rootElement && rootElement.childElementCount > 0;
+  
   if (!hasChildren) {
     const now = Date.now();
-    if (now - lastReloadTs > 5000) { // evita loops de recarga
+    // Verifica se já passou tempo suficiente desde o carregamento inicial (ex: 5 segundos)
+    const timeSincePageLoad = now - (window as any).performance?.timing?.navigationStart || 0;
+    
+    if (timeSincePageLoad > 5000 && now - lastReloadTs > 10000) { 
       lastReloadTs = now;
-      if (import.meta.env.DEV) {
-        console.warn('[AutoReload] App não montado após retorno. Recarregando...');
-      }
+      console.warn('[AutoReload] App não montado detectado. Forçando recarregamento...');
       window.location.reload();
     }
   }
 };
 
-const scheduleMountCheck = () => {
-  window.setTimeout(checkAppMounted, AUTO_RELOAD_CHECK_DELAY);
-};
+// Iniciar checagem periódica nos primeiros segundos
+setTimeout(checkAppMounted, 3000);
+setTimeout(checkAppMounted, 6000);
 
-// Quando a aba volta a ficar visível, ou a janela ganha foco, ou volta do bfcache
+// Quando a aba volta a ficar visível
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') scheduleMountCheck();
+  if (document.visibilityState === 'visible') setTimeout(checkAppMounted, 500);
 });
-window.addEventListener('focus', scheduleMountCheck);
-window.addEventListener('pageshow', scheduleMountCheck);
+window.addEventListener('focus', () => setTimeout(checkAppMounted, 500));
