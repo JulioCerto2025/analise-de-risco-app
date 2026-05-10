@@ -23,6 +23,20 @@ import { getNgByCity, getCitiesByUf } from './data/ngByCity';
 import { extractCityAndUf } from './utils/addressParser';
 import CadWorkspacePreview from './components/tools/CadWorkspacePreview';
 // FIX: Removed unused import from './lib/geminiService' which was causing a build error.
+const MOBILE_STEP_NAMES: { [key: string]: string } = {
+    "Informações do Projeto": "Proj. Info",
+    "Componentes de Risco": "Comp. Risco",
+    "Densidade de Descargas": "Dens. Desc.",
+    "Características da Estrutura": "Carac. Estrut.",
+    "Linhas Conectadas": "Linhas Conect.",
+    "Eventos Danosos": "Ev. Danosos",
+    "Probabilidade de Dano": "Prob. Dano",
+    "Perda Consequente": "Perda Cons.",
+    "Riscos Calculados": "Risc. Calc.",
+    "Frequência de Danos": "Freq. Danos",
+    "Conclusão e Relatório": "Conc. e Relat.",
+    "Caixa de Ferramentas": "Ferramentas"
+};
 
 const SidebarNav = ({ currentStep, setStep }: { currentStep: number; setStep: (step: number) => void }) => {
     return (
@@ -512,11 +526,11 @@ export default function App() {
                                         <h1 className="text-base font-bold text-slate-100">Análise de Risco</h1>
                                         <p className="text-xs text-slate-400">NBR 5419-2</p>
                                         <div className="mt-2 flex items-center gap-2">
-                                            <span className="px-2 py-0.5 rounded-md bg-blue-500/30 text-blue-300 text-xs font-semibold">
-                                                Etapa {currentStep} de {STEPS.length}
+                                            <span className="px-2 py-0.5 rounded-md bg-blue-500/30 text-blue-300 text-xs font-semibold whitespace-nowrap">
+                                                Et. {currentStep} de {STEPS.length}
                                             </span>
-                                            <span className="text-xs text-slate-300">
-                                                {STEPS[currentStep - 1]}
+                                            <span className="text-xs text-slate-300 truncate">
+                                                {MOBILE_STEP_NAMES[STEPS[currentStep - 1]] || STEPS[currentStep - 1]}
                                             </span>
                                         </div>
                                     </div>
