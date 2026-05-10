@@ -670,12 +670,12 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     return (
         <div className="flex flex-col lg:flex-row gap-4 items-start">
             {/* Left Panel: Inputs */}
-            <div className="w-full lg:w-1/3 flex-shrink-0 space-y-4">
+            <div className="w-full lg:w-1/3 flex-shrink-0 space-y-3">
                 <Card>
-                    <CardHeader className="py-3 px-4">
+                    <CardHeader className="py-2 px-4">
                         <CardTitle>Descargas Atmosféricas (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2.5 p-4">
+                    <CardContent className="space-y-2 p-3">
                         {/* Controles de calibração removidos: a detecção agora é automática e robusta */}
                         <div className="space-y-1">
                            <Label className="pl-0.5">Visualização - Região Mapa</Label>
@@ -726,7 +726,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                         <div className="mx-auto w-fit space-y-2">
                             {/* Coordenadas (w-full para igualar largura) */}
                             <div
-                                className="w-full px-4 py-2.5 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base md:text-lg font-bold shadow-sm"
+                                className="w-full px-3 py-2 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base md:text-lg font-bold shadow-sm"
                                 aria-label="Coordenadas da cidade selecionada"
                             >
                                 <div className="grid grid-cols-[auto_1fr] gap-x-3">
@@ -746,7 +746,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
                             {/* NG (w-full para igualar largura) */}
                             <div
-                                className={`w-full px-4 py-2.5 rounded-xl text-white border-2 transition-all backdrop-blur-md ${data.is_ng_manual ? 'ring-2 ring-yellow-400/50 ring-offset-2 ring-offset-slate-950' : ''}`}
+                                className={`w-full px-3 py-2 rounded-xl text-white border-2 transition-all backdrop-blur-md ${data.is_ng_manual ? 'ring-2 ring-yellow-400/50 ring-offset-2 ring-offset-slate-950' : ''}`}
                                 style={{ backgroundColor: ngBgRgba, borderColor: ngColorHex }}
                                 aria-label="Valor NG atual"
                             >
@@ -790,10 +790,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 </Card>
 
                 <Card className="block">
-                    <CardHeader className="py-3 px-4">
+                    <CardHeader className="py-2 px-4">
                         <CardTitle>Legenda do Mapa (Ng)</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3">
                         <div className="space-y-2">
                             {/* Linha superior (2..16) ocupando todo o card */}
                             <div className="grid grid-cols-8 gap-x-2 justify-items-center">
