@@ -5,7 +5,10 @@ import {
     ShieldAlert, 
     HardHat, 
     Home,
-    Building2
+    Building2,
+    HeartPulse,
+    Landmark,
+    CircleDollarSign
 } from 'lucide-react';
 import { AnalysisData } from '../../types';
 import { motion } from 'framer-motion';
@@ -43,9 +46,9 @@ interface RiskComponentsSelectionProps {
 }
 
 const riskTypeOptions = [
-    { value: 'R1', label: 'R1 - Vida humana' },
-    { value: 'R3', label: 'R3 - Patr. Cultural' },
-    { value: 'R4', label: 'R4 - Valor Econ.' },
+    { value: 'R1', label: 'R1 - Vida humana', icon: HeartPulse, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+    { value: 'R3', label: 'R3 - Patr. Cultural', icon: Landmark, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+    { value: 'R4', label: 'R4 - Valor Econ.', icon: CircleDollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
 ];
 
 const sourceOfDamageComponents = {
@@ -198,16 +201,39 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                         <CardTitle>Risco de Perda a ser Calculado</CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {riskTypeOptions.map(opt => (
-                            <div key={opt.value} className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 rounded-xl border border-slate-600 hover:bg-slate-700/60 transition-all w-full cursor-pointer group" onClick={() => handleRiskTypeChange(opt.value as keyof typeof risks_to_analyze, !risks_to_analyze[opt.value as keyof typeof risks_to_analyze])}>
-                                <Checkbox
-                                    id={opt.value}
-                                    checked={risks_to_analyze[opt.value as keyof typeof risks_to_analyze]}
-                                    onCheckedChange={(checked) => handleRiskTypeChange(opt.value as keyof typeof risks_to_analyze, !!checked)}
-                                />
-                                <Label htmlFor={opt.value} className="cursor-pointer text-slate-200 text-sm font-bold uppercase tracking-widest group-hover:text-white transition-colors">{opt.label}</Label>
-                            </div>
-                        ))}
+                        {riskTypeOptions.map(opt => {
+                            const Icon = opt.icon;
+                            const isSelected = risks_to_analyze[opt.value as keyof typeof risks_to_analyze];
+                            return (
+                                <div 
+                                    key={opt.value} 
+                                    className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all duration-300 w-full cursor-pointer group relative overflow-hidden ${
+                                        isSelected 
+                                            ? `${opt.bg} ${opt.border} shadow-[0_0_20px_rgba(0,0,0,0.2)] scale-[1.02] ring-1 ring-white/10` 
+                                            : 'bg-slate-900/40 border-slate-800 hover:bg-slate-800/60'
+                                    }`} 
+                                    onClick={() => handleRiskTypeChange(opt.value as keyof typeof risks_to_analyze, !isSelected)}
+                                >
+                                    <div className={`p-2 rounded-xl transition-all duration-300 ${isSelected ? opt.color : 'text-slate-500 group-hover:text-slate-400'}`}>
+                                        <Icon className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1 flex flex-col">
+                                        <Label 
+                                            htmlFor={opt.value} 
+                                            className={`cursor-pointer text-[12px] font-black uppercase tracking-[0.15em] transition-colors ${isSelected ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}
+                                        >
+                                            {opt.label}
+                                        </Label>
+                                    </div>
+                                    <Checkbox
+                                        id={opt.value}
+                                        checked={isSelected}
+                                        onCheckedChange={(checked) => handleRiskTypeChange(opt.value as keyof typeof risks_to_analyze, !!checked)}
+                                        className={`transition-all duration-300 ${isSelected ? 'border-none bg-blue-600' : 'border-slate-700'}`}
+                                    />
+                                </div>
+                            );
+                        })}
                     </CardContent>
                 </Card>
             </div>
