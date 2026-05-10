@@ -723,30 +723,30 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                            </div>
                         </div>
 
-                        <div className="mx-auto w-fit space-y-1.5">
+                        <div className="mx-auto w-fit space-y-1">
                             {/* Coordenadas (w-full para igualar largura) */}
                             <div
-                                className="w-full px-3 py-1.5 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base md:text-lg font-bold shadow-sm"
+                                className="w-full px-3 py-1 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base font-bold shadow-sm"
                                 aria-label="Coordenadas da cidade selecionada"
                             >
                                 <div className="grid grid-cols-[auto_1fr] gap-x-3">
                                     <div className="row-span-2 flex items-center justify-center">
                                         <MapPin className="h-6 w-6 text-slate-300" aria-hidden="true" />
                                     </div>
-                                    <div className="flex items-baseline justify-between">
-                                        <span className="font-mono whitespace-pre tracking-wide text-xs opacity-70">Lat.  Y:</span>
-                                        <span className="font-mono tabular-nums text-right text-lg md:text-xl">{coordsForCity ? coordsForCity.lat.toFixed(2) : '--'}</span>
+                                    <div className="flex items-baseline justify-between leading-tight">
+                                        <span className="font-mono whitespace-pre tracking-wide text-[10px] opacity-70">Lat.  Y:</span>
+                                        <span className="font-mono tabular-nums text-right text-base md:text-lg">{coordsForCity ? coordsForCity.lat.toFixed(2) : '--'}</span>
                                     </div>
-                                    <div className="flex items-baseline justify-between">
-                                        <span className="font-mono whitespace-pre tracking-wide text-xs opacity-70">Long. X:</span>
-                                        <span className="font-mono tabular-nums text-right text-lg md:text-xl">{coordsForCity ? coordsForCity.lon.toFixed(2) : '--'}</span>
+                                    <div className="flex items-baseline justify-between leading-tight">
+                                        <span className="font-mono whitespace-pre tracking-wide text-[10px] opacity-70">Long. X:</span>
+                                        <span className="font-mono tabular-nums text-right text-base md:text-lg">{coordsForCity ? coordsForCity.lon.toFixed(2) : '--'}</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* NG (w-full para igualar largura) */}
                             <div
-                                className={`w-full px-3 py-1.5 rounded-xl text-white border-2 transition-all backdrop-blur-md ${data.is_ng_manual ? 'ring-2 ring-yellow-400/50 ring-offset-2 ring-offset-slate-950' : ''}`}
+                                className={`w-full px-3 py-1 rounded-xl text-white border-2 transition-all backdrop-blur-md ${data.is_ng_manual ? 'ring-2 ring-yellow-400/50 ring-offset-2 ring-offset-slate-950' : ''}`}
                                 style={{ backgroundColor: ngBgRgba, borderColor: ngColorHex }}
                                 aria-label="Valor NG atual"
                             >
@@ -756,11 +756,11 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                     </div>
                                     <div className="flex flex-col items-center">
                                         <div className="flex items-center gap-2">
-                                            <span className="tracking-wide text-2xl md:text-3xl font-extrabold">NG</span>
+                                            <span className="tracking-wide text-xl md:text-2xl font-extrabold">NG</span>
                                             <DecimalInput
                                                 value={data.ng}
                                                 onUpdate={(val) => onUpdate({ ng: val, is_ng_manual: true })}
-                                                className="bg-transparent border-none text-white font-mono tabular-nums w-24 text-center focus:outline-none focus:ring-0 text-2xl md:text-3xl font-extrabold p-0 h-auto"
+                                                className="bg-transparent border-none text-white font-mono tabular-nums w-20 text-center focus:outline-none focus:ring-0 text-xl md:text-2xl font-extrabold p-0 h-auto"
                                                 noWrapper
                                             />
                                         </div>
