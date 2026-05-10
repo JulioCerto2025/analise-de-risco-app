@@ -240,7 +240,10 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                 <div className="w-full max-w-[210px]">
                                                     <ResultBox label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">A<sub>I</sub></span></span>} value={ai1} unit="m²" color="green" formula="4000 * L1_total" formulaKey="Ai" formulaValues={{ "L1_total": total_ll_1 }} />
                                                 </div>
-                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Desc. próx. à Linha</span>
+                                                <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">
+                                                    <span className="hidden sm:inline">Desc. próx. à Linha</span>
+                                                    <span className="sm:hidden">Desc. Prox. Linha</span>
+                                                </span>
                                                 <div className="w-full max-w-[210px]">
                                                     <ResultBox 
                                                         label={<span className="flex items-center gap-1.5"><span className="text-emerald-400">N<sub>I</sub></span></span>} value={ni_electric} unit="desc./ano" color="green" 
