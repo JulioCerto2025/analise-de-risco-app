@@ -239,11 +239,18 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                <Card className="h-fit w-full lg:order-1 block">
-                    <CardHeader>
-                        <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">S1/S2 - Descargas na Estrutura</CardTitle>
+                <Card className="h-fit w-full lg:order-1 block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
+                    <CardHeader className="bg-blue-600/10 border-b border-blue-500/20 py-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                                <Zap className="w-5 h-5" />
+                            </div>
+                            <CardTitle className="text-[14px] font-black uppercase tracking-[0.05em] text-blue-100">
+                                S1/S2 - Descargas na Estrutura
+                            </CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-4 space-y-4">
                         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                             <div className="sm:col-span-1 space-y-2 sm:pr-4 border-r border-white/5">
                                 <SourceBadge type="S1" label="Incidência Direta" />
@@ -285,11 +292,18 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                     </CardContent>
                 </Card>
 
-                <Card className="h-fit w-full lg:order-2 block">
-                    <CardHeader>
-                        <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">S3/S4 - Descargas na Linha</CardTitle>
+                <Card className="h-fit w-full lg:order-2 block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
+                    <CardHeader className="bg-amber-600/10 border-b border-amber-500/20 py-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                                <Zap className="w-5 h-5" />
+                            </div>
+                            <CardTitle className="text-[14px] font-black uppercase tracking-[0.05em] text-amber-100">
+                                S3/S4 - Descargas na Linha
+                            </CardTitle>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-4 space-y-4">
                         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                             <div className="sm:col-span-1 space-y-2 sm:pr-4 border-r border-white/5">
                                 <SourceBadge type="S3" label="Incidência Direta" />
