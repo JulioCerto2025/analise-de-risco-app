@@ -241,7 +241,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <Card className="h-fit w-full lg:order-1 block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
-                    <CardHeader className="bg-blue-600/10 border-b border-blue-500/20 py-4">
+                    <CardHeader className="bg-slate-950/60 border-b border-blue-500/20 py-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
                                 <Building2 className="w-5 h-5" />
@@ -294,7 +294,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                 </Card>
 
                 <Card className="h-fit w-full lg:order-2 block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
-                    <CardHeader className="bg-amber-600/10 border-b border-amber-500/20 py-4">
+                    <CardHeader className="bg-slate-950/60 border-b border-amber-500/20 py-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
                                 <Cable className="w-5 h-5" />
