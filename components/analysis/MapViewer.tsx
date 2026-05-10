@@ -720,7 +720,7 @@ export const MapViewer = React.forwardRef<MapViewerHandles, MapViewerProps>(({ i
     return (
         <div 
             ref={containerRef}
-            className="relative h-[450px] w-full overflow-hidden rounded-lg bg-slate-800/40 border border-slate-700 select-none cursor-grab"
+            className="relative flex-1 h-full w-full overflow-hidden rounded-lg bg-slate-800/40 border border-slate-700 select-none cursor-grab"
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
