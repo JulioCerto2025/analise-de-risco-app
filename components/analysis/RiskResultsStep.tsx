@@ -622,21 +622,37 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                     domain={[0, yMaxDomain * 1.1]} 
                                     allowDataOverflow 
                                     tickFormatter={(tick) => {
-                                        const formatPtBR = (val: number) => {
-                                            if (val === 0) return '0';
-                                            if (Math.abs(val) < 0.0001) {
-                                                const [m, e] = val.toExponential(1).split('e');
-                                                return `${m}×10${e}`;
-                                            }
-                                            return val.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 4 });
-                                        };
-                                        return formatPtBR(tick);
+                                        if (tick === 0) return '0';
+                                        
+                                        // Se for um valor na escala de 1e-5 (comum para R1), formata com precisão
+                                        if (tick >= 1e-7) {
+                                            const [m, e] = tick.toExponential(2).split('e');
+                                            const exp = parseInt(e, 10);
+                                            return `${m.replace('.', ',')}×10${exp}`;
+                                        }
+                                        
+                                        return tick.toExponential(1).replace('e', '×10');
                                     }} 
-                                    tick={{ fill: '#64748b', fontSize: 10 }} 
+                                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
                                     axisLine={false} 
                                     tickLine={false} 
+                                    width={70}
                                 />
-                                <ReferenceLine y={displayedToleranceValue} strokeWidth={2} stroke="#f43f5e" strokeDasharray="4 4" strokeOpacity={0.5} />
+                                <ReferenceLine 
+                                    y={displayedToleranceValue} 
+                                    strokeWidth={2} 
+                                    stroke="#ef4444" 
+                                    strokeDasharray="4 4" 
+                                    strokeOpacity={1}
+                                    label={{ 
+                                        value: 'LIMITE TOLERÁVEL', 
+                                        position: 'top', 
+                                        fill: '#ef4444', 
+                                        fontSize: 9, 
+                                        fontWeight: '900',
+                                        offset: 8
+                                    }}
+                                />
                                 <Bar 
                                     dataKey="value" 
                                     radius={[4, 4, 0, 0]} 
