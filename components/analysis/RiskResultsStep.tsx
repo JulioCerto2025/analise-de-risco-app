@@ -319,17 +319,23 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         ? 'lg:grid-cols-3 xl:grid-cols-4'
         : (totalCards === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2');
 
-    let chartData: { name: string; value: number }[] = ALL_RISK_COMPONENTS.map(key => ({
-        name: key,
-        value:
-            key === 'RU' ? ((risk_results.RU || 0) + (risk_results.RUT || 0)) :
-            key === 'RV' ? ((risk_results.RV || 0) + (risk_results.RVT || 0)) :
-            key === 'RW' ? ((risk_results.RW || 0) + (risk_results.RWT || 0)) :
-            key === 'RZ' ? ((risk_results.RZ || 0) + (risk_results.RZT || 0)) :
-            (risk_results[key] || 1e-12),
-    }));
+    let chartData: { name: string; value: number }[] = ALL_RISK_COMPONENTS
+        .filter(key => selected_risk_components[key])
+        .map(key => ({
+            name: key,
+            value:
+                key === 'RU' ? ((risk_results.RU || 0) + (risk_results.RUT || 0)) :
+                key === 'RV' ? ((risk_results.RV || 0) + (risk_results.RVT || 0)) :
+                key === 'RW' ? ((risk_results.RW || 0) + (risk_results.RWT || 0)) :
+                key === 'RZ' ? ((risk_results.RZ || 0) + (risk_results.RZT || 0)) :
+                (risk_results[key] || 1e-12),
+        }));
+
     selectedRisks.forEach(riskKey => {
-         chartData.push({ name: riskKey, value: risk_results[riskKey] || 1e-12 });
+         // Evita duplicar se o componente já estiver no gráfico (raro, mas possível dependendo da lógica de selectedRisks)
+         if (!chartData.find(d => d.name === riskKey)) {
+            chartData.push({ name: riskKey, value: risk_results[riskKey] || 1e-12 });
+         }
     });
 
     const currentChart = chartData;
@@ -385,17 +391,21 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
         const r = calculateRisksForZone(data.calculations, zoneProbCalcs, lossCalcs, data.selected_risk_components);
         activeZoneRisk = r;
         tooltipCtx = { probCalcs: zoneProbCalcs, lossCalcs, riskResults: r };
-        activeZoneChart = ALL_RISK_COMPONENTS.map(key => ({
-            name: key,
-            value:
-                key === 'RU' ? ((r.RU || 0) + (r.RUT || 0)) :
-                key === 'RV' ? ((r.RV || 0) + (r.RVT || 0)) :
-                key === 'RW' ? ((r.RW || 0) + (r.RWT || 0)) :
-                key === 'RZ' ? ((r.RZ || 0) + (r.RZT || 0)) :
-                (r[key] || 1e-12),
-        }));
+        activeZoneChart = ALL_RISK_COMPONENTS
+            .filter(key => data.selected_risk_components[key])
+            .map(key => ({
+                name: key,
+                value:
+                    key === 'RU' ? ((r.RU || 0) + (r.RUT || 0)) :
+                    key === 'RV' ? ((r.RV || 0) + (r.RVT || 0)) :
+                    key === 'RW' ? ((r.RW || 0) + (r.RWT || 0)) :
+                    key === 'RZ' ? ((r.RZ || 0) + (r.RZT || 0)) :
+                    (r[key] || 1e-12),
+            }));
         selectedRisks.forEach(riskKey => {
-            activeZoneChart.push({ name: riskKey, value: r[riskKey] || 1e-12 });
+            if (!activeZoneChart.find(d => d.name === riskKey)) {
+                activeZoneChart.push({ name: riskKey, value: r[riskKey] || 1e-12 });
+            }
         });
     }
 
@@ -560,9 +570,9 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                 )}
             </div>
 
-            <div className="flex justify-center mt-4 mb-2">
-                <span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">
-                    {`Gráfico de Componentes — ${activeHeading}`}
+            <div className="flex justify-center mt-3 mb-2">
+                <span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] shadow-lg shadow-black/40 whitespace-nowrap">
+                    {`Gráfico de Componentes (F) — ${activeHeading}`}
                 </span>
             </div>
 
@@ -575,7 +585,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart 
                                 data={activeZone ? activeZoneChart : chartData} 
-                                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                                 className="outline-none focus:outline-none"
                             >
                                 <defs>
@@ -624,19 +634,19 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                     tickFormatter={(tick) => {
                                         if (tick === 0) return '0';
                                         
-                                        // Se for um valor na escala de 1e-5 (comum para R1), formata com precisão
-                                        if (tick >= 1e-7) {
-                                            const [m, e] = tick.toExponential(2).split('e');
+                                        // Formatação científica otimizada para mobile
+                                        if (tick >= 1e-9) {
+                                            const [m, e] = tick.toExponential(1).split('e');
                                             const exp = parseInt(e, 10);
-                                            return `${m.replace('.', ',')}×10${exp}`;
+                                            return `${m.replace('.', ',')}e${exp}`;
                                         }
                                         
-                                        return tick.toExponential(1).replace('e', '×10');
+                                        return tick.toExponential(0).replace('e', 'e');
                                     }} 
-                                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }} 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    width={70}
+                                    width={55}
                                 />
                                 <ReferenceLine 
                                     y={displayedToleranceValue} 
@@ -696,24 +706,24 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="overflow-x-auto no-scrollbar w-full">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2 pt-2 border-t border-white/5 px-4 text-center min-w-[500px] lg:min-w-0">
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Choque (RA, RU)</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Incêndio (RB, RV)</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#94a3b8]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Sistemas (RC, RM, RW, RZ)</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#a78bfa]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Riscos Totais (RT)</span>
-                        </div>
+                    <div className="w-full mt-2 pt-2 border-t border-white/5 px-2">
+                        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 md:gap-x-6">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-[#3b82f6] shadow-[0_0_5px_rgba(59,130,246,0.5)]" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Choque (RA, RU)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-[#f43f5e] shadow-[0_0_5px_rgba(244,63,94,0.5)]" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Incêndio (RB, RV)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-[#94a3b8] shadow-[0_0_5px_rgba(148,163,184,0.5)]" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sistemas (RC, RM, RW, RZ)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-[#a78bfa] shadow-[0_0_5px_rgba(167,139,250,0.5)]" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Riscos Totais (RT)</span>
+                            </div>
                         </div>
                     </div>
                 </CardContent>

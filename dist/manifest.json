@@ -1,0 +1,26 @@
+{
+  "name": "Análise de Risco PDA NBR 5419-2:2026",
+  "short_name": "SPDA Risco",
+  "description": "Software profissional para análise de risco SPDA conforme NBR 5419:2026.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities", "business"],
+  "screenshots": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

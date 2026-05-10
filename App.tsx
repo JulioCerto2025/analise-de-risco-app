@@ -517,19 +517,21 @@ export default function App() {
 
                         <main className="flex-1 min-w-0 max-w-full">
                             {/* Cabeçalho móvel: visível apenas no celular */}
-                            <div className="md:hidden mb-4 bg-slate-950/70 backdrop-blur-lg border border-slate-500/50 p-4 rounded-lg shadow-2xl">
+                            <div className="md:hidden mb-3 bg-slate-950/70 backdrop-blur-lg border border-slate-500/40 p-2.5 px-3.5 rounded-xl shadow-2xl">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                    <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/20">
                                         <Calculator className="w-5 h-5 text-white" />
                                     </div>
-                                    <div>
-                                        <h1 className="text-base font-bold text-slate-100">Análise de Risco</h1>
-                                        <p className="text-xs text-slate-400">NBR 5419-2</p>
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <span className="px-2 py-0.5 rounded-md bg-blue-500/30 text-blue-300 text-xs font-semibold whitespace-nowrap">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-baseline gap-2">
+                                            <h1 className="text-[15px] font-black text-slate-100 uppercase tracking-wider">Análise de Risco</h1>
+                                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">NBR 5419-2</span>
+                                        </div>
+                                        <div className="mt-0.5 flex items-center gap-2">
+                                            <span className="px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-tighter whitespace-nowrap border border-blue-500/10">
                                                 Et. {currentStep} de {STEPS.length}
                                             </span>
-                                            <span className="text-xs text-slate-300 truncate">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
                                                 {MOBILE_STEP_NAMES[STEPS[currentStep - 1]] || STEPS[currentStep - 1]}
                                             </span>
                                         </div>

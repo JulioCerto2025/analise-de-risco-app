@@ -400,7 +400,11 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-center mt-3 mb-2"><span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40">{`Gráfico de Probabilidades — ${activeHeading}`}</span></div>
+            <div className="flex justify-center mt-3 mb-2">
+                <span className="px-5 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[9px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] shadow-lg shadow-black/40 whitespace-nowrap">
+                    {`Graf. de Prob. — ${activeHeading}`}
+                </span>
+            </div>
             <Card 
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
                 onClick={(e) => e.stopPropagation()}

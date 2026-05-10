@@ -125,7 +125,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                         <div className="leading-tight">
                             <div className="text-slate-100 font-semibold">
                                 <span className="hidden md:inline">Área Exp. Estrut. (Ad) e Próximo (Am)</span>
-                                <span className="md:hidden">Área Exp. Estr. (Ad) e Prox. (Am)</span>
+                                <span className="md:hidden whitespace-nowrap">A. Exp. Estr. (Ad) e Prox. (Am)</span>
                             </div>
                         </div>
                     </CardTitle>
