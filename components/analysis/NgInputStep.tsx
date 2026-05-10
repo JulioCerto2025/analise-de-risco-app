@@ -668,7 +668,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     // Removido: posicionamento automático baseado em cidade/UF
 
     return (
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
             {/* Left Panel: Inputs */}
             <div className="w-full lg:w-1/3 flex-shrink-0 space-y-4">
                 <Card>
@@ -836,7 +836,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
             {/* Right Panel: Map (visível também em mobile para capturar NG por clique) */}
             <div className="w-full lg:flex-1">
-                 <Card className="h-full flex flex-col">
+                 <Card className="h-fit">
                     <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
                          <div className="flex items-center gap-4">
                             {/* Controles removidos para simplificar a UI */}
@@ -856,14 +856,14 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                             </Button>
                          </div>
                     </CardHeader>
-                    <CardContent className="relative p-4 flex-1 flex flex-col overflow-hidden">
+                    <CardContent className="relative p-4">
                         {isLoading && (
                             <div className="absolute inset-0 bg-slate-900/70 z-10 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm">
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
                                 <p className="mt-4 text-slate-300 font-semibold">Analisando e Mapeando...</p>
                             </div>
                         )}
-                        <React.Suspense fallback={<div className="flex-1 w-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>
+                        <React.Suspense fallback={<div className="h-[480px] w-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>
                             <MapViewerLazy
                                 key={mapRegion}
                                 ref={mapViewerRef}
