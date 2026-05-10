@@ -8,7 +8,8 @@ import {
     Building2,
     HeartPulse,
     Landmark,
-    CircleDollarSign
+    CircleDollarSign,
+    Cable
 } from 'lucide-react';
 import { AnalysisData } from '../../types';
 import { motion } from 'framer-motion';
@@ -243,7 +244,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                     <CardHeader className="bg-blue-600/10 border-b border-blue-500/20 py-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
-                                <Zap className="w-5 h-5" />
+                                <Building2 className="w-5 h-5" />
                             </div>
                             <CardTitle className="text-[14px] font-black uppercase tracking-[0.05em] text-blue-100">
                                 S1/S2 - Descargas na Estrutura
@@ -296,7 +297,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                     <CardHeader className="bg-amber-600/10 border-b border-amber-500/20 py-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                                <Zap className="w-5 h-5" />
+                                <Cable className="w-5 h-5" />
                             </div>
                             <CardTitle className="text-[14px] font-black uppercase tracking-[0.05em] text-amber-100">
                                 S3/S4 - Descargas na Linha
