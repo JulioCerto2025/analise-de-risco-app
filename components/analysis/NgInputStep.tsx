@@ -780,9 +780,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                                 </div>
                             </div>
 
-                            <Label className="block w-full whitespace-nowrap text-center text-[10px] md:text-[11px] text-slate-300 font-bold tracking-wider uppercase opacity-80">
-                                {data.is_ng_manual ? 'Dens. Desc. (Definida pelo Usuário)' : '(Ng) Dens. Desc. (raios/km²/ano)'}
-                            </Label>
+
                         </div>
 
                         {/* Campo redundante de NG removido para priorizar captura por clique */}
