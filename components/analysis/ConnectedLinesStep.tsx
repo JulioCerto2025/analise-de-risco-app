@@ -27,10 +27,10 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
     const content = (
-        <div className={`w-full p-2 md:p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
-            <div className={`font-black text-sm md:text-xl lg:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
+        <div className={`w-full p-1.5 md:p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
+            <div className={`font-black text-xs md:text-xl lg:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
             {!hideInfo && (
-                <div className={`font-black text-[7px] md:text-[9px] uppercase tracking-[0.1em] md:tracking-[0.2em] text-slate-400 mt-0.5 flex items-center justify-center gap-1`}>
+                <div className={`font-black text-[6px] md:text-[9px] uppercase tracking-[0.1em] md:tracking-[0.2em] text-slate-400 mt-0.5 flex items-center justify-center gap-1`}>
                     {label}
                     <span className="opacity-60">({unit})</span>
                 </div>
@@ -185,7 +185,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                             >
                                 <CardContent className="space-y-1.5 flex-grow">
                                     {data.line_sections_1.map((section, index) => (
-                                        <div key={section.id} className="p-1 border border-slate-600 rounded-lg space-y-1 relative bg-slate-800/50">
+                                        <div key={section.id} className="p-1 md:p-2 border border-slate-600 rounded-2xl space-y-1 relative bg-slate-800/50">
                                             {data.line_sections_1.length > 1 && (
                                                 <div className="flex justify-between items-center mb-1">
                                                     <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
@@ -319,7 +319,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                             >
                                 <CardContent className="space-y-1.5 flex-grow">
                                     {data.line_sections_2.map((section, index) => (
-                                        <div key={section.id} className="p-1 border border-slate-600 rounded-lg space-y-1 relative bg-slate-800/50">
+                                        <div key={section.id} className="p-1 md:p-2 border border-slate-600 rounded-2xl space-y-1 relative bg-slate-800/50">
                                             {data.line_sections_2.length > 1 && (
                                                 <div className="flex justify-between items-center mb-1">
                                                     <h4 className="font-semibold text-slate-200">Trecho {index + 1}</h4>
@@ -436,7 +436,7 @@ const SelectField = ({ label, value, options, onChange }: { label: string; value
     <div className="space-y-1">
         <Label className="text-xs uppercase font-black text-slate-500 tracking-wider mix-blend-plus-lighter">{label}</Label>
         <Select value={String(value)} onValueChange={onChange} options={options}>
-            <SelectTrigger className="w-full truncate text-left h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full truncate text-left h-9 text-xs rounded-full !rounded-full"><SelectValue /></SelectTrigger>
             <SelectContent className="w-[min(90vw,640px)]">
                 {options.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
             </SelectContent>

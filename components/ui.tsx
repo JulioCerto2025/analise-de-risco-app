@@ -31,15 +31,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 export const Button = React.memo(React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', ...props }, ref) => {
-    const baseClasses = "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
+    const baseClasses = "inline-flex items-center justify-center rounded-full !rounded-full text-xs md:text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
     const variantClasses = {
       default: "bg-blue-600 text-white hover:bg-blue-700",
       outline: "border border-slate-500 bg-slate-800/50 text-slate-200 hover:bg-slate-700/70",
     };
     const sizeClasses = {
-      default: "h-10 px-4 py-2",
-      sm: "h-9 rounded-md px-3",
-      icon: "h-8 w-8",
+      default: "h-8 md:h-10 px-3 md:px-4 py-1 md:py-2",
+      sm: "h-7 md:h-9 rounded-md px-2 md:px-3",
+      icon: "h-7 w-7 md:h-8 md:w-8",
     };
     return <button className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`} ref={ref} {...props} />;
   }
@@ -51,13 +51,13 @@ export const Card = React.memo(({ className, ...props }: React.HTMLAttributes<HT
   <div className={`flex flex-col rounded-3xl border bg-slate-900/40 backdrop-blur-md text-slate-200 shadow-2xl border-slate-500/30 ${className}`} {...props} />
 ));
 export const CardHeader = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col space-y-1 p-4 py-3 bg-slate-900/80 text-white rounded-t-3xl border-b border-slate-700/50 ${className}`} {...props} />
+  <div className={`flex flex-col space-y-0.5 p-3 md:p-4 py-2 md:py-3 bg-slate-900/80 text-white rounded-t-3xl border-b border-slate-700/50 ${className}`} {...props} />
 ));
 export const CardTitle = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={`text-lg font-semibold leading-snug tracking-tight text-slate-100 ${className}`} {...props} />
+  <h3 className={`text-base md:text-lg font-semibold leading-tight tracking-tight text-slate-100 ${className}`} {...props} />
 ));
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`p-4 ${className}`} {...props} />
+  <div className={`p-3 md:p-4 ${className}`} {...props} />
 );
 
 // Progress
@@ -74,7 +74,7 @@ export const Progress = ({ value, className }: { value: number, className?: stri
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, spellCheck, lang, ...props }, ref) => (
     <input
-      className={`flex h-10 w-full rounded-full border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
+      className={`flex h-8 md:h-10 w-full rounded-full border border-slate-600 bg-[#0f172a] px-3 py-1 md:py-2 text-xs md:text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
       ref={ref}
       spellCheck={spellCheck ?? false}
       lang={lang ?? 'pt-BR'}
@@ -287,26 +287,19 @@ export const SelectTrigger = React.forwardRef<
     }
     
     return (
-        <>
-            <style dangerouslySetInnerHTML={{ __html: `
-                .force-rounded { border-radius: 9999px !important; overflow: hidden !important; }
-                .force-rounded * { border-radius: 9999px !important; }
-            `}} />
             <button 
                 ref={setRefs} 
                 type="button" 
                 onClick={() => context.setOpen(!context.open)} 
                 onKeyDown={context.handleKeyDown}
-                style={{ borderRadius: '9999px', overflow: 'hidden' }}
-                className={`flex h-10 w-full items-center justify-between gap-2 force-rounded border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm ring-offset-background placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} 
+                className={`flex h-8 md:h-10 w-full items-center justify-between gap-2 rounded-full !rounded-full border border-slate-700 bg-slate-900/90 px-3 py-2 text-xs md:text-sm ring-offset-background placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} 
                 {...props}
             >
-                <div className="flex-1 min-w-0 truncate text-left" style={{ borderRadius: '9999px' }}>
+                <div className="flex-1 min-w-0 truncate text-left rounded-full !rounded-full">
                     {children}
                 </div>
                 {!hideChevron && <ChevronDown className="h-4 w-4 opacity-70 flex-shrink-0 ml-1" />}
             </button>
-        </>
     );
 });
 SelectTrigger.displayName = "SelectTrigger";

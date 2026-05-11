@@ -51,9 +51,8 @@ export function ProjectInfoStep({
                 const loadedData = JSON.parse(event.target?.result as string);
                 if (onLoadProject) onLoadProject(loadedData);
                 else onUpdate(loadedData);
-                alert('Projeto carregado com sucesso!');
             }
-            catch (err) { alert('Erro ao abrir o arquivo.'); }
+            catch (err) { console.error('Erro ao abrir o arquivo:', err); }
         };
         reader.readAsText(file);
         e.target.value = '';

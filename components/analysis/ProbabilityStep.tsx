@@ -17,14 +17,14 @@ interface ProbabilityStepProps {
 
 // Exibe números como "9,98 × 10⁻⁷" com precisão ajustável para seção Detalhe/Valor
 const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
-    if (value === 0 || !isFinite(value)) return <span>0</span>;
+    if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
     let [mantissa, exponent] = value.toExponential(precision).split('e');
     const expInt = parseInt(exponent, 10);
     return (
-        <span className={`inline-flex items-baseline font-black tracking-tighter ${className}`}>
-            <span>{mantissa.replace('.', ',')}</span>
-            <span className="text-[0.6em] ml-0.5 opacity-80">&times;10</span>
-            <sup className="text-[0.55em] leading-none -top-[0.8em]">{expInt}</sup>
+        <span className={`inline-flex items-baseline ${className}`}>
+            <span className="font-black leading-none">{mantissa.replace('.', ',')}</span>
+            <span className="text-[0.7em] ml-1 opacity-90 font-black">&times;10</span>
+            <sup className="text-[0.6em] leading-none -top-[0.6em] font-black">{expInt}</sup>
         </span>
     );
 };
@@ -354,10 +354,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
                     {activeTab === 'electric' && (
                         <div className="space-y-3 pt-2.5 border-t border-white/5">
-                            <div className={`flex flex-col lg:flex-row lg:items-center justify-start gap-4 lg:gap-6 bg-slate-950/30 p-2.5 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''}`}>
+                            <div className={`flex flex-col lg:flex-row lg:items-center justify-start gap-3 lg:gap-6 bg-slate-950/30 p-1.5 md:p-2.5 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''}`}>
                                 <div className="flex flex-col items-center gap-1.5 lg:pr-6 lg:border-r border-white/10">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-white/90">Localização</Label>
-                                    <div className="flex p-1 bg-slate-900/60 rounded-xl border border-white/5">
+                                    <div className="flex p-1 bg-slate-900/60 rounded-full border border-white/5">
                                         <TabButton isActive={electricSubTab === 'internal'} onClick={() => setElectricSubTab('internal')} className="py-1 px-4 text-[10px]">Interna</TabButton>
                                         <TabButton isActive={electricSubTab === 'external'} onClick={() => setElectricSubTab('external')} className="py-1 px-4 text-[10px]">Externa</TabButton>
                                     </div>
@@ -366,7 +366,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_electric: v })} /></div>
                                 <div className="w-full lg:min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_electric_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric_ext: v, Uw_electric_int: v })} /></div>
                             </div>
-                            <div className={`grid gap-3 items-end bg-slate-900/40 p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''} ${electricSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
+                            <div className={`grid gap-2 md:gap-3 items-end bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''} ${electricSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
                                 <SelectInput label="Fator CLD" value={electricSubTab === 'external' ? prob.CLD_electric_ext : prob.CLD_electric_int} options={CLD_ONLY_OPTIONS} onUpdate={v => handleProbabilityChange(electricSubTab === 'external' ? { CLD_electric_ext: v } : { CLD_electric_int: v })} />
                                 <SelectInput label="Fator CLI" value={electricSubTab === 'external' ? prob.CLI_electric_ext : prob.CLI_electric_int} options={CLI_OPTIONS} onUpdate={v => handleProbabilityChange(electricSubTab === 'external' ? { CLI_electric_ext: v } : { CLI_electric_int: v })} />
                                 {electricSubTab === 'internal' && <SelectInput label="Ks3 (Fiação)" value={prob.Ks3_electric_int || 0} options={KS3_OPTIONS} onUpdate={v => handleProbabilityChange({ Ks3_electric_int: v })} />}
@@ -377,10 +377,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
 
                     {activeTab === 'data' && (
                         <div className="space-y-3 pt-2.5 border-t border-white/5">
-                            <div className={`flex flex-col lg:flex-row lg:items-center justify-start gap-4 lg:gap-6 bg-slate-950/30 p-2.5 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''}`}>
+                            <div className={`flex flex-col lg:flex-row lg:items-center justify-start gap-3 lg:gap-6 bg-slate-950/30 p-1.5 md:p-2.5 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''}`}>
                                 <div className="flex flex-col items-center gap-1.5 lg:pr-6 lg:border-r border-white/10">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-white/90">Localização</Label>
-                                    <div className="flex p-1 bg-slate-900/60 rounded-xl border border-white/5">
+                                    <div className="flex p-1 bg-slate-900/60 rounded-full border border-white/5">
                                         <TabButton isActive={dataSubTab === 'internal'} onClick={() => setDataSubTab('internal')} className="py-1 px-4 text-[10px]">Interna</TabButton>
                                         <TabButton isActive={dataSubTab === 'external'} onClick={() => setDataSubTab('external')} className="py-1 px-4 text-[10px]">Externa</TabButton>
                                     </div>
@@ -389,7 +389,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_data: v })} /></div>
                                 <div className="w-full lg:min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_data_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data_ext: v, Uw_data_int: v })} /></div>
                             </div>
-                            <div className={`grid gap-3 items-end bg-slate-900/40 p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''} ${dataSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
+                            <div className={`grid gap-2 md:gap-3 items-end bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''} ${dataSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
                                 <SelectInput label="Fator CLD" value={dataSubTab === 'external' ? prob.CLD_data_ext : prob.CLD_data_int} options={CLD_ONLY_OPTIONS} onUpdate={v => handleProbabilityChange(dataSubTab === 'external' ? { CLD_data_ext: v } : { CLD_data_int: v })} />
                                 <SelectInput label="Fator CLI" value={dataSubTab === 'external' ? prob.CLI_data_ext : prob.CLI_data_int} options={CLI_OPTIONS} onUpdate={v => handleProbabilityChange(dataSubTab === 'external' ? { CLI_data_ext: v } : { CLI_data_int: v })} />
                                 {dataSubTab === 'internal' && <SelectInput label="Ks3 (Fiação)" value={prob.Ks3_data_int || 0} options={KS3_OPTIONS} onUpdate={v => handleProbabilityChange({ Ks3_data_int: v })} />}
@@ -409,7 +409,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[10.5rem] pt-4 pb-2 flex flex-col">
+                <CardContent className="h-[9rem] md:h-[11.5rem] pt-2 md:pt-4 pb-1 md:pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} className="outline-none focus:outline-none">
@@ -498,7 +498,7 @@ function SelectInput({ label, value, options, onUpdate }: { label: string; value
         <div className="space-y-1 w-full flex flex-col items-center text-center">
             <Label className="text-[11px] font-black uppercase tracking-widest text-white leading-none mb-0.5">{label}</Label>
             <Select value={stringValue} onValueChange={(v) => onUpdate(parseFloat(v))} options={options}>
-                <SelectTrigger className="h-7 text-[11px] px-3 bg-slate-950/70 border-slate-700 w-full max-w-[320px] focus:ring-1 focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-7 text-[11px] px-3 bg-slate-950/70 border-slate-700 w-full max-w-[320px] rounded-full !rounded-full focus:ring-1 focus:ring-blue-500/50"><SelectValue /></SelectTrigger>
                 <SelectContent>{options.map(opt => <SelectItem key={opt.value} value={opt.value.toString()} label={opt.label} />)}</SelectContent>
             </Select>
         </div>

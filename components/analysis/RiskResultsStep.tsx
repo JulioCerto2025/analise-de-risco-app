@@ -15,10 +15,10 @@ const ScientificNotation = ({ value, precision = 2, className = "" }: { value: n
     const expInt = parseInt(exponent, 10);
     
     return (
-        <span className={`inline-flex items-baseline tracking-tight ${className}`}>
-            <span className="font-black">{mantissa.replace('.', ',')}</span>
-            <span className="text-[0.85em] ml-2 opacity-100 font-bold">&times;10</span>
-            <sup className="text-[0.75em] leading-none -top-[0.8em] font-bold">{expInt}</sup>
+        <span className={`inline-flex items-baseline ${className}`}>
+            <span className="font-black leading-none">{mantissa.replace('.', ',')}</span>
+            <span className="text-[0.7em] ml-1 opacity-90 font-black">&times;10</span>
+            <sup className="text-[0.6em] leading-none -top-[0.6em] font-black">{expInt}</sup>
         </span>
     );
 };
@@ -542,7 +542,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                 </div>
                                 <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-2 pb-4 px-8 items-center">
                                     <div className="flex flex-col items-center">
-                                        <div className={`relative z-10 text-5xl md:text-6xl lg:text-7xl font-black mb-4 transition-transform ${isAcceptable ? 'text-green-400' : 'text-red-400'}`}>
+                                        <div className={`relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 transition-transform ${isAcceptable ? 'text-green-400' : 'text-red-400'} px-1 flex justify-center w-full max-w-full overflow-visible`}>
                                             <ScientificNotation value={currentTotalRiskValue} precision={2} />
                                         </div>
                                         <div className={`relative z-10 py-2.5 px-10 rounded-full text-[11px] font-black uppercase tracking-[0.35em] border-2 ${isAcceptable ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>
@@ -580,7 +580,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[16.5rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[17.5rem] pt-6 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart 
@@ -646,7 +646,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                     tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }} 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    width={55}
+                                    width={65}
                                 />
                                 <ReferenceLine 
                                     y={displayedToleranceValue} 

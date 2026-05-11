@@ -186,7 +186,7 @@ export default function App() {
 
     const copyToClipboard = (text: string, label: string = 'Senha') => {
         navigator.clipboard.writeText(text);
-        alert(`${label} copiada com sucesso!`);
+        // Silently copied as per "sem malabarismos" requirement
     };
     const initialStep = React.useMemo(() => {
         try {
@@ -336,12 +336,12 @@ export default function App() {
 
     if (!isAuthenticated) {
         return (
-            <div className="fixed inset-0 z-[999] flex items-center justify-center p-2 bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-center">
-                <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-md"></div>
+            <div className="fixed inset-0 z-[999] flex items-center justify-center p-2 bg-[#020617] bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-center">
+                <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"></div>
 
                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ scale: 1 }}
+                    animate={{ scale: 1 }}
                     className="relative w-full max-w-[460px] bg-slate-950/50 backdrop-blur-xl border border-white/10 rounded-[1.8rem] shadow-[0_0_100px_-20px_rgba(59,130,246,0.4)] overflow-hidden flex flex-col"
                 >
                     {/* Header Ultra-Compacto */}
@@ -398,27 +398,26 @@ export default function App() {
 
 
 
-                        <div className="opacity-40 hover:opacity-100 transition-opacity duration-500 space-y-2">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[9.5px] uppercase font-bold tracking-widest text-slate-400 px-1 leading-none">
-                                    Cupom de Desconto (Opcional)
+                        <div className="space-y-2 pt-1 border-t border-white/5">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[8px] uppercase font-bold tracking-widest text-slate-600 px-1 leading-none">
+                                    Possui Cupom? (Opcional)
                                 </label>
                                 <input 
                                     type="text"
                                     value={couponInput}
                                     onChange={(e) => setCouponInput(e.target.value)}
-                                    placeholder="POSSUI UM CUPOM?"
-                                    className={`w-full h-9 bg-slate-950/50 border-2 ${isCouponValid ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/5' : 'border-slate-800 focus:border-blue-500/50 text-slate-200'} rounded-2xl px-4 text-center text-[11px] font-black tracking-[0.3em] outline-none transition-all placeholder:text-slate-700 placeholder:tracking-[0.1em] uppercase shadow-inner`}
+                                    placeholder="DIGITE AQUI"
+                                    className={`w-full h-8 bg-slate-950/30 border-2 ${isCouponValid ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' : 'border-slate-800/50 focus:border-blue-500/30 text-slate-400'} rounded-2xl px-4 text-center text-[10px] font-bold tracking-[0.2em] outline-none transition-all placeholder:text-slate-800 placeholder:tracking-normal uppercase shadow-inner`}
                                 />
                                 {isCouponValid && (
                                     <motion.div 
-                                        initial={{ opacity: 0, y: -10 }} 
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="text-center bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-blue-600/20 border border-blue-500/30 rounded-lg py-1.5"
+                                        initial={{ opacity: 0, scale: 0.95 }} 
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="text-center bg-blue-600/10 border border-blue-500/20 rounded-xl py-1"
                                     >
-                                        <p className="text-[10px] font-black text-white uppercase tracking-wider animate-pulse flex items-center justify-center gap-2">
-                                            ✨ CUPOM {couponInput.toUpperCase()} ATIVADO! ✨
-                                            <span className="text-emerald-400">ECONOMIA ESPECIAL PARA VOCÊ!</span>
+                                        <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest flex items-center justify-center gap-2">
+                                            CUPOM ATIVADO — ECONOMIA APLICADA
                                         </p>
                                     </motion.div>
                                 )}

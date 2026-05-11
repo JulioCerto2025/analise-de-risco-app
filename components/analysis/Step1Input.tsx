@@ -22,9 +22,9 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
     const displayValue = formatSmartNumber(value, { maxDecimals: 2, useScientificBelow: 0 });
     
     const content = (
-        <div className={`w-full p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
-            <div className={`font-black text-xl md:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
-            <div className="font-black text-[9px] uppercase tracking-[0.2em] text-slate-400 mt-1 flex items-center justify-center gap-1 leading-none mr-[-0.2em]">
+        <div className={`w-full p-2 md:p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
+            <div className={`font-black text-lg md:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
+            <div className="font-black text-[8px] md:text-[9px] uppercase tracking-[0.2em] text-slate-400 mt-0.5 md:mt-1 flex items-center justify-center gap-1 leading-none mr-[-0.2em]">
                 {label} <span className="opacity-60">({unit})</span>
             </div>
         </div>
@@ -132,8 +132,8 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-1">
                         <div className="mx-auto max-w-sm space-y-2">
-                            <span className="block text-center px-3 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-xs tracking-wider uppercase">Dimensões da Estrutura</span>
-                            <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-blue-950/30 border border-slate-700/50">
+                            <span className="block text-center px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-slate-200 font-semibold text-xs tracking-wider uppercase">Dimensões da Estrutura</span>
+                            <div className="grid grid-cols-2 gap-2 md:gap-3 p-2 md:p-3 rounded-2xl bg-blue-950/30 border border-slate-700/50">
                                 <DimensionInput icon="L" label="Comprimento" id="l" value={data.l} onUpdate={val => onUpdate({ l: val })} color="blue" />
                                 <DimensionInput icon="W" label="Largura" id="w" value={data.w} onUpdate={val => onUpdate({ w: val })} color="green" />
                                 <DimensionInput icon="H" label="Altura" id="h" value={data.h} onUpdate={val => onUpdate({ h: val })} color="red" />
@@ -151,7 +151,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                             type="number"
                                             value={data.ad_override ?? ""}
                                             onChange={(e) => onUpdate({ ad_override: e.target.value ? parseFloat(e.target.value) : null })}
-                                            className="w-full h-9 bg-black border border-slate-700/50 rounded-xl px-4 text-sm text-center font-bold text-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500/30 transition-all placeholder:text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            className="w-full h-9 bg-black border border-slate-700/50 rounded-full px-4 text-sm text-center font-bold text-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500/30 transition-all placeholder:text-slate-800 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             placeholder="Digitar m²"
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-amber-500/20 uppercase pointer-events-none">m²</span>
@@ -228,7 +228,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
 
             <div className="w-full space-y-4">
                 <Card className="h-fit">
-                    <CardHeader>
+                    <CardHeader className="p-2 md:p-4">
                         <CardTitle>CD - Fator de Localização</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -241,7 +241,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                     </CardContent>
                 </Card>
                 <Card className="h-fit">
-                    <CardHeader>
+                    <CardHeader className="p-2 md:p-4">
                         <CardTitle>Zonas de Estudo de Proteção</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">

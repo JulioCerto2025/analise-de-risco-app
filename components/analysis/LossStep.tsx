@@ -8,11 +8,16 @@ import { AnalysisData, LossData } from '../../types';
 import { RP_OPTIONS, RT_OPTIONS, RF_OPTIONS, HZ_OPTIONS, LF_OPTIONS, LO_OPTIONS, LF3_OPTIONS, LF4_OPTIONS, LO4_OPTIONS, LT_OPTIONS } from '../../constants';
 import { calculateLossesForZone } from '../../utils/calculations';
 
-const ScientificNotation = ({ value, precision = 2 }: { value: number; precision?: number }) => {
-    if (value === 0 || !isFinite(value)) return <span>0</span>;
+const ScientificNotation = ({ value, precision = 2, className = "" }: { value: number; precision?: number; className?: string }) => {
+    if (value === 0 || !isFinite(value)) return <span className={className}>0</span>;
     const [mantissa, exponent] = value.toExponential(precision).split('e');
+    const expInt = parseInt(exponent, 10);
     return (
-        <span className="font-mono tracking-tight" dangerouslySetInnerHTML={{ __html: `${mantissa.replace('.', ',')}&times;10<sup>${exponent}</sup>` }} />
+        <span className={`inline-flex items-baseline ${className}`}>
+            <span className="font-black leading-none">{mantissa.replace('.', ',')}</span>
+            <span className="text-[0.7em] ml-1 opacity-90 font-black">&times;10</span>
+            <sup className="text-[0.6em] leading-none -top-[0.6em] font-black">{expInt}</sup>
+        </span>
     );
 };
 
@@ -202,7 +207,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         </div>
                     )}
 
-                    <div className="min-h-[140px] pt-4">
+                    <div className="min-h-[120px] md:min-h-[140px] pt-2 md:pt-4">
                         {activeTab === 'populacao' && (
                             <div className="space-y-4">
                                 <div className="grid grid-cols-3 gap-2 sm:gap-4 px-1 sm:px-2 pt-2 border-t border-white/5">
@@ -214,7 +219,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         )}
                         {activeTab === 'incendio' && (
                             <div className="space-y-6 pt-2 border-t border-white/5">
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-1 sm:px-2">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 px-1 sm:px-2">
                                     <SelectInput label="LF - Danos Físicos" value={lossData.LF} options={LF_OPTIONS} onUpdate={v => handleUpdate('LF', v)} />
                                     <SelectInput label="rf - Risco Incêndio" value={lossData.rf} options={RF_OPTIONS} onUpdate={v => handleUpdate('rf', v)} />
                                     <SelectInput label="rp - Proteções" value={lossData.rp} options={RP_OPTIONS} onUpdate={v => handleUpdate('rp', v)} />
@@ -242,7 +247,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         )}
                         {activeTab === 'economica' && (
                             <div className="space-y-6 pt-2 border-t border-white/5">
-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
                                     <SelectInput label="lf4 - Dano Físico" value={lossData.lf4} options={LF4_OPTIONS} onUpdate={v => handleUpdate('lf4', v)} />
                                     <SelectInput label="lo4 - Falha Perda" value={lossData.lo4} options={LO4_OPTIONS} onUpdate={v => handleUpdate('lo4', v)} />
                                     <SelectInput label="lt4 - Choque" value={(lossData as any).lt4} options={LT_OPTIONS} onUpdate={v => handleUpdate('lt4' as any, v)} />
@@ -269,7 +274,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[13.5rem] pt-4 pb-2 flex flex-col">
+                <CardContent className="h-[14.5rem] pt-4 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }} className="outline-none focus:outline-none">
@@ -385,7 +390,7 @@ function SelectInput({ label, value, options, onUpdate }: { label: string; value
     const stringValue = value !== undefined ? value.toString() : "";
     
     return (
-        <div className="space-y-1 w-full flex flex-col items-center text-center overflow-hidden">
+        <div className="space-y-1 w-full flex flex-col items-center text-center">
             <Label className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-slate-400 leading-tight mb-0.5 truncate w-full px-0.5">{label}</Label>
             <Select value={stringValue} onValueChange={(v) => onUpdate(parseFloat(v))} options={options}>
                 <SelectTrigger className="h-8 sm:h-10 text-[9px] sm:text-xs px-2 sm:px-4 bg-slate-950/70 border-slate-700 w-full rounded-full !rounded-full focus:ring-1 focus:ring-blue-500/50">
