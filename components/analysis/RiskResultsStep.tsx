@@ -410,8 +410,8 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     }
 
     return (
-        <div className="max-w-6xl w-full mx-auto space-y-4 overflow-visible pb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="max-w-6xl w-full mx-auto space-y-2.5 overflow-visible pb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
                 <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-100/5 backdrop-blur-sm shadow-xl shadow-black/20 group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
                     
@@ -428,30 +428,30 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                     <CardContent className="space-y-4 py-4 px-4">
                         <div className="grid grid-cols-2 gap-x-3">
                             <div>
-                                <Label className="text-[11px] font-bold text-white mb-1 block uppercase tracking-wider text-left">Nível SPDA (PB)</Label>
+                                <Label className="text-[10px] font-bold text-white mb-0.5 block uppercase tracking-wider text-left">Nível SPDA (PB)</Label>
                                 <Select
                                     value={String(activeZone ? (activeZone.probability_overrides?.PB ?? data.probability_data.PB) : data.probability_data.PB)}
                                     onValueChange={(val) => handleSimulatorUpdate('PB', parseFloat(val))}
                                     options={PB_OPTIONS}
                                     onOpenChange={(open) => setOpenSelect(open ? 'pb' : null)}
-                                    wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-1' : 'relative mt-1'}
+                                    wrapperClassName={openSelect === 'pb' ? 'relative z-20 mt-0.5' : 'relative mt-0.5'}
                                 >
-                                <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-xs px-2"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {PB_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label className="text-[11px] font-bold text-white mb-1 block uppercase tracking-wider text-left">Prot. Incêndio (rp)</Label>
+                                <Label className="text-[10px] font-bold text-white mb-0.5 block uppercase tracking-wider text-left">Prot. Incêndio (rp)</Label>
                                 <Select
                                     value={String(activeZone ? (activeZone.loss_data.rp ?? 1) : (data.zones[0]?.loss_data.rp ?? 1))}
                                     onValueChange={(val) => activeZone ? handleZoneLossUpdate(activeZone.id, 'rp', parseFloat(val)) : handleSimulatorUpdate('rp', parseFloat(val))}
                                     options={RP_OPTIONS}
                                     onOpenChange={(open) => setOpenSelect(open ? 'rp' : null)}
-                                    wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-1' : 'relative mt-1'}
+                                    wrapperClassName={openSelect === 'rp' ? 'relative z-20 mt-0.5' : 'relative mt-0.5'}
                                 >
-                                    <SelectTrigger className="h-9 text-xs px-2"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-xs px-2"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {RP_OPTIONS.map(opt => <SelectItem key={opt.value} value={String(opt.value)} label={opt.label} />)}
                                     </SelectContent>
@@ -531,16 +531,16 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                         return (
                             <Card key={riskKey} className={`relative lg:col-span-2 overflow-hidden border border-white/10 bg-slate-950/40 backdrop-blur-2xl h-full transition-all duration-500 group hover:shadow-2xl rounded-[2.5rem] ${isAcceptable ? 'hover:shadow-green-500/10' : 'hover:shadow-red-500/10'}`}>
                                 <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${isAcceptable ? 'from-green-500 via-emerald-400 to-green-500' : 'from-red-600 via-rose-500 to-red-600'}`} />
-                                <div className="pt-6 px-8 flex justify-between items-start">
+                                <div className="pt-4 px-6 flex justify-between items-start">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 leading-none mb-1">Avaliação de Risco</span>
-                                        <span className="text-base font-black text-white tracking-[0.2em] uppercase">{`RT (${riskKey}) — ${activeHeading}`}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-400 leading-none mb-0.5">Avaliação de Risco</span>
+                                        <span className="text-sm font-black text-white tracking-[0.15em] uppercase">{`RT (${riskKey}) — ${activeHeading}`}</span>
                                     </div>
-                                    <div className={`p-3 rounded-2xl ${isAcceptable ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                        {isAcceptable ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                                    <div className={`p-2.5 rounded-xl ${isAcceptable ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                        {isAcceptable ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                                     </div>
                                 </div>
-                                <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1 pb-3 px-6 items-center">
+                                <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-0.5 pb-2.5 px-6 items-center">
                                     <div className="flex flex-col items-center">
                                         <div className={`relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 transition-transform ${isAcceptable ? 'text-green-400' : 'text-red-400'} px-1 flex justify-center w-full max-w-full overflow-visible`}>
                                             <ScientificNotation value={currentTotalRiskValue} precision={2} />
@@ -580,7 +580,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[15.5rem] pt-3 pb-2 flex flex-col">
+                <CardContent className="h-[14rem] pt-2 pb-1.5 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart 

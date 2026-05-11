@@ -135,9 +135,9 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
     const total_ll_2 = data.line_sections_2.reduce((sum, section) => sum + section.ll, 0);
 
     const motionVariants = {
-        hidden: { opacity: 0, height: 0, y: -20, overflow: 'hidden' },
-        visible: { opacity: 1, height: 'auto', y: 0, transition: { duration: 0.4, ease: "easeInOut" } },
-        exit: { opacity: 0, height: 0, y: -20, transition: { duration: 0.3, ease: "easeInOut" } }
+        hidden: { opacity: 0, height: 0, overflow: 'hidden' },
+        visible: { opacity: 1, height: 'auto', transition: { duration: 0.2, ease: "easeOut" } },
+        exit: { opacity: 0, height: 0, transition: { duration: 0.15, ease: "easeIn" } }
     };
 
     const prob = data.probability_data;

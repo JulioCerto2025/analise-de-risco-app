@@ -426,27 +426,27 @@ export default function App() {
                             {/* Seção 2: Planos com Cores Progressivas */}
                             <div className="grid grid-cols-3 gap-2 py-0.5">
                                 {/* Mensal */}
-                                <div className="bg-slate-900/40 border border-slate-800/50 rounded-2xl p-2.5 flex flex-col justify-between shadow-inner relative overflow-hidden group min-h-[70px]">
-                                    <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Plano Mensal</span>
+                                <div className="bg-slate-900/20 border border-slate-800/30 rounded-2xl p-2.5 flex flex-col justify-between shadow-inner relative overflow-hidden group min-h-[70px] transition-all duration-300 hover:bg-slate-800/40 hover:border-slate-700/60 hover:scale-[1.02] cursor-pointer">
+                                    <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1 group-hover:text-slate-400 transition-colors">Plano Mensal</span>
                                     <div className="flex items-baseline gap-1">
                                         <span className="text-[9px] font-bold text-slate-600">R$</span>
-                                        <span className="text-xl font-black text-slate-200 tracking-tighter">50,00</span>
+                                        <span className="text-xl font-black text-slate-400 tracking-tighter group-hover:text-slate-200 transition-colors">50,00</span>
                                     </div>
                                 </div>
                                 
                                 {/* Semestral */}
-                                <div className="bg-blue-600/5 border border-blue-500/20 rounded-2xl p-2.5 flex flex-col justify-between shadow-lg relative overflow-hidden group min-h-[70px]">
+                                <div className="bg-blue-600/5 border border-blue-500/10 rounded-2xl p-2.5 flex flex-col justify-between shadow-lg relative overflow-hidden group min-h-[70px] transition-all duration-300 hover:bg-blue-600/20 hover:border-blue-500/40 hover:scale-[1.02] cursor-pointer">
                                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent pointer-events-none" />
-                                    <span className="text-[7.5px] font-black text-blue-400/80 uppercase tracking-[0.2em] mb-1 relative z-10">Premium Semestral</span>
+                                    <span className="text-[7.5px] font-black text-blue-500/40 uppercase tracking-[0.2em] mb-1 relative z-10 group-hover:text-blue-400 transition-colors">Premium Semestral</span>
                                     <div className="relative z-10">
                                         {isCouponValid && (
                                             <div className="flex items-center gap-1.5 mb-0.5 leading-none">
-                                                <span className="text-[9px] font-bold text-red-400/60 line-through">R$ 200,00</span>
+                                                <span className="text-[9px] font-bold text-red-400/40 line-through">R$ 200,00</span>
                                             </div>
                                         )}
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-[9px] font-black text-blue-500/60">R$</span>
-                                            <span className="text-xl font-black text-white tracking-tighter leading-none">
+                                            <span className="text-[9px] font-black text-blue-500/40 group-hover:text-blue-500 transition-colors">R$</span>
+                                            <span className="text-xl font-black text-white/70 tracking-tighter leading-none group-hover:text-white transition-colors">
                                                 {isCouponValid ? "150,00" : "200,00"}
                                             </span>
                                         </div>
@@ -454,23 +454,23 @@ export default function App() {
                                 </div>
 
                                 {/* Anual */}
-                                <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-2xl p-2.5 flex flex-col justify-between shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)] relative overflow-hidden group ring-1 ring-emerald-500/20 min-h-[70px]">
+                                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-2.5 flex flex-col justify-between shadow-xl relative overflow-hidden group min-h-[70px] transition-all duration-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 hover:scale-[1.02] cursor-pointer">
                                     <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-transparent to-teal-500/10 pointer-events-none" />
-                                    <span className="text-[7.5px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1 relative z-10">Especial Anual</span>
+                                    <span className="text-[7.5px] font-black text-emerald-500/40 uppercase tracking-[0.2em] mb-1 relative z-10 group-hover:text-emerald-400 transition-colors">Especial Anual</span>
                                     <div className="relative z-10">
                                         {isCouponValid && (
                                             <div className="flex items-center gap-1.5 mb-0.5 leading-none">
-                                                <span className="text-[9px] font-bold text-red-400/60 line-through">R$ 300,00</span>
+                                                <span className="text-[9px] font-bold text-red-400/40 line-through">R$ 300,00</span>
                                             </div>
                                         )}
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-[9px] font-black text-emerald-500">R$</span>
-                                            <span className="text-xl font-black text-white tracking-tighter leading-none">
+                                            <span className="text-[9px] font-black text-emerald-500/40 group-hover:text-emerald-500 transition-colors">R$</span>
+                                            <span className="text-xl font-black text-white/70 tracking-tighter leading-none group-hover:text-white transition-colors">
                                                 {isCouponValid ? "250,00" : "300,00"}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="absolute -right-2 -top-2 w-12 h-12 bg-emerald-500/20 blur-xl rounded-full" />
+                                    <div className="absolute -right-2 -top-2 w-12 h-12 bg-emerald-500/10 blur-xl rounded-full" />
                                 </div>
                             </div>
                         </div>
@@ -551,7 +551,7 @@ export default function App() {
                 className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto"
             >
                 <div className="w-full flex justify-center py-1 px-1">
-                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-1 sm:gap-2 items-start pt-0.5 sm:pt-2 pb-0.5 sm:pb-2 px-1.5 sm:px-4">
+                    <div className="w-full max-w-full mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-1 sm:gap-2 items-start pt-0.5 sm:pt-2 pb-0.5 sm:pb-2 px-1.5 sm:px-4">
                         <aside className="hidden md:block">
                             <div className="sticky top-2 w-full flex flex-col gap-2 pb-2">
                                 <SidebarNav currentStep={currentStep} setStep={setStep}/>
@@ -634,10 +634,10 @@ export default function App() {
                                 <AnimatePresence mode="wait">
                                     <motion.div
                                         key={currentStep}
-                                        initial={{ opacity: 0, y: 15 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -15 }}
-                                        transition={{ duration: 0.25, ease: "easeOut" }}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.15, ease: "linear" }}
                                     >
                                         <ErrorBoundary variant="inline">
                                             {renderStep}
