@@ -278,11 +278,11 @@ export const ReportStep: React.FC<ReportStepProps> = ({ data, onUpdate }) => {
                                 <span className="text-slate-100 font-bold text-xs">Engº Júlio César Certo</span>
                                 <span className="text-[8px] text-slate-500 block mt-1 leading-none italic">(Não é o Resp. Técnico pela análise)</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                            <div className="hidden sm:block p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
                                 <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1">WhatsApp Apoio</span>
                                 <span className="text-slate-100 font-bold text-xs">(35) 9 8811-3746</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                            <div className="hidden sm:block p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
                                 <span className="text-[9px] uppercase font-bold text-slate-500 tracking-widest block mb-1">E-mail Suporte</span>
                                 <span className="text-slate-200 font-medium text-[10px]">julio.certo@hotmail.com</span>
                             </div>

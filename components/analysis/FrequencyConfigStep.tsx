@@ -541,22 +541,22 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 mt-2 pt-2 border-t border-white/5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Danos Físicos (FB, FV)</span>
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-2 pt-2 border-t border-white/5 px-2">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e] shadow-[0_0_5px_rgba(244,63,94,0.4)]" />
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Danos Físicos (FB, FV)</span>
                         </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#94a3b8]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Sistemas (FC, FM, FW, FZ)</span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#94a3b8] shadow-[0_0_5px_rgba(148,163,184,0.4)]" />
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Sistemas (FC, FM, FW, FZ)</span>
                         </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Aceitável</span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shadow-[0_0_5px_rgba(34,197,94,0.4)]" />
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Aceitável</span>
                         </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
-                            <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Crítico</span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shadow-[0_0_5px_rgba(239,68,68,0.4)]" />
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Crítico</span>
                         </div>
                     </div>
                 </CardContent>

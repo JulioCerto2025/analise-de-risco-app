@@ -28,9 +28,9 @@ const ResultBox = ({ label, value, unit, color, formula, formulaKey, formulaValu
 
     const content = (
         <div className={`w-full p-2 md:p-3 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center transition-all duration-300 hover:border-blue-500/30 ${bg}`}>
-            <div className={`font-black text-lg md:text-xl lg:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
+            <div className={`font-black text-sm md:text-xl lg:text-2xl tracking-tighter ${text}`}>{displayValue}</div>
             {!hideInfo && (
-                <div className={`font-black text-[9px] uppercase tracking-[0.2em] text-slate-400 mt-1 flex items-center justify-center gap-1 mr-[-0.2em]`}>
+                <div className={`font-black text-[7px] md:text-[9px] uppercase tracking-[0.1em] md:tracking-[0.2em] text-slate-400 mt-0.5 flex items-center justify-center gap-1`}>
                     {label}
                     <span className="opacity-60">({unit})</span>
                 </div>
@@ -207,8 +207,8 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="block pt-4 border-t border-slate-700/50 mt-2">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div className="hidden lg:block pt-4 border-t border-slate-700/50 mt-2">
+                                        <div className="grid grid-cols-2 gap-2 sm:gap-6">
                                             {/* Coluna Energia L1: Al + NL */}
                                             <div className="flex flex-col items-center gap-2">
                                                 <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>
@@ -328,7 +328,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                                     </Button>
                                                 </div>
                                             )}
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-2 gap-y-1.5">
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                                                 <DecimalInput label="Comp. (Ll)" value={section.ll} onUpdate={val => handleSectionChange('line_sections_2', section.id, 'll', val)} />
                                                 <SelectField label="CI (A.2)" value={section.ci} options={CI_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ci', val)} />
                                                 <SelectField label="CE (A.4)" value={section.ce} options={CE_OPTIONS} onChange={(val) => handleSectionChange('line_sections_2', section.id, 'ce', val)} />
@@ -341,8 +341,8 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
-                                    <div className="block pt-4 border-t border-slate-700/50 mt-2">
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="hidden lg:block pt-4 border-t border-slate-700/50 mt-2">
+                                        <div className="grid grid-cols-2 gap-2 sm:gap-6">
                                             {/* Coluna Dados L2: Al + NL */}
                                             <div className="flex flex-col items-center gap-2">
                                                 <span className="w-full max-w-[210px] px-5 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 font-black text-[10px] uppercase tracking-[0.3em] shadow-lg shadow-black/40 flex items-center justify-center text-center whitespace-nowrap">Área de Condução</span>

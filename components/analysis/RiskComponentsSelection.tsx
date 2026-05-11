@@ -18,7 +18,7 @@ import { Zap, Radio, AlertCircle, Info } from 'lucide-react';
 const SourceBadge = ({ type, label }: { type: 'S1' | 'S2' | 'S3' | 'S4', label: string }) => {
     const isDirect = type === 'S1' || type === 'S3';
     return (
-        <div className="flex flex-col gap-2 mb-4 group/badge">
+        <div className="hidden lg:flex flex-col gap-2 mb-4 group/badge">
             <div className="flex items-center gap-3">
                 <div className={`relative w-10 h-10 rounded-2xl border flex items-center justify-center transition-all duration-300 shadow-xl ${
                     isDirect 
@@ -198,7 +198,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
 
                 {/* RISCO DE PERDA A SER CALCULADO - AGORA ABAIXO */}
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="hidden lg:block">
                         <CardTitle>Risco de Perda a ser Calculado</CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -240,8 +240,8 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                <Card className="h-fit w-full lg:order-1 block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
-                    <CardHeader className="bg-slate-950/60 border-b border-blue-500/20 py-4">
+                <Card className="h-fit w-full lg:order-1 hidden lg:block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
+                    <CardHeader className="hidden lg:block bg-slate-950/60 border-b border-blue-500/20 py-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
                                 <Building2 className="w-5 h-5" />
@@ -253,7 +253,7 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                            <div className="sm:col-span-1 space-y-2 sm:pr-4 border-r border-white/5">
+                            <div className="sm:col-span-1 space-y-2 lg:pr-4 lg:border-r border-white/5">
                                 <SourceBadge type="S1" label="Incidência Direta" />
                                 {sourceOfDamageComponents.S1.map(({ key, label }) => {
                                     const isSystemFailure = SYSTEM_FAILURE_COMPONENTS.includes(key);
@@ -293,8 +293,8 @@ export function RiskComponentsSelection({ data, onChange }: RiskComponentsSelect
                     </CardContent>
                 </Card>
 
-                <Card className="h-fit w-full lg:order-2 block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
-                    <CardHeader className="bg-slate-950/60 border-b border-amber-500/20 py-4">
+                <Card className="h-fit w-full lg:order-2 hidden lg:block border-none bg-slate-900/40 shadow-2xl backdrop-blur-md overflow-hidden">
+                    <CardHeader className="hidden lg:block bg-slate-950/60 border-b border-amber-500/20 py-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
                                 <Cable className="w-5 h-5" />

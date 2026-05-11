@@ -179,7 +179,7 @@ function buildFactorsTable(data: AnalysisData, isWord: boolean = false, zoneInde
       <th style="${headerStyleLeft} width: 20%;">Cód.</th>
       <th style="${headerStyleLeft} width: 36%;">Fator Técnico Normativo</th>
       <th style="${headerStyleLeft} width: 7%;">Valor</th>
-      <th style="${headerStyleLeft} width: 37%;">Detalhamento da Premissa Escolhida (NBR 5419-2)</th>
+      <th style="${headerStyleLeft} width: 37%;">Detalhamento da Premissa Escolhida (NBR 5419-2:2026)</th>
     </tr>
   </thead>
   <tbody>
@@ -561,7 +561,7 @@ ${buildConclusion()}
 
 <div style="text-align: center; margin-top: 120px; padding-top: 6px; border-top: 1px solid #000000; max-width: 320px; margin-left: auto; margin-right: auto;">
   <p style="font-size: 14px; margin-bottom: 0; color: ${isWord ? '#000000' : '#f8fafc'};"><b>${formatProfessionalName(data.technicalManagerName)}</b></p>
-  <p style="font-size: 11px; color: ${isWord ? '#475569' : '#94a3b8'}; margin-top: 4px;">Analista Especialista em PDA — NBR 5419:2:2026</p>
+  <p style="font-size: 11px; color: ${isWord ? '#475569' : '#94a3b8'}; margin-top: 4px;">Analista Especialista em PDA — NBR 5419-2:2026</p>
 </div>
 `.trim();
 }

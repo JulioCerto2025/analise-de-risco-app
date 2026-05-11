@@ -159,7 +159,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                 </div>
                             </div>
                         </div>
-                    <div className="block pt-2 border-t border-slate-700/50 mt-4">
+                    <div className="hidden lg:block pt-2 border-t border-slate-700/50 mt-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                             {/* Coluna 1: Estrutura (Adf + Nd) */}
                             <div className="flex flex-col items-center gap-2">

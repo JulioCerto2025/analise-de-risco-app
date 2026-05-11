@@ -18,8 +18,8 @@ import { extractCityAndUf, normalizeCityName } from '../utils/addressParser';
 const STORAGE_KEY = 'spda-analysis-data';
 
 const initialInputData: AnalysisInputData = {
-    // Preset inicial: Exemplo 1 — NBR 5419-2
-    projectName: 'Exemplo 1 — NBR 5419-2',
+    // Preset inicial: Exemplo 1 — NBR 5419-2:2026
+    projectName: 'Exemplo 1 — NBR 5419-2:2026',
     clientName: 'Cliente Exemplo',
     clientAddress: 'São Paulo/SP',
     projectDate: '',

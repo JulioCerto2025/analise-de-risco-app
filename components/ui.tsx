@@ -287,17 +287,26 @@ export const SelectTrigger = React.forwardRef<
     }
     
     return (
-        <button 
-        ref={setRefs} 
-        type="button" 
-        onClick={() => context.setOpen(!context.open)} 
-        onKeyDown={context.handleKeyDown}
-        className={`flex h-10 w-full items-center justify-between gap-2 overflow-hidden rounded-xl border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm ring-offset-background placeholder:text-slate-400 focus:outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} 
-        {...props}
-        >
-        {children}
-        {!hideChevron && <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />}
-        </button>
+        <>
+            <style dangerouslySetInnerHTML={{ __html: `
+                .force-rounded { border-radius: 9999px !important; overflow: hidden !important; }
+                .force-rounded * { border-radius: 9999px !important; }
+            `}} />
+            <button 
+                ref={setRefs} 
+                type="button" 
+                onClick={() => context.setOpen(!context.open)} 
+                onKeyDown={context.handleKeyDown}
+                style={{ borderRadius: '9999px', overflow: 'hidden' }}
+                className={`flex h-10 w-full items-center justify-between gap-2 force-rounded border border-slate-700 bg-slate-900/90 px-3 py-2 text-sm ring-offset-background placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} 
+                {...props}
+            >
+                <div className="flex-1 min-w-0 truncate text-left" style={{ borderRadius: '9999px' }}>
+                    {children}
+                </div>
+                {!hideChevron && <ChevronDown className="h-4 w-4 opacity-70 flex-shrink-0 ml-1" />}
+            </button>
+        </>
     );
 });
 SelectTrigger.displayName = "SelectTrigger";
@@ -534,7 +543,7 @@ interface TabButtonProps {
 export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, children, className }) => (
     <button
         onClick={onClick}
-        className={`px-6 py-2.5 text-[12px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex-1 whitespace-nowrap min-w-[100px] border ${
+        className={`px-3 sm:px-6 py-2 sm:py-2.5 text-[9px] sm:text-[12px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex-1 whitespace-nowrap min-w-[70px] sm:min-w-[100px] border ${
             isActive 
                 ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' 
                 : 'bg-slate-800/40 text-slate-400 border-white/5 hover:bg-slate-700/60 hover:text-slate-200'

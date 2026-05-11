@@ -667,6 +667,52 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
 
     // Removido: posicionamento automático baseado em cidade/UF
 
+    const legendCard = (
+        <Card className="block">
+            <CardHeader className="py-2 px-4">
+                <CardTitle>Legenda do Mapa (Ng)</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+                <div className="space-y-2">
+                    {/* Linha superior (2..16) ocupando todo o card */}
+                    <div className="grid grid-cols-8 gap-x-2 justify-items-center">
+                        {palette.slice(0, 8).map((color, i) => {
+                            const index = i;
+                            const ngValue = (index * 2) + 2;
+                            const isHighlighted = legendHighlightIndex === index;
+                            return (
+                                <div key={index} className="text-center">
+                                    <div
+                                        className={`h-4 w-4 rounded ${isHighlighted ? 'ring-1 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'border border-slate-600/50'}`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    <span className="text-xs font-medium text-slate-300 mt-0.5 block">{ngValue}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {/* Linha inferior (18..32) ocupando todo o card */}
+                    <div className="grid grid-cols-8 gap-x-2 justify-items-center">
+                        {palette.slice(8, 16).map((color, i) => {
+                            const index = 8 + i;
+                            const ngValue = (index * 2) + 2;
+                            const isHighlighted = legendHighlightIndex === index;
+                            return (
+                                <div key={index} className="text-center">
+                                    <div
+                                        className={`h-4 w-4 rounded ${isHighlighted ? 'ring-1 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'border border-slate-600/50'}`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    <span className="text-xs font-medium text-slate-300 mt-0.5 block">{ngValue}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <div className="flex flex-col lg:flex-row gap-4 items-start">
             {/* Left Panel: Inputs */}
@@ -787,53 +833,13 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                     </CardContent>
                 </Card>
 
-                <Card className="block">
-                    <CardHeader className="py-2 px-4">
-                        <CardTitle>Legenda do Mapa (Ng)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3">
-                        <div className="space-y-2">
-                            {/* Linha superior (2..16) ocupando todo o card */}
-                            <div className="grid grid-cols-8 gap-x-2 justify-items-center">
-                                {palette.slice(0, 8).map((color, i) => {
-                                    const index = i;
-                                    const ngValue = (index * 2) + 2;
-                                    const isHighlighted = legendHighlightIndex === index;
-                                    return (
-                                        <div key={index} className="text-center">
-                                            <div
-                                                className={`h-4 w-4 rounded ${isHighlighted ? 'ring-1 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'border border-slate-600/50'}`}
-                                                style={{ backgroundColor: color }}
-                                            />
-                                            <span className="text-xs font-medium text-slate-300 mt-0.5 block">{ngValue}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            {/* Linha inferior (18..32) ocupando todo o card */}
-                            <div className="grid grid-cols-8 gap-x-2 justify-items-center">
-                                {palette.slice(8, 16).map((color, i) => {
-                                    const index = 8 + i;
-                                    const ngValue = (index * 2) + 2;
-                                    const isHighlighted = legendHighlightIndex === index;
-                                    return (
-                                        <div key={index} className="text-center">
-                                            <div
-                                                className={`h-4 w-4 rounded ${isHighlighted ? 'ring-1 ring-yellow-400 ring-offset-1 ring-offset-slate-900' : 'border border-slate-600/50'}`}
-                                                style={{ backgroundColor: color }}
-                                            />
-                                            <span className="text-xs font-medium text-slate-300 mt-0.5 block">{ngValue}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="hidden lg:block">
+                    {legendCard}
+                </div>
             </div>
 
-            {/* Right Panel: Map (visível também em mobile para capturar NG por clique) */}
-            <div className="w-full lg:flex-1">
+            {/* Right Panel: Map (Oculto em mobile conforme solicitado) */}
+            <div className="hidden lg:block w-full lg:flex-1">
                  <Card className="h-fit">
                     <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
                          <div className="flex items-center gap-4">
@@ -873,6 +879,10 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                         </React.Suspense>
                     </CardContent>
                 </Card>
+
+                <div className="mt-4 lg:hidden">
+                    {legendCard}
+                </div>
             </div>
         </div>
     );

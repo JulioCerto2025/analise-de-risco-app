@@ -200,7 +200,7 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                             </Alert>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-6">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 px-4 sm:px-6">
                             {eventsConfig.map(event => {
                                 const value = eventValues[event.name] || 0;
                                 const { period, unit } = formatFrequencyAsPeriod(value);
@@ -214,21 +214,21 @@ export function Step3Events({ data }: { data: AnalysisData }) {
                                             setSelectedEvent(current => current === event.name ? null : event.name);
                                             setActiveTooltipId(null);
                                         }}
-                                        className={`relative p-5 rounded-3xl border transition-all duration-300 cursor-pointer group hover:scale-[1.03] ${isSelected ? 'bg-blue-500/20 border-blue-500/60 shadow-xl' : 'bg-slate-950/60 border-white/10 hover:bg-slate-900/90 shadow-2xl shadow-black/40'}`}
+                                        className={`relative p-3 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all duration-300 cursor-pointer group hover:scale-[1.03] ${isSelected ? 'bg-blue-500/20 border-blue-500/60 shadow-xl' : 'bg-slate-950/60 border-white/10 hover:bg-slate-900/90 shadow-2xl shadow-black/40'}`}
                                     >
-                                        <div className="flex items-start justify-between gap-2 mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[11px] font-black tracking-tight whitespace-nowrap">
+                                        <div className="flex items-start justify-between gap-1 mb-1 sm:mb-2">
+                                            <div className="flex items-center gap-1 sm:gap-2">
+                                                <span className="text-[9px] sm:text-[11px] font-black tracking-tight whitespace-nowrap">
                                                     <span className="text-blue-400 uppercase tracking-widest">{event.name}</span>
-                                                    <span className="mx-1.5 text-slate-500 font-normal">-</span>
-                                                    <span className="text-slate-100 uppercase tracking-tighter opacity-90">{event.description}</span>
+                                                    <span className="hidden sm:inline mx-1.5 text-slate-500 font-normal">-</span>
+                                                    <span className="hidden sm:inline text-slate-100 uppercase tracking-tighter opacity-90">{event.description}</span>
                                                 </span>
                                             </div>
-                                            <Home className="w-4 h-4 text-slate-600 group-hover:text-amber-500/50 transition-colors" />
+                                            <Home className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600 group-hover:text-amber-500/50 transition-colors" />
                                         </div>
                                         <div className="flex flex-col items-center text-center">
-                                            <span className="text-4xl font-black text-white group-hover:scale-110 transition-transform origin-center leading-none mb-1">{period}</span>
-                                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest opacity-90 leading-none">{unit}</span>
+                                            <span className="text-xl sm:text-4xl font-black text-white group-hover:scale-110 transition-transform origin-center leading-none mb-1">{period}</span>
+                                            <span className="text-[8px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest opacity-90 leading-none">{unit}</span>
                                         </div>
                                     </div>
                                 );

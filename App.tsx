@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowRight, ArrowLeft, Calculator, CheckCircle, AlertTriangle, MessageCircle, Users, ShieldCheck, Copy, ShieldAlert, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button, Alert, AlertDescription, AlertTitle, AuditProvider } from "./components/ui";
+import { Button, Alert, AlertDescription, AlertTitle, AuditProvider, useIsMobile } from "./components/ui";
 import { Step1Input } from './components/analysis/Step1Input';
 import { NgInputStep } from './components/analysis/NgInputStep';
 import { ConnectedLinesStep } from './components/analysis/ConnectedLinesStep';
@@ -49,7 +49,7 @@ const SidebarNav = ({ currentStep, setStep }: { currentStep: number; setStep: (s
                     <h1 className="text-sm font-bold text-slate-100 uppercase tracking-widest leading-none">
                         Análise de Risco
                     </h1>
-                    <p className="text-[10px] text-slate-500 font-medium uppercase tracking-[0.2em] mt-1.5 opacity-80">NBR 5419-2</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase tracking-[0.2em] mt-1.5 opacity-80">NBR 5419-2:2026</p>
                 </div>
             </div>
             <nav className="space-y-1">
@@ -146,8 +146,11 @@ export default function App() {
     const [isAuthenticated, setIsAuthenticated] = React.useState(false);
     const [isAdmin, setIsAdmin] = React.useState(false);
     const [passwordInput, setPasswordInput] = React.useState("");
+    const [couponInput, setCouponInput] = React.useState("");
     const [authError, setAuthError] = React.useState(false);
     const [showAdminPanel, setShowAdminPanel] = React.useState(true);
+
+    const isCouponValid = couponInput.toUpperCase() === "RENATO60HZ";
 
     const passwords = React.useMemo(() => ({
         trial: generateTrialPassword(),
@@ -201,17 +204,30 @@ export default function App() {
         }
     }, []);
     const [currentStep, setCurrentStep] = React.useState(initialStep);
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+    // Scroll to top when step changes
+    React.useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+        }
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTo(0, 0);
+        document.body.scrollTo(0, 0);
+    }, [currentStep]);
+
     // Removido: controle de loop por zona entre etapas 7 e 8
     const [errors, setErrors] = React.useState<string[]>([]);
 
     const [activeTooltipId, setActiveTooltipId] = React.useState<string | null>(null);
 
+    const isMobile = useIsMobile();
     const auditProviderValue = React.useMemo(() => ({
-        auditMode: !!data.audit_mode,
+        auditMode: isMobile ? false : !!data.audit_mode,
         setAuditMode: (m: boolean) => updateData({ audit_mode: m }),
         activeTooltipId,
         setActiveTooltipId
-    }), [data.audit_mode, updateData, activeTooltipId]);
+    }), [data.audit_mode, updateData, activeTooltipId, isMobile]);
 
     const handleNext = React.useCallback(async () => {
         try {
@@ -329,12 +345,12 @@ export default function App() {
                     className="relative w-full max-w-[460px] bg-slate-950/50 backdrop-blur-xl border border-white/10 rounded-[1.8rem] shadow-[0_0_100px_-20px_rgba(59,130,246,0.4)] overflow-hidden flex flex-col"
                 >
                     {/* Header Ultra-Compacto */}
-                    <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-3 text-center border-b border-white/10 shrink-0">
+                    <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-2.5 text-center border-b border-white/10 shrink-0">
                         <div className="flex items-center justify-center gap-3">
-                            <div className="relative w-9 h-9 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
-                                <Calculator className="w-5 h-5 text-white" />
-                                <div className="absolute -bottom-1.5 -right-1.5 bg-blue-700 rounded-full p-[2px] shadow-md border border-white/10">
-                                    <Settings className="w-3.5 h-3.5 text-blue-100" />
+                            <div className="relative w-8 h-8 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
+                                <Calculator className="w-4.5 h-4.5 text-white" />
+                                <div className="absolute -bottom-1 -right-1 bg-blue-700 rounded-full p-[2px] shadow-md border border-white/10">
+                                    <Settings className="w-3 h-3 text-blue-100" />
                                 </div>
                             </div>
                             <div className="text-left leading-tight">
@@ -343,8 +359,8 @@ export default function App() {
                         </div>
                     </div>
 
-                    <div className="p-4 space-y-3.5 flex-1 overflow-hidden">
-                        <div className="text-center py-2 space-y-1.5">
+                    <div className="p-3 px-4 space-y-2 flex-1 overflow-hidden">
+                        <div className="text-center py-1 space-y-1">
                             <h3 className="text-blue-200 text-[13px] font-black uppercase tracking-[0.15em] leading-tight drop-shadow-md">
                                 <span className="hidden sm:inline">Plataforma </span>Análise de Risco NBR 5419-2 2026
                             </h3>
@@ -354,27 +370,27 @@ export default function App() {
                         </div>
 
                         {/* Seção 1: Login Form */}
-                        <form onSubmit={handleAuth} className="py-2.5">
+                        <form onSubmit={handleAuth} className="py-1">
                             <div className="flex flex-col gap-2">
-                                <label className="text-[9.5px] uppercase font-bold tracking-widest text-slate-400 px-1 flex justify-between leading-none">
+                                <label className="text-[9px] uppercase font-black tracking-[0.2em] text-slate-500 px-1 flex justify-between leading-none">
                                     <span>Senha de Acesso</span>
-                                    {authError && <span className="text-red-400/80 text-[8px] tracking-normal font-semibold">Acesso Negado</span>}
+                                    {authError && <span className="text-red-400 font-bold animate-shake">Acesso Negado</span>}
                                 </label>
-                                <div className="flex gap-3 items-center">
+                                <div className="flex gap-2 items-center">
                                     <input 
                                         type="password"
                                         value={passwordInput}
                                         onChange={(e) => setPasswordInput(e.target.value)}
                                         placeholder="••••••••"
-                                        className={`flex-1 min-w-0 h-12 bg-slate-950 border ${authError ? 'border-red-500/30' : 'border-slate-800 focus:border-blue-500/30'} rounded-xl px-4 text-white text-center text-xl tracking-[0.3em] outline-none transition-all placeholder:tracking-normal placeholder:text-slate-800 font-mono`}
+                                        className={`flex-1 min-w-0 h-12 bg-slate-950/80 border-2 ${authError ? 'border-red-500/30' : 'border-slate-800 focus:border-blue-500/50'} rounded-2xl px-4 text-white text-center text-2xl tracking-[0.4em] outline-none transition-all placeholder:tracking-normal placeholder:text-slate-800 font-mono shadow-inner`}
                                         autoFocus
                                     />
                                     <button 
                                         type="submit" 
-                                        className="shrink-0 px-6 h-12 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-[10px] rounded-xl transition-all active:scale-95 uppercase whitespace-nowrap leading-none shadow-lg shadow-blue-900/20 group"
+                                        className="shrink-0 px-6 h-12 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-black tracking-widest text-[10px] rounded-2xl transition-all active:scale-95 uppercase leading-none shadow-lg shadow-blue-900/30 group border-none"
                                     >
-                                        Entrar no App
-                                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                                        Entrar
+                                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                     </button>
                                 </div>
                             </div>
@@ -382,97 +398,141 @@ export default function App() {
 
 
 
-                        <div className="opacity-40 hover:opacity-100 transition-opacity duration-500">
-                            {/* Seção 2: Planos com Cores Progressivas */}
-                            <div className="grid grid-cols-3 gap-1.5 py-1">
-                            {/* Mensal: Mais sóbrio/discreto */}
-                            <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl p-2 sm:p-3 flex flex-col gap-0.5 sm:gap-1 shadow-inner relative overflow-hidden group">
-                                <span className="text-[7.5px] sm:text-[8.5px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap leading-none">Plano Mensal</span>
-                                <div className="flex items-baseline gap-0.5 sm:gap-1">
-                                    <span className="text-[9px] sm:text-[11px] font-bold text-slate-600 uppercase leading-none">R$</span>
-                                    <span className="text-lg sm:text-2xl font-bold text-slate-300 tracking-tight leading-none">50,00</span>
-                                </div>
-                            </div>
-                            
-                            {/* Semestral: Intermediário */}
-                            <div className="bg-blue-900/10 border border-blue-500/10 rounded-xl p-2 sm:p-3 flex flex-col gap-0.5 sm:gap-1 shadow-inner relative overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
-                                <span className="text-[7.5px] sm:text-[8.5px] font-bold text-blue-400/70 uppercase tracking-widest whitespace-nowrap leading-none relative z-10">Premium Semestral</span>
-                                <div className="flex items-baseline gap-0.5 sm:gap-1 relative z-10">
-                                    <span className="text-[9px] sm:text-[11px] font-bold text-blue-500/50 uppercase leading-none">R$</span>
-                                    <span className="text-lg sm:text-2xl font-bold text-blue-100 tracking-tight leading-none">200,00</span>
-                                </div>
+                        <div className="opacity-40 hover:opacity-100 transition-opacity duration-500 space-y-2">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[9.5px] uppercase font-bold tracking-widest text-slate-400 px-1 leading-none">
+                                    Cupom de Desconto (Opcional)
+                                </label>
+                                <input 
+                                    type="text"
+                                    value={couponInput}
+                                    onChange={(e) => setCouponInput(e.target.value)}
+                                    placeholder="POSSUI UM CUPOM?"
+                                    className={`w-full h-9 bg-slate-950/50 border-2 ${isCouponValid ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/5' : 'border-slate-800 focus:border-blue-500/50 text-slate-200'} rounded-2xl px-4 text-center text-[11px] font-black tracking-[0.3em] outline-none transition-all placeholder:text-slate-700 placeholder:tracking-[0.1em] uppercase shadow-inner`}
+                                />
+                                {isCouponValid && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: -10 }} 
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="text-center bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-blue-600/20 border border-blue-500/30 rounded-lg py-1.5"
+                                    >
+                                        <p className="text-[10px] font-black text-white uppercase tracking-wider animate-pulse flex items-center justify-center gap-2">
+                                            ✨ CUPOM {couponInput.toUpperCase()} ATIVADO! ✨
+                                            <span className="text-emerald-400">ECONOMIA ESPECIAL PARA VOCÊ!</span>
+                                        </p>
+                                    </motion.div>
+                                )}
                             </div>
 
-                            {/* Anual: O mais convidativo/chamativo */}
-                            <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-2 sm:p-3 flex flex-col gap-0.5 sm:gap-1 shadow-[0_0_15px_-5px_rgba(16,185,129,0.4)] relative overflow-hidden group ring-1 ring-emerald-500/30">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-transparent to-teal-500/10 pointer-events-none" />
-                                <span className="text-[7.5px] sm:text-[8.5px] font-bold text-emerald-400 uppercase tracking-widest whitespace-nowrap leading-none relative z-10">Especial Anual</span>
-                                <div className="flex items-baseline gap-0.5 sm:gap-1 relative z-10">
-                                    <span className="text-[9px] sm:text-[11px] font-bold text-emerald-500 uppercase leading-none font-black">R$</span>
-                                    <span className="text-lg sm:text-2xl font-black text-white tracking-tight leading-none">300,00</span>
+                            {/* Seção 2: Planos com Cores Progressivas */}
+                            <div className="grid grid-cols-3 gap-2 py-0.5">
+                                {/* Mensal */}
+                                <div className="bg-slate-900/40 border border-slate-800/50 rounded-2xl p-2.5 flex flex-col justify-between shadow-inner relative overflow-hidden group min-h-[70px]">
+                                    <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Plano Mensal</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-[9px] font-bold text-slate-600">R$</span>
+                                        <span className="text-xl font-black text-slate-200 tracking-tighter">50,00</span>
+                                    </div>
                                 </div>
-                                <div className="absolute -right-2 -top-2 w-10 h-10 bg-emerald-500/20 blur-xl rounded-full group-hover:bg-emerald-500/40 transition-all" />
+                                
+                                {/* Semestral */}
+                                <div className="bg-blue-600/5 border border-blue-500/20 rounded-2xl p-2.5 flex flex-col justify-between shadow-lg relative overflow-hidden group min-h-[70px]">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent pointer-events-none" />
+                                    <span className="text-[7.5px] font-black text-blue-400/80 uppercase tracking-[0.2em] mb-1 relative z-10">Premium Semestral</span>
+                                    <div className="relative z-10">
+                                        {isCouponValid && (
+                                            <div className="flex items-center gap-1.5 mb-0.5 leading-none">
+                                                <span className="text-[9px] font-bold text-red-400/60 line-through">R$ 200,00</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-[9px] font-black text-blue-500/60">R$</span>
+                                            <span className="text-xl font-black text-white tracking-tighter leading-none">
+                                                {isCouponValid ? "150,00" : "200,00"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Anual */}
+                                <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-2xl p-2.5 flex flex-col justify-between shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)] relative overflow-hidden group ring-1 ring-emerald-500/20 min-h-[70px]">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-transparent to-teal-500/10 pointer-events-none" />
+                                    <span className="text-[7.5px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-1 relative z-10">Especial Anual</span>
+                                    <div className="relative z-10">
+                                        {isCouponValid && (
+                                            <div className="flex items-center gap-1.5 mb-0.5 leading-none">
+                                                <span className="text-[9px] font-bold text-red-400/60 line-through">R$ 300,00</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-[9px] font-black text-emerald-500">R$</span>
+                                            <span className="text-xl font-black text-white tracking-tighter leading-none">
+                                                {isCouponValid ? "250,00" : "300,00"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="absolute -right-2 -top-2 w-12 h-12 bg-emerald-500/20 blur-xl rounded-full" />
+                                </div>
                             </div>
                         </div>
 
                         {/* Seção 3: CPF PIX (Logo abaixo dos Planos) */}
-                        <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-3 space-y-2 my-1">
-                            <div className="flex items-center gap-2 text-slate-400 px-1 leading-none">
-                                <CheckCircle className="w-3 h-3 text-emerald-400" />
-                                <p className="text-[8.5px] font-bold uppercase tracking-widest leading-tight text-slate-300">Depósito PIX — Envie o Comprovante - Whatsapp (35) 9 8811-3746</p>
+                        <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3 space-y-2 shadow-xl backdrop-blur-sm">
+                            <div className="flex items-center gap-3 text-slate-400 px-1">
+                                <div className="w-5 h-5 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                </div>
+                                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-300">Pagamento via PIX — Envie o Comprovante</p>
                             </div>
                             
                             <div 
                                 onClick={() => copyToClipboard('04727277611', 'Chave PIX')}
-                                className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center cursor-pointer hover:bg-slate-900 hover:border-slate-700 transition-all border-dashed group active:scale-[0.98] flex flex-col items-center justify-center gap-1.5"
+                                className="bg-slate-900/50 border border-slate-800 rounded-2xl p-3 text-center cursor-pointer hover:bg-blue-600/10 hover:border-blue-500/30 transition-all group active:scale-[0.98] flex flex-col items-center justify-center gap-1"
                             >
-                                <p className="text-[8.5px] font-bold text-blue-400/70 uppercase tracking-widest group-hover:text-blue-400 transition-colors italic leading-none">PIX CPF - JÚLIO CESAR CERTO</p>
-                                <div className="flex items-center gap-2 text-slate-300 group-hover:text-white transition-colors">
-                                    <span className="text-xl font-medium tracking-widest font-mono">047.272.776-11</span>
-                                    <Copy className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
+                                <p className="text-[7.5px] font-black text-blue-400/60 uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">Chave CPF — Júlio César Certo</p>
+                                <div className="flex items-center gap-3 text-slate-100 group-hover:text-white transition-colors">
+                                    <span className="text-lg font-black tracking-[0.2em] font-mono">047.272.776-11</span>
+                                    <Copy className="w-3.5 h-3.5 text-slate-600 group-hover:text-blue-400 transition-colors" />
                                 </div>
                             </div>
 
-                            <p className="text-[9.5px] text-slate-300 font-bold italic text-center px-1 leading-normal">
-                                * Valor referente ao acesso à ferramenta. Assessorias e Projetos à combinar.
+                            <p className="text-[10px] text-slate-500 font-bold italic text-center px-2 leading-relaxed">
+                                * Acesso imediato após envio do comprovante para <span className="text-blue-400">(35) 9 8811-3746</span>.
                             </p>
                         </div>
-                        </div>
-
-                        <div className="py-2 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                        
+                        <div className="py-1">
                             {/* Seção 4: Links de Apoio (Tutorial e WhatsApp) */}
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 <a 
                                     href="https://www.youtube.com/watch?v=NpSiWh-LiOk&t=131s" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="bg-slate-950/40 border border-slate-800 rounded-xl p-2 px-3 flex flex-row items-center justify-center gap-2.5 transition-all hover:bg-red-500/10 hover:border-red-500/30 group shadow-lg"
+                                    className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all hover:bg-red-500/10 hover:border-red-500/30 group shadow-lg backdrop-blur-sm"
                                 >
-                                    <div className="p-2 bg-red-500/20 rounded-lg group-hover:bg-red-500/30 transition-colors">
-                                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-red-400 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
+                                    <div className="w-8 h-8 bg-red-500/20 rounded-xl flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
+                                        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-red-400 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505a3.017 3.017 0 00-2.122 2.136C0 8.055 0 12 0 12s0 3.945.501 5.814a3.017 3.017 0 002.122 2.136c1.872.505 9.377.505 9.377.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.945 24 12 24 12s0-3.945-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                                         </svg>
                                     </div>
-                                    <span className="font-black text-[9.5px] text-slate-300 uppercase tracking-widest group-hover:text-white transition-colors">Tutorial</span>
+                                    <span className="font-black text-[9px] text-slate-300 uppercase tracking-[0.2em] group-hover:text-white transition-colors">Tutorial</span>
                                 </a>
-
+ 
                                 <a 
                                     href="https://chat.whatsapp.com/IawpsONjvohHjlE8Yhwe9s" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="bg-slate-950/40 border border-slate-800 rounded-xl p-2 px-3 flex flex-row items-center justify-center gap-2.5 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/30 group shadow-lg"
+                                    className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/30 group shadow-lg backdrop-blur-sm"
                                 >
-                                    <div className="p-2 bg-emerald-500/20 rounded-lg group-hover:bg-emerald-500/30 transition-colors">
-                                        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-400 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
+                                    <div className="w-8 h-8 bg-emerald-500/20 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
+                                        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-emerald-400 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                                         </svg>
                                     </div>
-                                    <span className="font-black text-[9.5px] text-slate-300 uppercase tracking-widest group-hover:text-white transition-colors">Comunidade</span>
+                                    <span className="font-black text-[9px] text-slate-300 uppercase tracking-[0.2em] group-hover:text-white transition-colors">Comunidade</span>
                                 </a>
                             </div>
                         </div>
-
                     </div>
 
                     <div className="bg-slate-950/90 px-8 py-2.5 border-t border-slate-800 text-[8px] text-slate-600 flex justify-between items-center shrink-0 leading-none">
@@ -487,9 +547,12 @@ export default function App() {
 
     return (
         <AuditProvider value={auditProviderValue}>
-            <div className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto">
+            <div 
+                ref={scrollContainerRef}
+                className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto"
+            >
                 <div className="w-full flex justify-center py-1 px-1">
-                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-3 items-start pt-2 pb-2 px-4">
+                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-1 sm:gap-3 items-start pt-1 sm:pt-2 pb-1 sm:pb-2 px-2 sm:px-4">
                         <aside className="hidden md:block">
                             <div className="sticky top-2 w-full flex flex-col gap-2 pb-2">
                                 <SidebarNav currentStep={currentStep} setStep={setStep}/>
@@ -503,21 +566,22 @@ export default function App() {
                                         <ArrowLeft className="w-4 h-4" />
                                         <span className="uppercase tracking-widest text-[11px]">Anterior</span>
                                     </Button>
-                                    <Button
-                                        onClick={handleNext}
-                                        disabled={currentStep === STEPS.length}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[40px] flex-[1.5]"
-                                    >
-                                        <span className="uppercase tracking-widest text-[11px]">{currentStep === STEPS.length ? "Finalizar" : "Próximo"}</span>
-                                        <ArrowRight className="w-4 h-4" />
-                                    </Button>
+                                    {currentStep < STEPS.length && (
+                                        <Button
+                                            onClick={handleNext}
+                                            className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xl shadow-blue-500/20 transition-all border-none min-h-[40px] flex-[1.5]"
+                                        >
+                                            <span className="uppercase tracking-widest text-[11px]">Próximo</span>
+                                            <ArrowRight className="w-4 h-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </aside>
 
                         <main className="flex-1 min-w-0 max-w-full">
                             {/* Cabeçalho móvel: visível apenas no celular */}
-                            <div className="md:hidden mb-3 bg-slate-950/70 backdrop-blur-lg border border-slate-500/40 p-2.5 px-3.5 rounded-xl shadow-2xl">
+                            <div className="md:hidden mb-2 bg-slate-950/70 backdrop-blur-lg border border-slate-500/40 p-2 px-3 rounded-xl shadow-2xl">
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/20">
                                         <Calculator className="w-5 h-5 text-white" />
@@ -528,8 +592,8 @@ export default function App() {
                                             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">NBR 5419-2</span>
                                         </div>
                                         <div className="mt-0.5 flex items-center gap-2">
-                                            <span className="px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 text-[9px] font-black uppercase tracking-tighter whitespace-nowrap border border-blue-500/10">
-                                                Et. {currentStep} de {STEPS.length}
+                                            <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-tight whitespace-nowrap border border-blue-500/10">
+                                                Etapa &nbsp;{currentStep} / {STEPS.length}
                                             </span>
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
                                                 {MOBILE_STEP_NAMES[STEPS[currentStep - 1]] || STEPS[currentStep - 1]}
@@ -587,7 +651,7 @@ export default function App() {
                             <div className="md:hidden fixed left-0 right-0 z-50 shadow-2xl" style={{ bottom: 'env(safe-area-inset-bottom)' }}>
                                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[80px]" style={{ background: 'linear-gradient(to top, rgba(2,6,23,0.95), rgba(2,6,23,0))' }} />
                                 <div className="mx-auto max-w-7xl px-3 pb-2">
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className={`grid ${currentStep === STEPS.length ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
                                         <Button
                                             variant="outline"
                                             onClick={handlePrev}
@@ -597,14 +661,15 @@ export default function App() {
                                             <ArrowLeft className="w-4 h-4" />
                                             Anterior
                                         </Button>
-                                        <Button
-                                            onClick={handleNext}
-                                            disabled={currentStep === STEPS.length}
-                                            className="flex items-center gap-2 w-full h-12 text-base"
-                                        >
-                                            {currentStep === STEPS.length ? "Finalizar" : "Próximo"}
-                                            <ArrowRight className="w-4 h-4" />
-                                        </Button>
+                                        {currentStep < STEPS.length && (
+                                            <Button
+                                                onClick={handleNext}
+                                                className="flex items-center gap-2 w-full h-12 text-base"
+                                            >
+                                                Próximo
+                                                <ArrowRight className="w-4 h-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </div>

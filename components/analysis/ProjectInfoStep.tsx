@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Input, Textarea, Label, Button, useAuditMode } from '../ui';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, Input, Textarea, Label, Button, useAuditMode, useIsMobile } from '../ui';
 import { Briefcase, ShieldAlert, X, Clipboard, CheckCircle2, Save, FolderOpen, Search, ShieldCheck } from 'lucide-react';
 import { AnalysisData } from '../../types';
 import { DatePicker } from '../DatePicker';
@@ -28,6 +28,15 @@ export function ProjectInfoStep({
 }: ProjectInfoStepProps) {
 
     const { auditMode, setAuditMode } = useAuditMode();
+    const isMobile = useIsMobile();
+
+    // Auto-preenche a data no mobile se estiver vazia para compactar a interface
+    useEffect(() => {
+        if (isMobile && !data.projectDate) {
+            const today = new Date().toISOString().split('T')[0];
+            onUpdate({ projectDate: today });
+        }
+    }, [isMobile, data.projectDate, onUpdate]);
 
     const handleValueUpdate = (id: string, value: any) => {
         onUpdate({ [id]: value });
@@ -75,26 +84,28 @@ export function ProjectInfoStep({
     );
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
             <Card>
-                <CardHeader className="py-4 px-6 border-b border-white/5">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-8 items-center w-full">
-                        <CardTitle className="lg:col-span-2 flex items-center gap-2 sm:gap-3 text-base sm:text-lg leading-none text-slate-100 w-full m-0">
-                            <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
-                            <span className="truncate sm:whitespace-normal">
+                <CardHeader className="py-2 sm:py-4 px-4 sm:px-6 border-b border-white/5">
+                    <div className="flex items-center justify-between w-full">
+                        <CardTitle className="flex items-center gap-2 text-[15px] sm:text-lg leading-none text-slate-100 m-0">
+                            <Briefcase className="w-4 h-4 text-blue-400 shrink-0" />
+                            <span className="truncate">
                                 <span className="sm:hidden">Dados do Projeto</span>
                                 <span className="hidden sm:inline">Informações Gerais do Projeto</span>
                             </span>
                         </CardTitle>
-                        <div className="flex lg:col-span-3 items-center justify-start sm:justify-between gap-2 sm:gap-4 w-full">
+                        <div className="flex items-center gap-2">
                             {btnAbrir}
-                            {btnAuditoria}
+                            <div className="hidden sm:block">
+                                {btnAuditoria}
+                            </div>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-3.5 sm:p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
-                        <div className="flex flex-col lg:col-span-2 gap-3">
+                        <div className="flex flex-col lg:col-span-2 gap-2 sm:gap-3">
                             <div className="space-y-1">
                                 <Label htmlFor="clientName">Título do Projeto - Cliente</Label>
                                 <Input
@@ -127,7 +138,7 @@ export function ProjectInfoStep({
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-0.5 sm:mt-1">
                                 <div className="space-y-1">
                                     <Label htmlFor="technicalManagerName">Responsável Técnico</Label>
                                     <Input
@@ -138,14 +149,16 @@ export function ProjectInfoStep({
                                         className="h-10 text-sm"
                                     />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Data do Projeto</label>
-                                    <DatePicker
-                                        value={data.projectDate}
-                                        onChange={(val) => handleValueUpdate('projectDate', val)}
-                                        className="h-10 text-sm bg-slate-900/50"
-                                    />
-                                </div>
+                                {!isMobile && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Data do Projeto</label>
+                                        <DatePicker
+                                            value={data.projectDate}
+                                            onChange={(val) => handleValueUpdate('projectDate', val)}
+                                            className="h-10 text-sm bg-slate-900/50"
+                                        />
+                                    </div>
+                                )}
                                 <div className="sm:col-span-2">
                                     <div className="space-y-1">
                                         <Label htmlFor="licenseNumber">Habilitação e Registro Profissional</Label>

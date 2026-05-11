@@ -472,10 +472,10 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/5 px-8 text-center">
-                        <div className="flex items-center justify-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" /><span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Choque (PA, PU)</span></div>
-                        <div className="flex items-center justify-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /><span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Incêndio (PB, PV)</span></div>
-                        <div className="flex items-center justify-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#94a3b8]" /><span className="text-[8px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Sistemas (PC)</span></div>
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-2 pt-2 border-t border-white/5 px-2">
+                        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" /><span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Choque (PA, PU)</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /><span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Incêndio (PB, PV)</span></div>
+                        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#94a3b8]" /><span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap">Sistemas (PC)</span></div>
                     </div>
                 </CardContent>
             </Card>
