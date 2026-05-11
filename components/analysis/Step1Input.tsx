@@ -140,7 +140,7 @@ export function Step1Input({ data, onUpdate }: Step1InputProps) {
                                 <DimensionInput icon="Hp" label="Altura Protrusão" id="hp" value={data.hp} onUpdate={val => onUpdate({ hp: val })} color="orange" tooltipText="Refere-se a caixas d'água, chaminés ou torres. IMPORTANTE: Meça sempre do nível do solo (chão) até o topo da estrutura, mesmo que ela esteja sobre o telhado ou na lateral da edificação. Insira o valor total acumulado do chão ao topo." />
                             </div>
 
-                            <div className="p-4 rounded-2xl bg-blue-950/30 border border-slate-700/50 shadow-inner group transition-all hover:border-amber-500/30 mt-2">
+                            <div className="hidden lg:block p-4 rounded-2xl bg-blue-950/30 border border-slate-700/50 shadow-inner group transition-all hover:border-amber-500/30 mt-2">
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex flex-col gap-0.5">
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500/80 leading-none">Área Manual (A<sub>D</sub>)</span>

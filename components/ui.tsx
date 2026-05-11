@@ -31,7 +31,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 export const Button = React.memo(React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', ...props }, ref) => {
-    const baseClasses = "inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
+    const baseClasses = "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background";
     const variantClasses = {
       default: "bg-blue-600 text-white hover:bg-blue-700",
       outline: "border border-slate-500 bg-slate-800/50 text-slate-200 hover:bg-slate-700/70",
@@ -48,10 +48,10 @@ Button.displayName = "Button";
 
 // Card
 export const Card = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col rounded-xl border bg-slate-900/40 backdrop-blur-md text-slate-200 shadow-2xl border-slate-500/30 ${className}`} {...props} />
+  <div className={`flex flex-col rounded-3xl border bg-slate-900/40 backdrop-blur-md text-slate-200 shadow-2xl border-slate-500/30 ${className}`} {...props} />
 ));
 export const CardHeader = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`flex flex-col space-y-1 p-4 py-3 bg-slate-900/80 text-white rounded-t-xl border-b border-slate-700/50 ${className}`} {...props} />
+  <div className={`flex flex-col space-y-1 p-4 py-3 bg-slate-900/80 text-white rounded-t-3xl border-b border-slate-700/50 ${className}`} {...props} />
 ));
 export const CardTitle = React.memo(({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h3 className={`text-lg font-semibold leading-snug tracking-tight text-slate-100 ${className}`} {...props} />
@@ -74,7 +74,7 @@ export const Progress = ({ value, className }: { value: number, className?: stri
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, spellCheck, lang, ...props }, ref) => (
     <input
-      className={`flex h-10 w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
+      className={`flex h-10 w-full rounded-full border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
       ref={ref}
       spellCheck={spellCheck ?? false}
       lang={lang ?? 'pt-BR'}
@@ -88,7 +88,7 @@ Input.displayName = "Input";
 export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, spellCheck, lang, ...props }, ref) => (
     <textarea
-      className={`flex min-h-[80px] w-full rounded-xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
+      className={`flex min-h-[80px] w-full rounded-3xl border border-slate-600 bg-[#0f172a] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 placeholder:font-normal focus:outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 !bg-[#0f172a] ${className}`}
       ref={ref}
       spellCheck={spellCheck ?? false}
       lang={lang ?? 'pt-BR'}
@@ -370,7 +370,7 @@ export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttribut
   };
   
   return createPortal(
-      <div ref={setPortalRef} style={{ position: 'fixed', left, top: computedTop, width, transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] min-w-[12rem] max-w-[56rem] rounded-xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 border-slate-600 ${className}`}>
+      <div ref={setPortalRef} style={{ position: 'fixed', left, top: computedTop, width, transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] min-w-[12rem] max-w-[56rem] rounded-2xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 border-slate-600 ${className}`}>
           <div ref={containerRef} className="p-1 overflow-auto" style={{ maxHeight: availableHeight }}>
               {children}
           </div>
@@ -543,7 +543,7 @@ interface TabButtonProps {
 export const TabButton: React.FC<TabButtonProps> = ({ isActive, onClick, children, className }) => (
     <button
         onClick={onClick}
-        className={`px-3 sm:px-6 py-2 sm:py-2.5 text-[9px] sm:text-[12px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex-1 whitespace-nowrap min-w-[70px] sm:min-w-[100px] border ${
+        className={`px-3 sm:px-6 py-2 sm:py-2.5 text-[9px] sm:text-[12px] font-black uppercase tracking-widest rounded-full transition-all duration-300 flex-1 whitespace-nowrap min-w-[70px] sm:min-w-[100px] border ${
             isActive 
                 ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' 
                 : 'bg-slate-800/40 text-slate-400 border-white/5 hover:bg-slate-700/60 hover:text-slate-200'

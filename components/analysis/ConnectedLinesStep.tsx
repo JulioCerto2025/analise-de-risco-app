@@ -203,7 +203,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         </div>
                                     ))}
 
-                                    <Button variant="outline" onClick={() => addSection('line_sections_1')} className="w-full mt-1 flex items-center gap-2">
+                                    <Button variant="outline" onClick={() => addSection('line_sections_1')} className="hidden lg:flex w-full mt-1 items-center gap-2">
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
@@ -264,7 +264,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         </div>
                                     </div>
 
-                                    <div className="pt-1 md:pt-2">
+                                    <div className="hidden lg:block pt-1 md:pt-2">
                                         <div className="flex items-center space-x-2">
                                             <Checkbox id="use_adj_1" checked={data.use_adj_structure_1} onCheckedChange={(c) => handleCheckboxChange('use_adj_structure_1', !!c)} />
                                             <Label htmlFor="use_adj_1" className="cursor-pointer font-semibold text-slate-200">Calcular área adjacente</Label>
@@ -337,7 +337,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         </div>
                                     ))}
 
-                                    <Button variant="outline" onClick={() => addSection('line_sections_2')} className="w-full mt-1 flex items-center gap-2">
+                                    <Button variant="outline" onClick={() => addSection('line_sections_2')} className="hidden lg:flex w-full mt-1 items-center gap-2">
                                         <PlusCircle className="w-4 h-4" /> Adicionar Trecho
                                     </Button>
 
@@ -395,7 +395,7 @@ export function ConnectedLinesStep({ data, onUpdate }: ConnectedLinesStepProps) 
                                         </div>
                                     </div>
 
-                                    <div className="pt-1 md:pt-2">
+                                    <div className="hidden lg:block pt-1 md:pt-2">
                                         <div className="flex items-center space-x-2">
                                             <Checkbox id="use_adj_2" checked={data.use_adj_structure_2} onCheckedChange={(c) => handleCheckboxChange('use_adj_structure_2', !!c)} />
                                             <Label htmlFor="use_adj_2" className="cursor-pointer font-semibold text-slate-200">Calcular área adjacente</Label>
