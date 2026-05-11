@@ -219,7 +219,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         )}
                         {activeTab === 'incendio' && (
                             <div className="space-y-6 pt-2 border-t border-white/5">
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 px-1 sm:px-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2.2fr_1fr_1.2fr_1fr] gap-2 md:gap-4 px-1 sm:px-2">
                                     <SelectInput label="LF - Danos Físicos" value={lossData.LF} options={LF_OPTIONS} onUpdate={v => handleUpdate('LF', v)} />
                                     <SelectInput label="rf - Risco Incêndio" value={lossData.rf} options={RF_OPTIONS} onUpdate={v => handleUpdate('rf', v)} />
                                     <SelectInput label="rp - Proteções" value={lossData.rp} options={RP_OPTIONS} onUpdate={v => handleUpdate('rp', v)} />
@@ -247,7 +247,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                         )}
                         {activeTab === 'economica' && (
                             <div className="space-y-6 pt-2 border-t border-white/5">
-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.5fr_1fr] gap-2 md:gap-4">
                                     <SelectInput label="lf4 - Dano Físico" value={lossData.lf4} options={LF4_OPTIONS} onUpdate={v => handleUpdate('lf4', v)} />
                                     <SelectInput label="lo4 - Falha Perda" value={lossData.lo4} options={LO4_OPTIONS} onUpdate={v => handleUpdate('lo4', v)} />
                                     <SelectInput label="lt4 - Choque" value={(lossData as any).lt4} options={LT_OPTIONS} onUpdate={v => handleUpdate('lt4' as any, v)} />
@@ -274,7 +274,7 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[14.5rem] pt-4 pb-2 flex flex-col">
+                <CardContent className="h-[14rem] pt-3 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }} className="outline-none focus:outline-none">

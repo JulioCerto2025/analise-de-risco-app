@@ -551,7 +551,7 @@ export default function App() {
                 className="min-h-screen bg-[url('https://i.imgur.com/vdpG5uQ.jpeg')] bg-cover bg-fixed bg-center selection:bg-blue-500/30 overflow-x-hidden overflow-y-auto"
             >
                 <div className="w-full flex justify-center py-1 px-1">
-                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-1 sm:gap-3 items-start pt-1 sm:pt-2 pb-1 sm:pb-2 px-2 sm:px-4">
+                    <div className="w-full md:w-[1100px] lg:w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-[256px_1fr] lg:grid-cols-[288px_1fr] gap-1 sm:gap-2 items-start pt-0.5 sm:pt-2 pb-0.5 sm:pb-2 px-1.5 sm:px-4">
                         <aside className="hidden md:block">
                             <div className="sticky top-2 w-full flex flex-col gap-2 pb-2">
                                 <SidebarNav currentStep={currentStep} setStep={setStep}/>

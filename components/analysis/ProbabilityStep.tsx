@@ -366,7 +366,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_electric} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_electric: v })} /></div>
                                 <div className="w-full lg:min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_electric_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_electric_ext: v, Uw_electric_int: v })} /></div>
                             </div>
-                            <div className={`grid gap-2 md:gap-3 items-end bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''} ${electricSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
+                            <div className={`grid gap-2 md:gap-3 items-end bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeElectric ? 'opacity-30 pointer-events-none' : ''} ${electricSubTab === 'internal' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr]' : 'grid-cols-1 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1.5fr]'}`}>
                                 <SelectInput label="Fator CLD" value={electricSubTab === 'external' ? prob.CLD_electric_ext : prob.CLD_electric_int} options={CLD_ONLY_OPTIONS} onUpdate={v => handleProbabilityChange(electricSubTab === 'external' ? { CLD_electric_ext: v } : { CLD_electric_int: v })} />
                                 <SelectInput label="Fator CLI" value={electricSubTab === 'external' ? prob.CLI_electric_ext : prob.CLI_electric_int} options={CLI_OPTIONS} onUpdate={v => handleProbabilityChange(electricSubTab === 'external' ? { CLI_electric_ext: v } : { CLI_electric_int: v })} />
                                 {electricSubTab === 'internal' && <SelectInput label="Ks3 (Fiação)" value={prob.Ks3_electric_int || 0} options={KS3_OPTIONS} onUpdate={v => handleProbabilityChange({ Ks3_electric_int: v })} />}
@@ -389,7 +389,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                                 <div className="w-full lg:min-w-[140px]"><SelectInput label="Equipot. (PSPD)" value={prob.PSPD_data} options={PSPD_OPTIONS} onUpdate={v => handleProbabilityChange({ PSPD_data: v })} /></div>
                                 <div className="w-full lg:min-w-[120px]"><SelectInput label="Uw (kV)" value={prob.Uw_data_ext} options={UW_OPTIONS} onUpdate={v => handleProbabilityChange({ Uw_data_ext: v, Uw_data_int: v })} /></div>
                             </div>
-                            <div className={`grid gap-2 md:gap-3 items-end bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''} ${dataSubTab === 'internal' ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
+                            <div className={`grid gap-2 md:gap-3 items-end bg-slate-900/40 p-2 md:p-3 rounded-2xl border border-white/5 ${!zoneAnalyzeData ? 'opacity-30 pointer-events-none' : ''} ${dataSubTab === 'internal' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.5fr]' : 'grid-cols-1 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1.5fr]'}`}>
                                 <SelectInput label="Fator CLD" value={dataSubTab === 'external' ? prob.CLD_data_ext : prob.CLD_data_int} options={CLD_ONLY_OPTIONS} onUpdate={v => handleProbabilityChange(dataSubTab === 'external' ? { CLD_data_ext: v } : { CLD_data_int: v })} />
                                 <SelectInput label="Fator CLI" value={dataSubTab === 'external' ? prob.CLI_data_ext : prob.CLI_data_int} options={CLI_OPTIONS} onUpdate={v => handleProbabilityChange(dataSubTab === 'external' ? { CLI_data_ext: v } : { CLI_data_int: v })} />
                                 {dataSubTab === 'internal' && <SelectInput label="Ks3 (Fiação)" value={prob.Ks3_data_int || 0} options={KS3_OPTIONS} onUpdate={v => handleProbabilityChange({ Ks3_data_int: v })} />}
@@ -409,7 +409,7 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-2xl shadow-black/40 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[9rem] md:h-[11.5rem] pt-2 md:pt-4 pb-1 md:pb-2 flex flex-col">
+                <CardContent className="h-[8.5rem] md:h-[11rem] pt-2 md:pt-3 pb-1 md:pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} className="outline-none focus:outline-none">

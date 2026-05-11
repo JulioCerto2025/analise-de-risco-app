@@ -410,7 +410,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     }
 
     return (
-        <div className="max-w-6xl w-full mx-auto space-y-6 overflow-visible pb-8">
+        <div className="max-w-6xl w-full mx-auto space-y-4 overflow-visible pb-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
                 <Card className="h-full relative overflow-hidden border-slate-700/50 bg-slate-100/5 backdrop-blur-sm shadow-xl shadow-black/20 group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/30 via-blue-400 to-blue-500/30 opacity-50" />
@@ -540,7 +540,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                                         {isAcceptable ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
                                     </div>
                                 </div>
-                                <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-2 pb-4 px-8 items-center">
+                                <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-1 pb-3 px-6 items-center">
                                     <div className="flex flex-col items-center">
                                         <div className={`relative z-10 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 transition-transform ${isAcceptable ? 'text-green-400' : 'text-red-400'} px-1 flex justify-center w-full max-w-full overflow-visible`}>
                                             <ScientificNotation value={currentTotalRiskValue} precision={2} />
@@ -580,7 +580,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
                 className="relative overflow-hidden border-slate-700/30 bg-slate-900/40 backdrop-blur-md shadow-xl shadow-black/20 group"
                 onClick={(e) => e.stopPropagation()}
             >
-                <CardContent className="h-[17.5rem] pt-6 pb-2 flex flex-col">
+                <CardContent className="h-[15.5rem] pt-3 pb-2 flex flex-col">
                     <div className="flex-1 min-h-0">
                         <ResponsiveContainer width="100%" height="100%" className="outline-none focus:outline-none">
                             <BarChart 
