@@ -6,7 +6,7 @@ import { AnalysisData } from '../../types';
 import { MapViewerHandles } from './MapViewer';
 const MapViewerLazy = React.lazy(() => import('./MapViewer').then(m => ({ default: m.MapViewer })));
 import { getUfs, getCitiesByUf, getNgByCity, toUfCode, getUfSuggestions } from '../../data/ngByCity';
-import { geocodeCityWithOSM } from '../../lib/osmGeocoding';
+import { geocodeCityWithOSM, reverseGeocodeLatLonOSM } from '../../lib/osmGeocoding';
 import { extractCityAndUf, normalizeCityName } from '../../utils/addressParser';
 import { getRegionFromState } from '../../utils/geoUtils';
 
@@ -238,6 +238,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const [legendHighlightIndex, setLegendHighlightIndex] = React.useState<number | null>(null);
     const [palette, setPalette] = React.useState<string[]>(DEFAULT_NG_COLOR_BLOCKS);
     const [isLoading, setIsLoading] = React.useState(false);
+    const [mapClickLoading, setMapClickLoading] = React.useState(false);
+    const [mapClickToast, setMapClickToast] = React.useState<string | null>(null);
     const [imageDims, setImageDims] = React.useState<{ width: number; height: number } | null>(null);
     // Removido: suporte a mapa melhorado via upload/URL e opções de detecção/cor.
     const [availableUfs, setAvailableUfs] = React.useState<string[]>([]);
@@ -457,38 +459,76 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             const geoBounds = mapBounds[region];
             const pixelBounds = getDynamicPixelBounds(region);
 
-            // Primeiro: média radial (7x7, raio 3)
+            // 1. Detecção de cor → Ng
             let idx = ref.getDominantPaletteIndexAtPoint(clickData.clickPoint, palette);
-            // Fallback: pixel exato caso a média retorne nulo (gridline/tons neutros)
             if (idx === null) {
                 idx = ref.getPaletteIndexAtPoint(clickData.clickPoint, palette);
             }
             setLegendHighlightIndex(typeof idx === 'number' && idx >= 0 ? idx : null);
-            
-            // Novos dados para atualização
-            const updates: any = {};
 
-            // 1. Atualização do Ng (2..32)
+            const updates: any = {};
             if (typeof idx === 'number' && idx >= 0) {
                 updates.ng = (idx * 2) + 2;
+                updates.is_ng_manual = false;
             }
 
-            // 2. IMPORTANTE: Atualização de Coordenadas (evita snap-back)
+            // 2. Conversão pixel → lat/lon
+            let geoCoords: { lat: number; lon: number } | null = null;
             if (geoBounds && pixelBounds) {
-                const geo = convertPixelToGeo(clickData.clickPoint.x, clickData.clickPoint.y, geoBounds, pixelBounds);
-                if (geo) {
-                    updates.lat = geo.lat;
-                    updates.lon = geo.lon;
+                geoCoords = convertPixelToGeo(clickData.clickPoint.x, clickData.clickPoint.y, geoBounds, pixelBounds);
+                if (geoCoords) {
+                    updates.lat = geoCoords.lat;
+                    updates.lon = geoCoords.lon;
                 }
             }
 
             if (Object.keys(updates).length > 0) {
                 onUpdate(updates);
             }
+
+            // 3. Geocodificação reversa: preenche UF e Cidade automaticamente
+            if (geoCoords) {
+                setMapClickLoading(true);
+                setMapClickToast('🔍 Buscando localização...');
+                try {
+                    const result = await reverseGeocodeLatLonOSM(geoCoords.lat, geoCoords.lon);
+                    if (result && result.city && result.uf) {
+                        // Commit UF e obtém lista de cidades diretamente (evita stale closure)
+                        setSelectedUf(result.uf);
+                        setUfInput(result.uf);
+                        setUfError(null);
+                        const region = getRegionFromState(result.uf) || 'brasil';
+                        const cities = await getCitiesByUf(result.uf);
+                        setAvailableCities(cities);
+                        setSelectedCity('');
+                        setCityInput('');
+                        onUpdate({ mapRegion: region, ufDraft: result.uf } as any);
+
+                        // Usa commitCityWithList passando UF e cities explicitamente
+                        await commitCityWithList(result.city, result.uf, cities);
+
+                        setMapClickToast(`📍 ${result.city} - ${result.uf}`);
+                        setTimeout(() => setMapClickToast(null), 3500);
+                    } else {
+                        // Área fora do território brasileiro ou sem município no OSM
+                        const latStr = geoCoords.lat.toFixed(2);
+                        const lonStr = geoCoords.lon.toFixed(2);
+                        setMapClickToast(`⚠️ Sem município (${latStr}, ${lonStr}) — clique dentro do Brasil`);
+                        setTimeout(() => setMapClickToast(null), 4000);
+                    }
+                } catch (_) {
+                    setMapClickToast('⚠️ Erro na busca. Tente novamente.');
+                    setTimeout(() => setMapClickToast(null), 3000);
+                } finally {
+                    setMapClickLoading(false);
+                }
+            }
         } catch (_) {
             setLegendHighlightIndex(null);
+            setMapClickLoading(false);
         }
-    }, [mapRegion, getDynamicPixelBounds, palette]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mapRegion, getDynamicPixelBounds, palette, onUpdate]);
 
     // Removido: handler com geocodificação reversa e coordenadas
 
@@ -551,6 +591,8 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         setCityInput('');
         const region = getRegionFromState(code) || 'brasil';
         onUpdate({ mapRegion: region });
+        // Retorna a lista de cidades para uso imediato (evita stale closure)
+        return cities;
     };
 
     const handleUfInputUpdate = async (val: string) => {
@@ -560,6 +602,47 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         try {
             onUpdate({ ufDraft: val.toUpperCase() } as any);
         } catch (_) { /* silencioso */ }
+    };
+
+    /**
+     * Versão de commitCity que recebe UF e lista de cidades explicitamente.
+     * Evita stale closure quando chamado logo após setSelectedUf (antes do setState propagar).
+     */
+    const commitCityWithList = async (input: string, ufCode: string, cities: string[]) => {
+        const text = (input || '').trim();
+        if (!text) return;
+
+        const rawNorm = normalizeCityName(text);
+        const exact = cities.find(c => normalizeCityName(c) === rawNorm);
+        const city = exact || text;
+
+        setSelectedCity(city);
+        setCityInput(city);
+        try { onUpdate({ cityDraft: city } as any); } catch (_) { /* silencioso */ }
+
+        const validUfs = getUfSuggestions();
+        if (ufCode && validUfs.includes(ufCode)) {
+            const ngPreset = await getNgByCity(ufCode, city);
+            const loc = `${city} - ${ufCode}`;
+
+            const byUf = CITY_COORDS_OVERRIDES[ufCode.toUpperCase()] || {};
+            const foundKey = Object.keys(byUf).find(k => normalizeCityName(k) === normalizeCityName(city));
+            const override = foundKey ? byUf[foundKey] : null;
+
+            const updates: any = {
+                location: loc,
+                cityDraft: city,
+                ufDraft: ufCode,
+            };
+            if (typeof ngPreset === 'number' && ngPreset > 0) {
+                updates.ng = ngPreset;
+            }
+            if (override) {
+                updates.lat = override.lat;
+                updates.lon = override.lon;
+            }
+            onUpdate(updates);
+        }
     };
 
     const commitCity = async (input: string) => {
@@ -861,10 +944,25 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                          </div>
                     </CardHeader>
                     <CardContent className="relative p-4">
-                        {isLoading && (
+                        {/* Hint de clique no mapa */}
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
+                            {mapClickToast && (
+                                <div className="px-3 py-1.5 rounded-full bg-blue-600/90 backdrop-blur-sm text-white text-xs font-semibold shadow-lg animate-pulse">
+                                    {mapClickToast}
+                                </div>
+                            )}
+                            {!mapClickToast && (
+                                <div className="px-3 py-1 rounded-full bg-slate-900/60 backdrop-blur-sm text-slate-300 text-[10px] border border-slate-600/40">
+                                    Clique no mapa para detectar Ng, Estado e Cidade
+                                </div>
+                            )}
+                        </div>
+                        {(isLoading || mapClickLoading) && (
                             <div className="absolute inset-0 bg-slate-900/70 z-10 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm">
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
-                                <p className="mt-4 text-slate-300 font-semibold">Analisando e Mapeando...</p>
+                                <p className="mt-4 text-slate-300 font-semibold">
+                                    {mapClickLoading ? 'Buscando localização...' : 'Analisando e Mapeando...'}
+                                </p>
                             </div>
                         )}
                         <React.Suspense fallback={<div className="h-[480px] w-full flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-400" /></div>}>

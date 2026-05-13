@@ -100,14 +100,10 @@ function buildVariablesTable(data: AnalysisData, isWord: boolean = false): strin
     const alTotal = (c.al1 || 0) + (c.al2 || 0);
     const aiTotal = (c.ai1 || 0) + (c.ai2 || 0);
 
-    const ngLabel = data.is_ng_manual ? 'Ng (Manual)' : 'Ng';
-    const ngDetail = data.is_ng_manual ? 'Densidade de descargas (Sob responsabilidade técnica do usuário)' : 'Densidade de descargas (Regional)';
-    const ngRowColor = data.is_ng_manual ? (isWord ? 'background-color: #fffbeb;' : 'background-color: rgba(251,191,36,0.05);') : '';
-    const ngNote = data.is_ng_manual 
-        ? `<div style="margin-bottom: 24px; padding: 12px; border: 1px solid ${isWord ? '#000' : 'rgba(251,191,36,0.3)'}; background: ${isWord ? '#fffbeb' : 'rgba(251,191,36,0.02)'}; border-radius: 8px; font-size: 10px; line-height: 1.5;">
-            <b style="color: ${isWord ? '#92400e' : '#fbbf24'};">NOTA TÉCNICA (SOBREPOSIÇÃO DE DADOS):</b> Informamos que o valor de densidade de descargas (Ng) nesta análise foi definido manualmente pelo usuário responsável técnico. Esta opção é utilizada quando existem fontes de dados locais mais precisas ou consultas a versões específicas da normativa, sendo integralmente mantida para fins de cálculo e memória técnica sob responsabilidade do profissional.
-           </div>` 
-        : '';
+    const ngLabel = 'Ng';
+    const ngDetail = 'Densidade de descargas (Regional)';
+    const ngRowColor = '';
+    const ngNote = '';
 
     return `### 2.1. PARÂMETROS FÍSICOS E AMBIENTAIS (ESTRUTURA)
 ${ngNote}
@@ -332,10 +328,10 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
     <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">${isGlobal ? '∑ (Nd x PB x LB) por zona' : `[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)} x LB:${formatLossScientific(LB_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
     <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">${isGlobal ? '∑ (Nd x PC x LC) por zona' : `[Nd:${formatScientific(c.nd)} x PC:${formatScientific(pc.PC)} x LC:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
     <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">${isGlobal ? '∑ (Nm x PM x LM) por zona' : `[Nm:${formatScientific(c.nm)} x PM:${formatScientific(pc.PM)} x LM:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
-    <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl x PU x LU) por zona' : `[Nl:${formatScientific(c.nl_electric)} x PU:${formatScientific(pc.PU)} x LU:${formatLossScientific(LA_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
-    <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl x PV x LV) por zona' : `[Nl:${formatScientific(c.nl_electric)} x PV:${formatScientific(pc.PV)} x LV:${formatLossScientific(LB_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
-    <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl x PW x LW) por zona' : `[Nl:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)} x LW:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
-    <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">${isGlobal ? '∑ (Ni x PZ x LZ) por zona' : `[Ni:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)} x LZ:${formatLossScientific(LC_val || 0)}]`}</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
+    <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl×PU×LU el. + Nl×PUT×LU dados) por zona' : `[Nl_e:${formatScientific(c.nl_electric)} x PU:${formatScientific(pc.PU)} + Nl_t:${formatScientific(c.nl_data)} x PUT:${formatScientific(pc.PUT)}] x LU:${formatLossScientific(LA_val || 0)}`}</td><td style="${cellResult}">${formatR1((r.RU || 0) + (r.RUT || 0))}</td></tr>
+    <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl×PV×LV el. + Nl×PVT×LV dados) por zona' : `[Nl_e:${formatScientific(c.nl_electric)} x PV:${formatScientific(pc.PV)} + Nl_t:${formatScientific(c.nl_data)} x PVT:${formatScientific(pc.PVT)}] x LV:${formatLossScientific(LB_val || 0)}`}</td><td style="${cellResult}">${formatR1((r.RV || 0) + (r.RVT || 0))}</td></tr>
+    <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">${isGlobal ? '∑ (Nl×PW×LW el. + Nl×PWT×LW dados) por zona' : `[Nl_e:${formatScientific(c.nl_electric)} x PW:${formatScientific(pc.PW)} + Nl_t:${formatScientific(c.nl_data)} x PWT:${formatScientific(pc.PWT)}] x LW:${formatLossScientific(LC_val || 0)}`}</td><td style="${cellResult}">${formatR1((r.RW || 0) + (r.RWT || 0))}</td></tr>
+    <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">${isGlobal ? '∑ (Ni×PZ×LZ el. + Ni×PZT×LZ dados) por zona' : `[Ni_e:${formatScientific(c.ni_electric)} x PZ:${formatScientific(pc.PZ)} + Ni_t:${formatScientific(c.ni_data)} x PZT:${formatScientific(pc.PZT)}] x LZ:${formatLossScientific(LC_val || 0)}`}</td><td style="${cellResult}">${formatR1((r.RZ || 0) + (r.RZT || 0))}</td></tr>
   </tbody>
 </table>`;
 
@@ -350,6 +346,7 @@ function buildDetailedMemorial(data: AnalysisData, isWord: boolean = false, zone
            </div>`
         : '';
 
+    const hasFB = data.frequency_config.has_equipment_in_ZPR0A;
     mainContent += `
 <div style="${subHeaderSection}">3.5. COMPONENTES DA FREQUÊNCIA DE DANOS (FD = N x P)</div>
 ${fdNote}
@@ -362,7 +359,7 @@ ${fdNote}
     </tr>
   </thead>
   <tbody>
-    <tr><td style="${cellCode}">FB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)}]</td><td style="${cellResult}">${formatFD(f.FB)}</td></tr>
+    ${hasFB ? `<tr><td style="${cellCode}">FB</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PB:${formatScientific(pc.PB)}] — Equip. em ZPR0A</td><td style="${cellResult}">${formatFD(f.FB)}</td></tr>` : ''}
     <tr><td style="${cellCode}">FC</td><td style="${cellFormula}">[Nd:${formatScientific(c.nd)} x PC_comb:${formatScientific(pcTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FC)}</td></tr>
     <tr><td style="${cellCode}">FM</td><td style="${cellFormula}">[Nm:${formatScientific(c.nm)} x PM_comb:${formatScientific(pmTotalFreq)}]</td><td style="${cellResult}">${formatFD(f.FM)}</td></tr>
     <tr><td style="${cellCode}">FV</td><td style="${cellFormula}">[Nl_elétrica:${formatScientific(c.nl_electric)} x PEB] + [Nl_dados:${formatScientific(c.nl_data)} x PEB]</td><td style="${cellResult}">${formatFD(f.FV)}</td></tr>
@@ -370,7 +367,7 @@ ${fdNote}
     <tr><td style="${cellCode}">FZ</td><td style="${cellFormula}">[Ni_elétrica:${formatScientific(c.ni_electric)} x PZ] + [Ni_dados:${formatScientific(c.ni_data)} x PZ]</td><td style="${cellResult}">${formatFD(f.FZ)}</td></tr>
     <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
       <td style="${cellCode}">TOTAL</td>
-      <td style="${cellFormula}; font-weight: bold;">FD TOTAL (F)</td>
+      <td style="${cellFormula}; font-weight: bold;">FD = ${hasFB ? 'FB + ' : ''}FC + FM + FV + FW + FZ</td>
       <td style="${cellResult}">${formatFD(f.F)}</td>
     </tr>
   </tbody>
@@ -384,10 +381,10 @@ ${fdNote}
   <tr><td style="${cellCode}">RB</td><td style="${cellFormula}">Danos físicos (Estrutura)</td><td style="${cellResult}">${formatR1(r.RB)}</td></tr>
   <tr><td style="${cellCode}">RC</td><td style="${cellFormula}">Falhas de sistemas (Estrutura)</td><td style="${cellResult}">${formatR1(r.RC)}</td></tr>
   <tr><td style="${cellCode}">RM</td><td style="${cellFormula}">Falhas de sistemas (Magnético)</td><td style="${cellResult}">${formatR1(r.RM)}</td></tr>
-  <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">Choque em seres vivos (Linhas)</td><td style="${cellResult}">${formatR1(r.RU)}</td></tr>
-  <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">Danos físicos (Linhas)</td><td style="${cellResult}">${formatR1(r.RV)}</td></tr>
-  <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">Falhas de sistemas (Linhas - Surtos)</td><td style="${cellResult}">${formatR1(r.RW)}</td></tr>
-  <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">Falhas de sistemas (Linhas - Indução)</td><td style="${cellResult}">${formatR1(r.RZ)}</td></tr>
+  <tr><td style="${cellCode}">RU</td><td style="${cellFormula}">Choque em seres vivos (Linhas el. + dados)</td><td style="${cellResult}">${formatR1((r.RU || 0) + (r.RUT || 0))}</td></tr>
+  <tr><td style="${cellCode}">RV</td><td style="${cellFormula}">Danos físicos (Linhas el. + dados)</td><td style="${cellResult}">${formatR1((r.RV || 0) + (r.RVT || 0))}</td></tr>
+  <tr><td style="${cellCode}">RW</td><td style="${cellFormula}">Falhas de sistemas (Surtos el. + dados)</td><td style="${cellResult}">${formatR1((r.RW || 0) + (r.RWT || 0))}</td></tr>
+  <tr><td style="${cellCode}">RZ</td><td style="${cellFormula}">Falhas de sistemas (Indução el. + dados)</td><td style="${cellResult}">${formatR1((r.RZ || 0) + (r.RZT || 0))}</td></tr>
   <tr style="background: ${isWord ? '#f1f5f9' : 'rgba(15,23,42,0.3)'};">
     <td style="${cellCode}">TOTAL</td>
     <td style="${cellFormula}; font-weight: bold;">R1 TOTAL</td>
@@ -521,8 +518,9 @@ export async function generateFullReportText(data: AnalysisData, isWord: boolean
         return `data:image/svg+xml;base64,${base64}`;
     };
 
-    const riskChart = isWord ? '_[Gráficos omitidos para maior compatibilidade com Word. Consulte os dados na tabela de conformidade no final do relatório.]_' : `![Gráfico de Risco R1](${buildStatusChart("SISTEMA 01: RISCO À VIDA HUMANA (R1)", r.R1 || 0, 1e-5, 'R1')})`;
+    const riskChart = isWord ? '' : `![Gráfico de Risco R1](${buildStatusChart("SISTEMA 01: RISCO À VIDA HUMANA (R1)", r.R1 || 0, 1e-5, 'R1')})`;
     const freqChart = isWord ? '' : `![Gráfico de Frequência FD](${buildStatusChart("SISTEMA 02: FREQUÊNCIA DE DANOS (FD)", f.F || 0, fdLimit, 'FD')})`;
+    const hasCharts = !!(riskChart || freqChart);
 
     // Gera tabelas de fatores para todas as zonas
     const factorsTables = data.zones.map((_, idx) => buildFactorsTable(data, isWord, idx)).join('\n\n');
@@ -549,13 +547,13 @@ ${factorsTables}
 ## 📐 <span style="color: ${isWord ? '#1e3a8a' : '#fbbf24'};">3. MEMORIAL DE CÁLCULO</span>
 ${buildDetailedMemorial(data, isWord)}
 
-## 🚦 <span style="color: ${isWord ? '#1e3a8a' : '#fbbf24'};">4. ANÁLISE GRÁFICA DE CONFORMIDADE</span>
+${hasCharts ? `## 🚦 <span style="color: ${isWord ? '#1e3a8a' : '#fbbf24'};">4. ANÁLISE GRÁFICA DE CONFORMIDADE</span>
 O gráfico abaixo compara os valores calculados contra os limites de tolerância da NBR 5419:
 
 ${riskChart}
 
 ${freqChart}
-
+` : ''}
 ## ⚖️ <span style="color: ${isWord ? '#1e3a8a' : '#fbbf24'};">5. CONCLUSÃO TÉCNICA E PARECER FINAL</span>
 ${buildConclusion()}
 

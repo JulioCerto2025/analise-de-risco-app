@@ -121,14 +121,14 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
     }
 
     const globalTotals = zones.reduce((acc, z) => {
-        const r = calculateLossesForZone(z);
+        const r = calculateLossesForZone(z, data.rs || 1);
         acc.LA += (r.LA || 0); acc.LB += (r.LB || 0); acc.LC += (r.LC || 0);
         return acc;
     }, { LA: 0, LB: 0, LC: 0 });
     const isGlobal = activeZoneId === 'GLOBAL';
     const currentZone = (zones.find(z => z.id === activeZoneId) || zones[0]);
     const lossData = currentZone?.loss_data || {};
-    const l = isGlobal ? globalTotals : calculateLossesForZone(currentZone);
+    const l = isGlobal ? globalTotals : calculateLossesForZone(currentZone, data.rs || 1);
 
     const chartData = [
         { name: 'LA = LU (Choque)', description: "D1: Choque Elétrico", value: (l.LA || 0), color: '#3b82f6', globalValue: globalTotals.LA },

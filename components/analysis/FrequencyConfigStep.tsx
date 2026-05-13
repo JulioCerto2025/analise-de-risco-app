@@ -277,10 +277,16 @@ export function FrequencyConfigStep({ data, onUpdate }: { data: AnalysisData, on
     }, [activeZone, calculations, data, config]);
 
     const toleranceLimit = config.is_critical_system ? 0.1 : 1;
-    const chartDataRaw = Object.entries(activeData.freq).map(([name, value]) => ({ 
-        name: name === 'F' ? 'F Total' : name, 
-        value: Number(value) || 0 
-    }));
+    const chartDataRaw = Object.entries(activeData.freq)
+        .filter(([name]) => {
+            // Exclui FB do gráfico se o checkbox estiver desmarcado
+            if (name === 'FB' && !config.has_equipment_in_ZPR0A) return false;
+            return true;
+        })
+        .map(([name, value]) => ({ 
+            name: name === 'F' ? 'F Total' : name, 
+            value: Number(value) || 0 
+        }));
     
     const chartData = [
         ...chartDataRaw.filter(d => d.name !== 'F Total'),

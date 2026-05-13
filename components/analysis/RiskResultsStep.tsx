@@ -115,7 +115,8 @@ const RiskEditorialPortal = ({ label, data, ctx, onClose }: { label: string; dat
 
             if (["RU","RV","RW","RZ"].includes(label)) {
                 const term1 = [valueMap[formulaInfo.vars[0]] || 0, valueMap[formulaInfo.vars[1]] || 0, valueMap[formulaInfo.vars[2]] || 0];
-                const term2 = [valueMap[formulaInfo.vars[3]] || 0, valueMap[formulaInfo.vars[4]] || 0, valueMap[formulaInfo.vars[5]] || 0];
+                // vars[5] não existe para fórmulas de 5 variáveis — o 3º fator do 2º termo é o mesmo Lx (vars[2])
+                const term2 = [valueMap[formulaInfo.vars[3]] || 0, valueMap[formulaInfo.vars[4]] || 0, valueMap[formulaInfo.vars[2]] || 0];
                 valuesNodes = (
                     <span className="font-mono break-normal whitespace-normal">
                         <span className="inline-flex items-baseline">
@@ -191,7 +192,12 @@ const RiskEditorialPortal = ({ label, data, ctx, onClose }: { label: string; dat
         }
     }
 
-    const finalValue = riskResults[label] || 0;
+    // Para componentes de linha dupla (elétrica + dados), o valor final é a soma dos dois termos
+    const DUAL_LINE_PAIRS: { [key: string]: string } = { RU: 'RUT', RV: 'RVT', RW: 'RWT', RZ: 'RZT' };
+    const pairedKey = DUAL_LINE_PAIRS[label];
+    const finalValue = pairedKey
+        ? (riskResults[label] || 0) + (riskResults[pairedKey] || 0)
+        : (riskResults[label] || 0);
 
     return createPortal(
         <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none">
@@ -380,7 +386,7 @@ export function RiskResultsStep({ data, onUpdate }: RiskResultsStepProps) {
     let activeZoneChart: { name: string; value: number }[] = [];
     let tooltipCtx: { probCalcs: any; lossCalcs: any; riskResults: any } | null = null;
     if (activeZone) {
-        const lossCalcs = calculateLossesForZone(activeZone);
+        const lossCalcs = calculateLossesForZone(activeZone, data.rs || 1);
         const zoneBaseProbCalcs = calculateProbabilities(
             activeZone.probability_data || data.probability_data,
             (activeZone.analyze_data_line_probabilities ?? data.analyze_data_line_probabilities),
