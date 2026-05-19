@@ -144,11 +144,60 @@ export async function geocodeCityWithOSM(city: string, uf: string): Promise<{ la
  * Se necessário, extrai UF do campo ISO3166-2-lvl4 ("BR-XX").
  * Como último recurso, tenta extrair cidade do display_name.
  */
+async function checkBDC(lat: number, lon: number) {
+  try {
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`;
+    const resp = await fetch(bdcUrl);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.countryCode === 'BR' && (data.city || data.locality)) {
+        return data;
+      }
+    }
+  } catch (err) {
+    // ignora erros de rede em chamadas individuais
+  }
+  return null;
+}
+
 export async function reverseGeocodeLatLonOSM(
   lat: number,
   lon: number
 ): Promise<{ city: string; uf: string } | null> {
-  const zoomLevels = [12, 10, 8];
+  // 1. Tentativa Primária: BigDataCloud com "Snap-to-Land" (Busca Radial)
+  // Como o mapa possui áreas coloridas que avançam mar adentro, se o usuário clicar
+  // no oceano, expandimos a busca em anéis (até ~130km) para "puxar" para a cidade litorânea mais próxima.
+  const rings = [
+      [[0, 0]], // Centro exato
+      [[0, -0.2], [0, 0.2], [-0.2, 0], [0.2, 0]], // Anel 1 (~22km)
+      [[0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0], [-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]], // Anel 2 (~55km)
+      [[0, -0.8], [0, 0.8], [-0.8, 0], [0.8, 0], [-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]], // Anel 3 (~88km)
+      [[0, -1.2], [0, 1.2], [-1.2, 0], [1.2, 0], [-0.85, -0.85], [0.85, -0.85], [-0.85, 0.85], [0.85, 0.85]]  // Anel 4 (~130km)
+  ];
+
+  for (const ring of rings) {
+    const promises = ring.map(offset => checkBDC(lat + offset[0], lon + offset[1]));
+    const results = await Promise.all(promises);
+    
+    const validResult = results.find(r => r !== null);
+    if (validResult) {
+      const ufName = validResult.principalSubdivision;
+      const cityStr = validResult.city || validResult.locality;
+      const uf = toUfCodeFromStateName(ufName);
+      
+      if (uf && cityStr) {
+        const cleanCity = extractCityFromDisplayName(cityStr) || cityStr;
+        console.debug(`[reverseGeocode] BDC Snap sucesso: ${cleanCity} - ${uf} (Ring)`);
+        return { city: cleanCity, uf };
+      }
+    }
+  }
+
+  console.warn(`[reverseGeocode] BigDataCloud radial falhou, tentando fallback Nominatim...`);
+
+  // 2. Fallback: OSM Nominatim
+  // Zoom levels: 12 (city), 10 (region), 8 (state), 5 (country/macro-region)
+  const zoomLevels = [12, 10, 8, 5];
 
   for (const zoom of zoomLevels) {
     try {
@@ -157,7 +206,7 @@ export async function reverseGeocodeLatLonOSM(
         `?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1&zoom=${zoom}`;
 
       const resp = await fetch(url, {
-        headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' },
+        headers: { 'User-Agent': 'SPDA-Analysis-App/1.0', 'Accept-Language': 'pt-BR,pt;q=0.9' },
       });
 
       if (!resp.ok) {
@@ -168,7 +217,6 @@ export async function reverseGeocodeLatLonOSM(
       const result: { address?: OSMAddress; display_name?: string; error?: string } =
         await resp.json();
 
-      // Nominatim retorna { "error": "Unable to geocode" } para oceano/área sem dados
       if (result.error) {
         console.debug(`[reverseGeocode] zoom=${zoom} → error: ${result.error}`);
         continue;
@@ -176,32 +224,49 @@ export async function reverseGeocodeLatLonOSM(
 
       const addr = result.address || {};
 
-      // Verifica se é Brasil
+      // Se estamos no mar ou fora do Brasil, Nominatim pode retornar o país se zoom for baixo
       if (addr.country_code && addr.country_code !== 'br') {
         console.debug(`[reverseGeocode] zoom=${zoom} → fora do Brasil: ${addr.country_code}`);
         continue;
       }
 
-      // Extrai UF: tenta nome por extenso, depois ISO 3166-2
       const uf = toUfCodeFromStateName(addr.state) || extractUfFromISO(addr);
-
-      // Extrai cidade: tenta todos os campos, depois display_name
       let city = extractCityFromAddress(addr);
+      
       if (!city && result.display_name) {
         city = extractCityFromDisplayName(result.display_name);
       }
-
-      console.debug(`[reverseGeocode] zoom=${zoom}`, { addr, city, uf, display_name: result.display_name });
 
       if (city && uf) {
         return { city, uf };
       }
 
-      // Se tem UF mas não tem cidade (ex: zoom muito alto retornou só estado)
-      // continua para o próximo zoom level
+      // Se temos UF mas não cidade (ex: zoom=8), continuamos tentando zoom menores ou fallback
     } catch (err) {
       console.error(`[reverseGeocode] zoom=${zoom} erro:`, err);
     }
+  }
+
+  // Fallback final: Tenta usar a busca por coordenadas se o reverse falhar (comum na costa)
+  try {
+    const searchUrl = `https://nominatim.openstreetmap.org/search?q=${lat},${lon}&format=jsonv2&addressdetails=1&limit=1`;
+    const resp = await fetch(searchUrl, {
+        headers: { 'User-Agent': 'SPDA-Analysis-App/1.0', 'Accept-Language': 'pt-BR,pt;q=0.9' },
+    });
+    if (resp.ok) {
+        const results = await resp.json();
+        if (results && results.length > 0) {
+            const addr = results[0].address || {};
+            const uf = toUfCodeFromStateName(addr.state) || extractUfFromISO(addr);
+            let city = extractCityFromAddress(addr);
+            if (!city && results[0].display_name) {
+                city = extractCityFromDisplayName(results[0].display_name);
+            }
+            if (city && uf) return { city, uf };
+        }
+    }
+  } catch (err) {
+    console.error(`[reverseGeocode] Fallback search erro:`, err);
   }
 
   console.warn(`[reverseGeocode] Falhou para lat=${lat}, lon=${lon}`);

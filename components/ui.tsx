@@ -202,11 +202,13 @@ export const Select = ({ children, value, onValueChange, placeholder, options: o
 
   React.useEffect(() => {
     if (value !== undefined) {
-      setInternalValue(value);
-      // Reset selected label when value is externally controlled
-      setSelectedLabel(undefined);
+      if (String(value) !== String(internalValue)) {
+        setInternalValue(value);
+        // Reset selected label ONLY when value is changed externally to a different value
+        setSelectedLabel(undefined);
+      }
     }
-  }, [value]);
+  }, [value, internalValue]);
   
   const handleValueChange = (val: string | number) => {
       setInternalValue(val);
@@ -363,8 +365,8 @@ export const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttribut
   };
   
   return createPortal(
-      <div ref={setPortalRef} style={{ position: 'fixed', left, top: computedTop, width, transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] min-w-[12rem] max-w-[56rem] rounded-2xl border bg-slate-800/90 backdrop-blur-lg text-slate-200 shadow-md animate-in fade-in-80 border-slate-600 ${className}`}>
-          <div ref={containerRef} className="p-1 overflow-auto" style={{ maxHeight: availableHeight }}>
+      <div ref={setPortalRef} style={{ position: 'fixed', left, top: computedTop, minWidth: width ? Math.max(width, 240) : 240, maxWidth: '90vw', transform: position === 'above' ? 'translateY(-100%)' : 'none' }} className={`z-[1000] rounded-2xl border bg-slate-950/95 backdrop-blur-xl text-slate-100 shadow-[0_10px_50px_rgba(0,0,0,0.8)] animate-in fade-in-80 border-slate-600/80 ${className}`}>
+          <div ref={containerRef} className="p-1.5 overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ maxHeight: availableHeight }}>
               {children}
           </div>
       </div>,
@@ -397,19 +399,21 @@ export const SelectItem = React.forwardRef<
     <div 
         ref={ref} 
         onClick={handleClick} 
-        className={`relative flex w-full cursor-pointer select-none items-center ${justifyClass} rounded-lg py-1.5 px-3 text-sm outline-none focus:bg-slate-700/80 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-slate-700/80 ${isSelected ? 'bg-slate-700/80' : ''} ${className}`}
+        className={`relative flex w-full cursor-pointer select-none items-center ${justifyClass} rounded-lg py-1.5 px-3 text-sm outline-none focus:bg-slate-700/80 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-slate-700/80 transition-colors ${isSelected ? 'bg-slate-700/80' : ''} ${className}`}
         {...props}
     >
-        <div className="flex items-center">
-            {isSelected ? (
-                <Check className="h-4 w-4" />
-            ) : (
-                <div className="h-4 w-4" /> // Placeholder for alignment
-            )}
-            <span className="ml-2 whitespace-normal break-words">{label}{isValueRedundant ? '' : ':'}</span>
+        <div className="flex items-start w-full pr-1">
+            <div className="mt-0.5 shrink-0 flex items-center justify-center">
+                {isSelected ? (
+                    <Check className="h-4 w-4 text-blue-400" />
+                ) : (
+                    <div className="h-4 w-4" /> // Placeholder for alignment
+                )}
+            </div>
+            <span className="ml-2.5 text-left break-words leading-snug text-slate-200">{label}</span>
         </div>
         {showRightValue && !isValueRedundant && (
-            <span className="font-medium text-blue-400">{rightText ?? String(value)}</span>
+            <span className="font-medium text-blue-400 shrink-0 ml-3">{rightText ?? String(value)}</span>
         )}
     </div>
   );
@@ -557,6 +561,8 @@ export const FormulaTooltip = ({ formulas, values, children, className = "inline
     const portalRef = React.useRef<HTMLDivElement>(null);
 
     const dragControls = useDragControls();
+    
+    const isLarge = Object.entries(formulas).length > 1;
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -720,7 +726,7 @@ export const FormulaTooltip = ({ formulas, values, children, className = "inline
                                     position: 'fixed',
                                     right: `24px`,
                                     top: `80px`,
-                                    width: 'min(90vw, 540px)',
+                                    width: isLarge ? 'min(95vw, 1080px)' : 'min(90vw, 540px)',
                                     zIndex: 9999
                                 }}
                                 className="p-6 bg-slate-800/98 border border-blue-500/40 rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl overflow-visible pointer-events-auto select-none"
@@ -734,16 +740,24 @@ export const FormulaTooltip = ({ formulas, values, children, className = "inline
                                     <div className="text-slate-500 text-[8px] font-bold uppercase tracking-widest border border-slate-700 px-2 py-0.5 rounded-full">Arraste para mover</div>
                                 </div>
                                 
-                                <ul className="space-y-8 select-text pr-2">
-                                    {Object.entries(formulas).map(([key, formula]) => {
+                                <ul 
+                                    style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}
+                                    className={`select-text pr-2 custom-scrollbar ${isLarge ? 'grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 space-y-0' : 'space-y-8'}`}
+                                >
+                                    {Object.entries(formulas).map(([key, formula], idx) => {
                                         const populated = renderFormulaWithValues(formula);
                                         const valValue = (values as any)?.[key];
                                         const valueNode = values && (key in (values || {}) || key.toLowerCase() in (values || {}) || key.toUpperCase() in (values || {})) 
                                             ? formatNumberNode(Number(valValue || (values as any)?.[key.toLowerCase()] || (values as any)?.[key.toUpperCase()]) || 0) 
                                             : null;
                                             
+                                        // Dynamic colSpan for last element of an odd-sized list to make it span full-width beautifully
+                                        const colSpanClass = isLarge && idx === Object.entries(formulas).length - 1 && Object.entries(formulas).length % 2 !== 0
+                                            ? 'md:col-span-2'
+                                            : '';
+                                            
                                         return (
-                                            <li key={key} className="space-y-4">
+                                            <li key={key} className={`space-y-4 ${colSpanClass}`}>
                                                 {/* Valor */}
                                                 {valueNode && (
                                                     <div className="flex items-baseline gap-2">

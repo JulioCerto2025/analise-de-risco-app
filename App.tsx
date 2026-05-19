@@ -112,32 +112,50 @@ const generateSecurePassword = (seed: string) => {
     return pwd;
 };
 
-const generateTrialPassword = () => {
-    const now = new Date();
-    const daysSinceEpoch = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
-    const trialPeriod = Math.floor(daysSinceEpoch / 2); // Reseta a cada 2 dias
-    return generateSecurePassword(`TRIAL-${trialPeriod}-JULIO-2026`);
+const getDailySeed = (date: Date) => {
+    return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 };
 
-const generateMonthlyPassword = () => {
-    const now = new Date();
-    const monthSeed = `${now.getFullYear()}-${now.getMonth() + 1}`;
-    return generateSecurePassword(`MONTHLY-${monthSeed}-JULIO-2026`);
+const generateTrialPassword = (date: Date = new Date()) => {
+    return generateSecurePassword(`TRIAL-${getDailySeed(date)}-JULIO-2026`);
 };
 
-const generateSemestralPassword = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const semester = now.getMonth() < 6 ? 1 : 2; 
-    return generateSecurePassword(`SEMESTRAL-${year}-S${semester}-JULIO-2026`);
+const generateMonthlyPassword = (date: Date = new Date()) => {
+    return generateSecurePassword(`MONTHLY-${getDailySeed(date)}-JULIO-2026`);
 };
 
-const generateAnnualPassword = () => {
-    const now = new Date();
-    return generateSecurePassword(`ANNUAL-${now.getFullYear()}-JULIO-2026`);
+const generateSemestralPassword = (date: Date = new Date()) => {
+    return generateSecurePassword(`SEMESTRAL-${getDailySeed(date)}-JULIO-2026`);
 };
 
+const generateAnnualPassword = (date: Date = new Date()) => {
+    return generateSecurePassword(`ANNUAL-${getDailySeed(date)}-JULIO-2026`);
+};
 
+const isValidClientPassword = (input: string) => {
+    const now = new Date();
+    // 48 hours (2 days)
+    for (let i = 0; i <= 2; i++) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        if (input === generateTrialPassword(d)) return true;
+    }
+    // 30 days (1 month)
+    for (let i = 0; i <= 30; i++) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        if (input === generateMonthlyPassword(d)) return true;
+    }
+    // 180 days (6 months)
+    for (let i = 0; i <= 180; i++) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        if (input === generateSemestralPassword(d)) return true;
+    }
+    // 365 days (1 year)
+    for (let i = 0; i <= 365; i++) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        if (input === generateAnnualPassword(d)) return true;
+    }
+    return false;
+};
 
 export default function App() {
     const isCadPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cad') !== null;
@@ -174,7 +192,7 @@ export default function App() {
             return;
         }
 
-        if (input === passwords.trial || input === passwords.month || input === passwords.semestral || input === passwords.annual) {
+        if (isValidClientPassword(input)) {
             setIsAdmin(false);
             setIsAuthenticated(true);
             setAuthError(false);
@@ -399,32 +417,8 @@ export default function App() {
 
 
                         <div className="space-y-2 pt-1 border-t border-white/5">
-                            <div className="flex flex-col gap-1">
-                                <label className="text-[8px] uppercase font-bold tracking-widest text-slate-600 px-1 leading-none">
-                                    Possui Cupom? (Opcional)
-                                </label>
-                                <input 
-                                    type="text"
-                                    value={couponInput}
-                                    onChange={(e) => setCouponInput(e.target.value)}
-                                    placeholder="DIGITE AQUI"
-                                    className={`w-full h-8 bg-slate-950/30 border-2 ${isCouponValid ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' : 'border-slate-800/50 focus:border-blue-500/30 text-slate-400'} rounded-2xl px-4 text-center text-[10px] font-bold tracking-[0.2em] outline-none transition-all placeholder:text-slate-800 placeholder:tracking-normal uppercase shadow-inner`}
-                                />
-                                {isCouponValid && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, scale: 0.95 }} 
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className="text-center bg-blue-600/10 border border-blue-500/20 rounded-xl py-1"
-                                    >
-                                        <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                                            CUPOM ATIVADO — ECONOMIA APLICADA
-                                        </p>
-                                    </motion.div>
-                                )}
-                            </div>
-
                             {/* Seção 2: Planos com Cores Progressivas */}
-                            <div className="grid grid-cols-3 gap-2 py-0.5">
+                            <div className="grid grid-cols-3 gap-2 py-0.5 mt-1">
                                 {/* Mensal */}
                                 <div className="bg-slate-900/20 border border-slate-800/30 rounded-2xl p-2.5 flex flex-col justify-between shadow-inner relative overflow-hidden group min-h-[70px] transition-all duration-300 hover:bg-slate-800/40 hover:border-slate-700/60 hover:scale-[1.02] cursor-pointer">
                                     <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1 group-hover:text-slate-400 transition-colors">Plano Mensal</span>
@@ -473,6 +467,30 @@ export default function App() {
                                     <div className="absolute -right-2 -top-2 w-12 h-12 bg-emerald-500/10 blur-xl rounded-full" />
                                 </div>
                             </div>
+
+                            <div className="flex flex-col gap-1.5 bg-blue-900/10 p-2 rounded-2xl border border-blue-500/20 my-1">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-blue-300 px-1 text-center leading-none">
+                                    Possui Cupom? (Opcional)
+                                </label>
+                                <input 
+                                    type="text"
+                                    value={couponInput}
+                                    onChange={(e) => setCouponInput(e.target.value)}
+                                    placeholder="DIGITE SEU CUPOM"
+                                    className={`w-full h-10 bg-slate-950 border-2 border-dashed ${isCouponValid ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-blue-500/40 hover:border-blue-400 focus:border-blue-400 text-white'} rounded-xl px-4 text-center text-xs font-bold tracking-[0.2em] outline-none transition-all placeholder:text-slate-500 placeholder:tracking-normal uppercase shadow-inner`}
+                                />
+                                {isCouponValid && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, scale: 0.95 }} 
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="text-center bg-blue-600/10 border border-blue-500/20 rounded-xl py-1"
+                                    >
+                                        <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest flex items-center justify-center gap-2">
+                                            CUPOM ATIVADO — ECONOMIA APLICADA
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Seção 3: CPF PIX (Logo abaixo dos Planos) */}
@@ -504,7 +522,7 @@ export default function App() {
                             {/* Seção 4: Links de Apoio (Tutorial e WhatsApp) */}
                             <div className="grid grid-cols-2 gap-3">
                                 <a 
-                                    href="https://www.youtube.com/watch?v=NpSiWh-LiOk&t=131s" 
+                                    href="https://www.youtube.com/watch?v=t1XMckEP6Tg&t=332s" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 flex items-center justify-center gap-3 transition-all hover:bg-red-500/10 hover:border-red-500/30 group shadow-lg backdrop-blur-sm"

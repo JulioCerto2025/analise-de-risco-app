@@ -386,9 +386,11 @@ export function LossStep({ data, onChange, forceActiveZoneId }: { data: Analysis
     );
 }
 
-function SelectInput({ label, value, options, onUpdate }: { label: string; value: number | undefined; options: { value: number; label: string }[]; onUpdate: (val: number) => void }) {
+function SelectInput({ label, value, options, onUpdate }: { label: string; value: number | undefined; options: { value: number; label: string; group?: string }[]; onUpdate: (val: number) => void }) {
     const stringValue = value !== undefined ? value.toString() : "";
     
+    const hasGroups = options.some(o => o.group);
+
     return (
         <div className="space-y-1 w-full flex flex-col items-center text-center">
             <Label className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-slate-400 leading-tight mb-0.5 truncate w-full px-0.5">{label}</Label>
@@ -397,9 +399,24 @@ function SelectInput({ label, value, options, onUpdate }: { label: string; value
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    {options.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value.toString()} label={opt.label} />
-                    ))}
+                    {hasGroups ? (
+                        Array.from(new Set(options.map(o => o.group))).map(group => (
+                            <div key={group || 'Outros'} className="mb-2 last:mb-0">
+                                {group && (
+                                    <div className="px-3 py-1.5 text-[10px] font-black text-blue-300 uppercase tracking-widest bg-slate-800/80 border-b border-blue-500/20 rounded-t-lg mb-1 shadow-sm">
+                                        {group}
+                                    </div>
+                                )}
+                                {options.filter(o => o.group === group).map(opt => (
+                                    <SelectItem key={opt.label} value={opt.value.toString()} label={opt.label} className={group ? "ml-2" : ""} />
+                                ))}
+                            </div>
+                        ))
+                    ) : (
+                        options.map(opt => (
+                            <SelectItem key={opt.label} value={opt.value.toString()} label={opt.label} />
+                        ))
+                    )}
                 </SelectContent>
             </Select>
         </div>

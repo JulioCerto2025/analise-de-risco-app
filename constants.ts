@@ -154,11 +154,13 @@ export const RT_OPTIONS = [
     { value: 0.00001, label: "Asfalto, linóleo, madeira 0,00001" }
 ];
 export const RF_OPTIONS = [
-    { value: 0, label: "Sem risco 0" },
-    { value: 0.001, label: "Baixo 0,001" },
-    { value: 0.01, label: "Médio 0,01" },
-    { value: 0.1, label: "Alto 0,1" },
-    { value: 1, label: "Explosivo 1" }
+    { value: 0, label: "Sem Risco - 0", group: "Sem Risco" },
+    { value: 0.001, label: "Incêndio Baixo - 0,001", group: "Incêndio" },
+    { value: 0.01, label: "Incêndio Normal - 0,01", group: "Incêndio" },
+    { value: 0.1, label: "Incêndio Alto - 0,1", group: "Incêndio" },
+    { value: 0.001, label: "Expl. Z 2, 22 - 0,001", group: "Explosão" },
+    { value: 0.1, label: "Expl. Z 1, 21 - 0,1", group: "Explosão" },
+    { value: 1, label: "Expl. Z 0, 20 e Sólidos - 1", group: "Explosão" }
 ];
 export const HZ_OPTIONS = [{ value: 1, label: "Nenhum 1" }, { value: 2, label: "Baixo 2" }, { value: 5, label: "Médio 5" }, { value: 10, label: "Alto 10" }];
 export const LF_OPTIONS = [

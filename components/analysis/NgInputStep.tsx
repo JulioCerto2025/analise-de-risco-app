@@ -71,7 +71,7 @@ const mapBounds: { [key: string]: { lonMin: number; lonMax: number; latMin: numb
     // Ajuste fino baseado na grade impressa do mapa Sudeste
     // (faixa mais ampla para casar com a figura):
     // Calibração fina da latitude para o mapa Sudeste (grade impressa)
-    'sudeste':      { lonMin: -54.0, lonMax: -39.0, latMin: -26.0, latMax: -16.8 },
+    'sudeste':      { lonMin: -54.0, lonMax: -39.0, latMin: -26.0, latMax: -14.0 },
     'sul':          { lonMin: -59.0, lonMax: -47.0, latMin: -35.0, latMax: -22.0 },
 };
 
@@ -91,13 +91,11 @@ const mapPixelBoundsPercent: { [key: string]: { left: number; top: number; right
   // Brasil (AQcWBhv.png): recorte da área da grade cartográfica, exclui margens e legenda
   // Ajuste fino: amplia margens laterais para não cortar o litoral (Nordeste/Norte)
   'brasil': { left: 0.110, top: 0.050, right: 0.965, bottom: 0.920 },
-  // Sudeste (imagem atual WMhsjys.jpeg): margem esquerda/topo pequena, base com legenda
-  // Ajuste fino: se necessário, podemos refinar após inspeção visual
-  // Ajuste fino para alinhar ao retângulo da grade impresso
-  // Novo ajuste: amplia a base da grade e reduz a margem superior
-  'sudeste': { left: 0.072, top: 0.018, right: 0.948, bottom: 0.945 },
+  // Sudeste (imagem WMhsjys.jpeg): Grade calibrada para reduzir shift sul (Extrema/Guarulhos)
+  // O top foi aumentado para empurrar a grade para baixo, alinhando a latitude.
+  'sudeste': { left: 0.075, top: 0.048, right: 0.952, bottom: 0.975 },
   // Sul (ZCh2aYR.jpeg): Grid expanded to match -59 to -47 and -35 to -22
-  'sul': { left: 0.065, top: 0.045, right: 0.955, bottom: 0.88 },
+  'sul': { left: 0.068, top: 0.052, right: 0.958, bottom: 0.965 },
 };
 
 // Viés percentual pós-conversão para correção fina por região
@@ -105,7 +103,7 @@ const mapPixelBoundsPercent: { [key: string]: { left: number; top: number; right
 const regionPixelBiasPercent: { [key: string]: { x?: number; y?: number } } = {
   // Pequenos deslocamentos para compensar margens na imagem do Brasil
   brasil: { x: -0.012, y: -0.010 },
-  sudeste: { x: 0, y: 0.050 },
+  sudeste: { x: 0, y: 0 },
 };
 
 // Function to convert geo coordinates to pixel coordinates using precise bounds
@@ -252,8 +250,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
     const lastAutoCommitRef = React.useRef<string>('');
     const lastLocationAppliedRef = React.useRef<string>('');
     const lastProcessedAddressRef = React.useRef<string>('');
-    // Coordenadas da cidade (lat/lon). Tenta override local e, se não houver, geocodifica via OSM.
-    const [coordsForCity, setCoordsForCity] = React.useState<{ lat: number; lon: number } | null>(null);
+    // Coordenadas da cidade removidas, pois a geocodificação será feita no commit manual
 
     // Função auxiliar para obter bounds de pixels dinâmicos baseados na área útil detectada
     const getDynamicPixelBounds = React.useCallback((region: string): { x1: number; y1: number; x2: number; y2: number } | null => {
@@ -277,69 +274,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         return null;
     }, [imageDims]);
 
-    // Efeito para posicionar o marcador inicial se houver coordenadas salvas
-    React.useEffect(() => {
-        const region = mapRegion || 'brasil';
-        const geoBounds = mapBounds[region];
-        const pixelBounds = getDynamicPixelBounds(region);
-
-        if (data.lat && data.lon && geoBounds && pixelBounds) {
-            const px = convertGeoToPixel(data.lat, data.lon, geoBounds, pixelBounds);
-            if (px) {
-                const bias = regionPixelBiasPercent[region] || {};
-                const width = (pixelBounds.x2 - pixelBounds.x1);
-                const height = (pixelBounds.y2 - pixelBounds.y1);
-                const bx = Math.round((bias.x || 0) * width);
-                const by = Math.round((bias.y || 0) * height);
-                const biased = { x: px.x + bx, y: px.y + by };
-
-                const ref = mapViewerRef.current;
-                const finalPoint = ref?.findNearestContentPoint(biased, 14) || biased;
-
-                if (!markerPoint || Math.abs(finalPoint.x - markerPoint.x) > 1 || Math.abs(finalPoint.y - markerPoint.y) > 1) {
-                     setMarkerPoint(finalPoint);
-                }
-            }
-        }
-    }, [data.lat, data.lon, mapRegion, getDynamicPixelBounds, imageDims, markerPoint]);
-
-    // Efeito unificado para busca de coordenadas (reativo a drafts e seleções oficiais)
-    // Com debounce de 600ms para evitar rate-limit no OSM
-    React.useEffect(() => {
-        const run = async () => {
-            try {
-                const uf = (selectedUf || ufInput || '').trim().toUpperCase();
-                const city = (selectedCity || cityInput || '').trim();
-
-                if (!uf || !city || uf.length < 2) { 
-                    setCoordsForCity(null); 
-                    return; 
-                }
-                
-                const ufCode = (toUfCode(uf) || uf).toUpperCase();
-                const byUf = CITY_COORDS_OVERRIDES[ufCode];
-                let override = null;
-                if (byUf) {
-                    const cityName = city.trim();
-                    const foundKey = Object.keys(byUf).find(k => k.toLowerCase() === cityName.toLowerCase());
-                    if (foundKey) override = byUf[foundKey];
-                }
-                
-                const coords = override || await geocodeCityWithOSM(city, ufCode);
-                if (coords) {
-                    setCoordsForCity(coords);
-                    // Persiste as coordenadas no estado global para estabilidade
-                    if (coords.lat !== data.lat || coords.lon !== data.lon) {
-                        onUpdate({ lat: coords.lat, lon: coords.lon });
-                    }
-                }
-            } catch (_) {
-                setCoordsForCity(null);
-            }
-        };
-        const t = setTimeout(run, 600);
-        return () => clearTimeout(t);
-    }, [selectedUf, selectedCity, ufInput, cityInput]);
+    // Posicionamento de marcador por coordenada removido. O marcador agora só aparece ao clicar.    // Efeito unificado removido: geocodificação agora ocorre apenas no commit manual (evita sobresscrever cliques do mapa)
 
     // Determina a cor do card NG com base no valor atual (2..32)
     const ngPaletteIndex = React.useMemo(() => {
@@ -472,63 +407,14 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                 updates.is_ng_manual = false;
             }
 
-            // 2. Conversão pixel → lat/lon
-            let geoCoords: { lat: number; lon: number } | null = null;
-            if (geoBounds && pixelBounds) {
-                geoCoords = convertPixelToGeo(clickData.clickPoint.x, clickData.clickPoint.y, geoBounds, pixelBounds);
-                if (geoCoords) {
-                    updates.lat = geoCoords.lat;
-                    updates.lon = geoCoords.lon;
-                }
-            }
-
             if (Object.keys(updates).length > 0) {
                 onUpdate(updates);
             }
-
-            // 3. Geocodificação reversa: preenche UF e Cidade automaticamente
-            if (geoCoords) {
-                setMapClickLoading(true);
-                setMapClickToast('🔍 Buscando localização...');
-                try {
-                    const result = await reverseGeocodeLatLonOSM(geoCoords.lat, geoCoords.lon);
-                    if (result && result.city && result.uf) {
-                        // Commit UF e obtém lista de cidades diretamente (evita stale closure)
-                        setSelectedUf(result.uf);
-                        setUfInput(result.uf);
-                        setUfError(null);
-                        const region = getRegionFromState(result.uf) || 'brasil';
-                        const cities = await getCitiesByUf(result.uf);
-                        setAvailableCities(cities);
-                        setSelectedCity('');
-                        setCityInput('');
-                        onUpdate({ mapRegion: region, ufDraft: result.uf } as any);
-
-                        // Usa commitCityWithList passando UF e cities explicitamente
-                        await commitCityWithList(result.city, result.uf, cities);
-
-                        setMapClickToast(`📍 ${result.city} - ${result.uf}`);
-                        setTimeout(() => setMapClickToast(null), 3500);
-                    } else {
-                        // Área fora do território brasileiro ou sem município no OSM
-                        const latStr = geoCoords.lat.toFixed(2);
-                        const lonStr = geoCoords.lon.toFixed(2);
-                        setMapClickToast(`⚠️ Sem município (${latStr}, ${lonStr}) — clique dentro do Brasil`);
-                        setTimeout(() => setMapClickToast(null), 4000);
-                    }
-                } catch (_) {
-                    setMapClickToast('⚠️ Erro na busca. Tente novamente.');
-                    setTimeout(() => setMapClickToast(null), 3000);
-                } finally {
-                    setMapClickLoading(false);
-                }
-            }
         } catch (_) {
             setLegendHighlightIndex(null);
-            setMapClickLoading(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mapRegion, getDynamicPixelBounds, palette, onUpdate]);
+    }, [palette, onUpdate]);
 
     // Removido: handler com geocodificação reversa e coordenadas
 
@@ -604,46 +490,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
         } catch (_) { /* silencioso */ }
     };
 
-    /**
-     * Versão de commitCity que recebe UF e lista de cidades explicitamente.
-     * Evita stale closure quando chamado logo após setSelectedUf (antes do setState propagar).
-     */
-    const commitCityWithList = async (input: string, ufCode: string, cities: string[]) => {
-        const text = (input || '').trim();
-        if (!text) return;
-
-        const rawNorm = normalizeCityName(text);
-        const exact = cities.find(c => normalizeCityName(c) === rawNorm);
-        const city = exact || text;
-
-        setSelectedCity(city);
-        setCityInput(city);
-        try { onUpdate({ cityDraft: city } as any); } catch (_) { /* silencioso */ }
-
-        const validUfs = getUfSuggestions();
-        if (ufCode && validUfs.includes(ufCode)) {
-            const ngPreset = await getNgByCity(ufCode, city);
-            const loc = `${city} - ${ufCode}`;
-
-            const byUf = CITY_COORDS_OVERRIDES[ufCode.toUpperCase()] || {};
-            const foundKey = Object.keys(byUf).find(k => normalizeCityName(k) === normalizeCityName(city));
-            const override = foundKey ? byUf[foundKey] : null;
-
-            const updates: any = {
-                location: loc,
-                cityDraft: city,
-                ufDraft: ufCode,
-            };
-            if (typeof ngPreset === 'number' && ngPreset > 0) {
-                updates.ng = ngPreset;
-            }
-            if (override) {
-                updates.lat = override.lat;
-                updates.lon = override.lon;
-            }
-            onUpdate(updates);
-        }
-    };
 
     const commitCity = async (input: string) => {
         const text = (input || '').trim();
@@ -666,11 +512,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             const ngPreset = await getNgByCity(ufToUse, city);
             const loc = `${city} - ${ufToUse}`;
             
-            // Tenta override de coordenadas
-            const byUf = CITY_COORDS_OVERRIDES[ufToUse.toUpperCase()] || {};
-            const foundKey = Object.keys(byUf).find(k => normalizeCityName(k) === normalizeCityName(city));
-            const override = foundKey ? byUf[foundKey] : null;
-
             const updates: any = { 
                 location: loc, 
                 cityDraft: city, 
@@ -678,10 +519,6 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
             };
             if (typeof ngPreset === 'number' && ngPreset > 0) {
                 updates.ng = ngPreset;
-            }
-            if (override) {
-                updates.lat = override.lat;
-                updates.lon = override.lon;
             }
             
             onUpdate(updates);
@@ -853,25 +690,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                         </div>
 
                         <div className="mx-auto w-fit space-y-1">
-                            {/* Coordenadas (w-full para igualar largura) */}
-                            <div
-                                className="w-full px-3 py-1 rounded-xl bg-slate-800/50 border-2 border-slate-700 text-slate-100 text-base font-bold shadow-sm"
-                                aria-label="Coordenadas da cidade selecionada"
-                            >
-                                <div className="grid grid-cols-[auto_1fr] gap-x-3">
-                                    <div className="row-span-2 flex items-center justify-center">
-                                        <MapPin className="h-6 w-6 text-slate-300" aria-hidden="true" />
-                                    </div>
-                                    <div className="flex items-baseline justify-between leading-tight">
-                                        <span className="font-mono whitespace-pre tracking-wide text-[10px] opacity-70">Lat.  Y:</span>
-                                        <span className="font-mono tabular-nums text-right text-base md:text-lg">{coordsForCity ? coordsForCity.lat.toFixed(2) : '--'}</span>
-                                    </div>
-                                    <div className="flex items-baseline justify-between leading-tight">
-                                        <span className="font-mono whitespace-pre tracking-wide text-[10px] opacity-70">Long. X:</span>
-                                        <span className="font-mono tabular-nums text-right text-base md:text-lg">{coordsForCity ? coordsForCity.lon.toFixed(2) : '--'}</span>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Box de coordenadas removido a pedido do usuário */}
 
                             {/* NG (w-full para igualar largura) */}
                             <div
@@ -953,7 +772,7 @@ export function NgInputStep({ data, onUpdate }: NgInputStepProps) {
                             )}
                             {!mapClickToast && (
                                 <div className="px-3 py-1 rounded-full bg-slate-900/60 backdrop-blur-sm text-slate-300 text-[10px] border border-slate-600/40">
-                                    Clique no mapa para detectar Ng, Estado e Cidade
+                                    Clique no mapa para detectar Ng
                                 </div>
                             )}
                         </div>

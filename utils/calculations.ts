@@ -203,26 +203,28 @@ export function calculateProbabilities(
         PEB_electric: Number(p.PEB_electric) || 0,
         // Elétrica - externa
         Uw_electric_ext: Number(p.Uw_electric_ext) || 1,
-        PLD_electric_ext: Number(p.PLD_electric_ext) || 0,
+        PLD_electric_ext: (Number(p.PLD_electric_ext) > 0) ? Number(p.PLD_electric_ext) : 1.0,
         CLD_electric_ext: Number(p.CLD_electric_ext) || 0,
         CLI_electric_ext: Number(p.CLI_electric_ext) || 0,
         // Elétrica - interna
         Uw_electric_int: Number(p.Uw_electric_int) || 1,
         Ks3_electric_int: Number(p.Ks3_electric_int) || 0,
         CLD_electric_int: Number(p.CLD_electric_int) || 0,
+        PLD_electric_int: (Number(p.PLD_electric_int) > 0) ? Number(p.PLD_electric_int) : 1.0,
         // Dados - compartilhados
         PSPD_data: Number(p.PSPD_data) || 0,
         PTU_data: Number(p.PTU_data) || 0,
         PEB_data: Number(p.PEB_data) || 0,
         // Dados - externa
         Uw_data_ext: Number(p.Uw_data_ext) || 1,
-        PLD_data_ext: Number(p.PLD_data_ext) || 0,
+        PLD_data_ext: (Number(p.PLD_data_ext) > 0) ? Number(p.PLD_data_ext) : 1.0,
         CLD_data_ext: Number(p.CLD_data_ext) || 0,
         CLI_data_ext: Number(p.CLI_data_ext) || 0,
         // Dados - interna
         Uw_data_int: Number(p.Uw_data_int) || 1,
         Ks3_data_int: Number(p.Ks3_data_int) || 0,
         CLD_data_int: Number(p.CLD_data_int) || 0,
+        PLD_data_int: (Number(p.PLD_data_int) > 0) ? Number(p.PLD_data_int) : 1.0,
     };
 
     // Fatores derivados
@@ -345,10 +347,11 @@ export function calculateLossesForZone(zone: Zone, globalRs: number = 1): { [key
 
     // R4 Losses
     const ct_economic = Number(ld.ct_economic) || 1;
-    losses.LA4 = (ld.rt ?? 0) * (ld.lt4 ?? 0) * ((ld.ca ?? 0) / ct_economic);
+    const rs = Number(globalRs) || 1;
+    losses.LA4 = rs * (ld.rt ?? 0) * (ld.lt4 ?? 0) * ((ld.ca ?? 0) / ct_economic);
     const economic_sum = (ld.ca ?? 0) + (ld.cb ?? 0) + (ld.cc ?? 0) + (ld.cs ?? 0);
-    losses.LB4 = Number(globalRs || 1) * (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.lf4 ?? 0) * (economic_sum / ct_economic);
-    losses.LC4 = (ld.lo4 ?? 0) * ((ld.cs ?? 0) / ct_economic);
+    losses.LB4 = rs * (ld.rp ?? 0) * (ld.rf ?? 0) * (ld.lf4 ?? 0) * (economic_sum / ct_economic);
+    losses.LC4 = rs * (ld.lo4 ?? 0) * ((ld.cs ?? 0) / ct_economic);
     const le4 = 0; 
     losses.LFT4 = (ld.lf4 ?? 0) + le4; 
     

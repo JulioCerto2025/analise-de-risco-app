@@ -1,0 +1,1 @@
+const lat = -5.756; const lon = -34.459; const query = '[out:json];node(around:100000,' + lat + ',' + lon + ')[\"place\"~\"city|town|municipality\"];out 1;'; fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query }).then(r => r.json()).then(j => console.log('Overpass:', j.elements[0]));

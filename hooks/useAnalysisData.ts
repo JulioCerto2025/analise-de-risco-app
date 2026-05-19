@@ -303,7 +303,7 @@ export function useAnalysisData() {
             const riskCalculations = calculateRisksForZone(eventCalculations, zoneProbCalculations, lossCalculations, data.selected_risk_components);
             return { zone, lossCalculations, riskCalculations };
         });
-    }, [data.zones, eventCalculations, data.selected_risk_components, data.has_data_line, data.probability_data]);
+    }, [data.zones, eventCalculations, data.selected_risk_components, data.has_data_line, data.probability_data, data.rs]);
 
     const totalRiskResults = React.useMemo(() => aggregateRiskResults(zoneCalculations), [zoneCalculations]);
 

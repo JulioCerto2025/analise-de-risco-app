@@ -196,11 +196,19 @@ export function ProbabilityStep({ data, onChange }: ProbabilityStepProps) {
         
         const updatePlds = (pData: ProbabilityData, upds: Partial<ProbabilityData>) => {
             const result = { ...pData, ...upds };
+            // Elétrica
             if ('is_shielded_electric_ext' in upds || 'rs_electric_ext' in upds || 'Uw_electric_ext' in upds) {
                 result.PLD_electric_ext = calculatePld(result.rs_electric_ext, result.Uw_electric_ext, !!result.is_shielded_electric_ext);
             }
+            if ('is_shielded_electric_int' in upds || 'rs_electric_int' in upds || 'Uw_electric_int' in upds) {
+                result.PLD_electric_int = calculatePld(result.rs_electric_int, result.Uw_electric_int, !!result.is_shielded_electric_int);
+            }
+            // Dados
             if ('is_shielded_data_ext' in upds || 'rs_data_ext' in upds || 'Uw_data_ext' in upds) {
                 result.PLD_data_ext = calculatePld(result.rs_data_ext, result.Uw_data_ext, !!result.is_shielded_data_ext);
+            }
+            if ('is_shielded_data_int' in upds || 'rs_data_int' in upds || 'Uw_data_int' in upds) {
+                result.PLD_data_int = calculatePld(result.rs_data_int, result.Uw_data_int, !!result.is_shielded_data_int);
             }
             return result;
         };
